@@ -2,21 +2,19 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Game; // Adicionado
 use App\Models\Card;
 use App\Models\CardFunctionality;
 use App\Models\Ruling;
 use App\Services\ScryfallApi;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log; 
+use Illuminate\Support\Facades\Log;
 
 class IngestScryfallRulings extends Command
 {
     /**
-     * Assinatura do comando. Usa 'scryfall:ingest-rulings' para evitar conflito com 'ingest:rulings'.
-     * Adicionado suporte a --force e --id.
-     *
-     * @var string
+     * Assinatura do comando.
      */
     protected $signature = 'scryfall:ingest-rulings 
                             {--id= : Opcional. ID do Oracle para ingestar julgamentos de um Card específico.}
@@ -24,29 +22,49 @@ class IngestScryfallRulings extends Command
 
     /**
      * Descrição do comando.
-     *
-     * @var string
      */
     protected $description = 'Ingests ruling data from Scryfall API, with checkpoint support.';
 
     protected string $checkpointPath;
+    
+    // Propriedade para contexto do game
+    protected ?Game $game = null;
 
     public function __construct()
     {
         parent::__construct();
-        // Caminho do arquivo de checkpoint para salvar o último ID processado
         $this->checkpointPath = storage_path('app/scryfall_rulings_checkpoint.txt');
     }
 
     /**
-     * Executa o comando, iniciando a ingestão de julgamentos.
-     *
-     * @return int
+     * Executa o comando.
      */
-    public function handle(ScryfallApi $scryfallApi)
+    public function handle() // Removida a injeção automática para instanciar manualmente
     {
-        // Log inicial para marcar o início da operação
-        Log::error("--- [RULINGS-DEBUG] O COMANDO 'HANDLE' COMEÇOU ---");
+        Log::error("--- [RULINGS-DEBUG] INÍCIO DO COMANDO ---");
+
+        // ---------------------------------------------------------
+        // 1. CONFIGURAÇÃO DA API (BASEADA NO INGEST CARDS)
+        // ---------------------------------------------------------
+        $this->game = Game::where('name', 'Magic: The Gathering')->first();
+
+        if (!$this->game || empty($this->game->api_url)) {
+            $this->error("Game 'Magic: The Gathering' não encontrado ou sem URL. Verifique a tabela games.");
+            return self::FAILURE;
+        }
+
+        try {
+            // Instancia a API manualmente com os dados do banco
+            $scryfallApi = new ScryfallApi(
+                (string)$this->game->api_url,
+                (int)($this->game->rate_limit_ms ?? 100),
+                (int)$this->game->id
+            );
+        } catch (\Throwable $e) {
+            $this->error("Erro ao iniciar API: " . $e->getMessage());
+            return self::FAILURE;
+        }
+        // ---------------------------------------------------------
 
         // --- Lógica para processamento de um único card (debug) ---
         if ($oracleId = $this->option('id')) {
@@ -55,7 +73,7 @@ class IngestScryfallRulings extends Command
             $functionality = CardFunctionality::where('mtg_oracle_id', $oracleId)->first();
 
             if (!$functionality) {
-                $this->error("Funcionalidade com Oracle ID '{$oracleId}' (mtg_oracle_id) não encontrada.");
+                $this->error("Funcionalidade com Oracle ID '{$oracleId}' não encontrada.");
                 return self::FAILURE;
             }
 
@@ -67,11 +85,11 @@ class IngestScryfallRulings extends Command
             }
 
             $this->upsertRulingsBatch($rulings, count($rulings));
-            $this->info("Sucesso! Inseridos/atualizados " . count($rulings) . " julgamentos para {$oracleId}.");
+            $this->info("Processo finalizado para o ID único.");
             return self::SUCCESS;
         }
-        // --- Fim da lógica de processamento único ---
 
+        // --- Ingestão Geral ---
         $this->info('Iniciando ingestão de Julgamentos...');
         
         $lastProcessedId = $this->getCheckpoint();
@@ -79,31 +97,30 @@ class IngestScryfallRulings extends Command
         $query = CardFunctionality::orderBy('id');
 
         if ($lastProcessedId && !$this->option('force')) {
-            $this->warn("Retomando a partir do último checkpoint (CardFunctionality ID: {$lastProcessedId}).");
+            $this->warn("Retomando a partir do último checkpoint (ID: {$lastProcessedId}).");
             $query->where('id', '>', $lastProcessedId);
         } elseif($this->option('force')) {
-            $this->warn('Opção --force detectada. Ignorando checkpoint e começando do zero.');
+            $this->warn('Opção --force detectada. Ignorando checkpoint.');
         }
         
-        // Uso de cursor para otimizar memória em grandes datasets
         $functionalities = $query->cursor();
 
         if ($functionalities->count() === 0) {
-            $this->info('Nenhuma nova funcionalidade para processar. Tudo já está atualizado!');
+            $this->info('Nenhuma nova funcionalidade para processar.');
             return self::SUCCESS;
         }
 
-        // --- RASTREIO DE DEBUG: Contagem Inicial e Variáveis de Controle ---
+        // Setup de contadores e batch
         $initialCount = Ruling::count();
-        Log::error("[RULINGS-DEBUG] CONTADOR INICIAL: A tabela 'rulings' possui {$initialCount} registros.");
-        $totalRulingsProcessed = 0; // Total de julgamentos enviados para upsert
-
+        Log::error("[RULINGS-DEBUG] CONTADOR INICIAL: {$initialCount} registros.");
+        $totalRulingsProcessed = 0;
         $batchSize = 20; 
         $rulingsBatch = [];
         
-        // withProgressBar exibe o progresso no terminal
+        // Loop com barra de progresso (Lógica original mantida)
         $this->withProgressBar($functionalities, function (CardFunctionality $functionality) use ($scryfallApi, &$rulingsBatch, $batchSize, &$totalRulingsProcessed) {
-            // Log do ID do card para facilitar a depuração
+            
+            // [RESTAURADO] Log detalhado de qual carta está sendo processada
             Log::error("[RULINGS-DEBUG] Processando CardFunctionality ID: {$functionality->id}, Nome: {$functionality->mtg_name}");
             
             $rulings = $this->fetchRulingsForFunctionality($functionality, $scryfallApi);
@@ -111,10 +128,10 @@ class IngestScryfallRulings extends Command
             if (!empty($rulings)) {
                 $rulingsBatch = array_merge($rulingsBatch, $rulings);
                 
-                // Quando o balde encher (20 itens), salva no banco
                 if (count($rulingsBatch) >= $batchSize) {
                     $totalProcessedInBatch = count($rulingsBatch); 
-                    // Chama a função de upsert que contém a lógica de log de contagem
+                    
+                    // Chama o método que calcula o "Aumento Real"
                     $this->upsertRulingsBatch($rulingsBatch, $totalProcessedInBatch); 
                     
                     $totalRulingsProcessed += $totalProcessedInBatch; 
@@ -124,7 +141,7 @@ class IngestScryfallRulings extends Command
             $this->setCheckpoint($functionality->id);
         });
 
-        // Salva o resto que sobrou no balde (lote final)
+        // Salva o lote final
         if (!empty($rulingsBatch)) {
             $totalProcessedInBatch = count($rulingsBatch);
             $this->upsertRulingsBatch($rulingsBatch, $totalProcessedInBatch);
@@ -132,18 +149,16 @@ class IngestScryfallRulings extends Command
         }
         
         $finalCount = Ruling::count();
-
         $this->line(''); 
-        $this->info("Ingestão de Julgamentos concluída. Total de Julgamentos processados (upsert): {$totalRulingsProcessed}");
-        // Log final que compara o estado inicial e o final
-        Log::error("[RULINGS-DEBUG] RESULTADO FINAL: A tabela 'rulings' tem {$finalCount} registros. (Aumento total de: " . ($finalCount - $initialCount) . ")");
+        $this->info("Ingestão concluída.");
+        Log::error("[RULINGS-DEBUG] RESULTADO FINAL: {$finalCount} registros. (Aumento Total: " . ($finalCount - $initialCount) . ")");
         
         $this->clearCheckpoint(); 
         return self::SUCCESS;
     }
 
     /**
-     * Busca os julgamentos no Scryfall para a funcionalidade da carta.
+     * Busca os julgamentos no Scryfall.
      */
     protected function fetchRulingsForFunctionality(CardFunctionality $functionality, ScryfallApi $scryfallApi): array
     {
@@ -151,7 +166,6 @@ class IngestScryfallRulings extends Command
             return [];
         }
 
-        // Busca o Card representativo para pegar o ID do Scryfall
         $representativeCard = Card::where('card_functionality_id', $functionality->id)
             ->whereNotNull('mtg_scryfall_id')
             ->first();
@@ -160,82 +174,73 @@ class IngestScryfallRulings extends Command
             return [];
         }
         
-        $url = "/cards/{$representativeCard->mtg_scryfall_id}/rulings";
+        // 2. CORREÇÃO DA URL: Usando a URL base do Game model (igual ao IngestCards)
+        $baseUrl = rtrim((string)$this->game->api_url, '/');
+        $url = "{$baseUrl}/cards/{$representativeCard->mtg_scryfall_id}/rulings";
         
-        $rulingsData = $scryfallApi->getCardsByUrl($url); 
-        // Pequeno delay para não tomar 429 da API
-        usleep(50000); 
+        try {
+            // Delay para Rate Limit (importante para não tomar 429)
+            usleep(100000); 
 
-        if (empty($rulingsData['data'])) {
+            $rulingsData = $scryfallApi->getCardsByUrl($url); 
+
+            if (empty($rulingsData['data'])) {
+                return [];
+            }
+
+            // [RESTAURADO] Log de sucesso quando encontra julgamentos
+            Log::error("[RULINGS-DEBUG] SUCESSO! Encontrados " . count($rulingsData['data']) . " julgamentos para: {$functionality->mtg_name} (ID: {$functionality->id})");
+
+            $rulingsToInsert = [];
+            foreach ($rulingsData['data'] as $ruling) {
+                $rulingsToInsert[] = [
+                    'card_functionality_id' => $functionality->id,
+                    'source' => strtolower($ruling['source']), 
+                    'published_at' => $ruling['published_at'],
+                    'comment' => $ruling['comment'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            return $rulingsToInsert;
+
+        } catch (\Exception $e) {
+            Log::channel('ingest')->warning("Falha ao buscar rulings para {$functionality->mtg_name}: " . $e->getMessage());
             return [];
         }
-
-        Log::error("[RULINGS-DEBUG] SUCESSO! Encontrados " . count($rulingsData['data']) . " julgamentos para: {$functionality->mtg_name} (ID: {$functionality->id})");
-
-        $rulingsToInsert = [];
-        foreach ($rulingsData['data'] as $ruling) {
-            $rulingsToInsert[] = [
-                'card_functionality_id' => $functionality->id,
-                // Garantir que a source é minúscula e padronizada (ex: 'scryfall' ou 'wizards')
-                'source' => strtolower($ruling['source']), 
-                'published_at' => $ruling['published_at'],
-                'comment' => $ruling['comment'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-        }
-        return $rulingsToInsert;
     }
 
     /**
-     * Insere ou atualiza os julgamentos no banco de dados e registra o log de debug.
-     *
-     * @param array $rulingsBatch O array de julgamentos a serem inseridos/atualizados.
-     * @param int $batchSize O tamanho do lote sendo processado (apenas para fins de log).
+     * Insere e CALCULA O AUMENTO REAL (A funcionalidade que você queria)
      */
     protected function upsertRulingsBatch(array $rulingsBatch, int $batchSize): void
     {
-        // Contagem ANTES do UPSERT
+        // 1. Conta antes
         $initialCountBeforeBatch = Ruling::count(); 
         
         Ruling::upsert(
             $rulingsBatch,
-            // Chave Única Composta para garantir unicidade: 
-            // qual card, de qual fonte e em qual data foi publicado.
             ['card_functionality_id', 'source', 'published_at'],
-            // Campos a serem atualizados se a chave já existir
             ['comment', 'updated_at'] 
         );
         
-        // Contagem DEPOIS do UPSERT
+        // 2. Conta depois
         $finalCountAfterBatch = Ruling::count(); 
+        
+        // 3. Calcula a diferença (Novos registros de verdade)
         $increase = $finalCountAfterBatch - $initialCountBeforeBatch;
 
-        // Log de debug APRIMORADO que mostra o que realmente aconteceu no DB.
-        Log::error("[RULINGS-DEBUG] SALVANDO LOTE! Julgamentos no lote: {$batchSize}. Contagem ANTES: {$initialCountBeforeBatch}. Contagem DEPOIS: {$finalCountAfterBatch}. Aumento real: {$increase}.");
+        $msg = "[RULINGS-DEBUG] SALVANDO LOTE! Julgamentos no lote: {$batchSize}. Contagem ANTES: {$initialCountBeforeBatch}. Contagem DEPOIS: {$finalCountAfterBatch}. Aumento real: {$increase}.";
+        
+        // Loga no arquivo
+        Log::error($msg);
+        
+        // MOSTRA NO TERMINAL (Isso fará aparecer enquanto roda)
+        $this->info("\n" . $msg);
     }
     
-    // Métodos de Checkpoint (set, get, clear)
-
-    protected function setCheckpoint(int $functionalityId): void
-    {
-        File::put($this->checkpointPath, $functionalityId);
-    }
-
-    protected function getCheckpoint(): ?int
-    {
-        if (!File::exists($this->checkpointPath)) {
-            return null;
-        }
-        $content = File::get($this->checkpointPath);
-        return is_numeric($content) ? (int)$content : null;
-    }
-
-    protected function clearCheckpoint(): void
-    {
-        if (File::exists($this->checkpointPath)) {
-            File::delete($this->checkpointPath);
-            $this->info('Checkpoint limpo.');
-        }
-    }
+    // Métodos de Checkpoint
+    protected function setCheckpoint(int $functionalityId) { File::put($this->checkpointPath, $functionalityId); }
+    protected function getCheckpoint() { return File::exists($this->checkpointPath) ? (int)File::get($this->checkpointPath) : null; }
+    protected function clearCheckpoint() { if(File::exists($this->checkpointPath)) File::delete($this->checkpointPath); }
 }

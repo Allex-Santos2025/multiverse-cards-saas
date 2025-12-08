@@ -4,6 +4,7 @@ namespace App\Filament\Resources\CardFunctionalities\Pages;
 
 use App\Filament\Resources\CardFunctionalities\CardFunctionalityResource;
 use App\Models\Card;
+use App\Models\Set;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
@@ -25,47 +26,25 @@ class ViewCardFunctionality extends ViewRecord
     public ?int $selectedSetId = null;
     public ?string $selectedCollectionNumber = null;
 
-    public function mount(int | string $record): void
+    // --- VARIÁVEIS DE PAGINAÇÃO ---
+    public int $printPage = 1;
+    public int $perPage = 20; 
+
+    // --- MÉTODOS DE PAGINAÇÃO ---
+    
+    public function nextPage()
     {
-        parent::mount($record);
-
-        \Filament\Support\Facades\FilamentView::registerRenderHook('panels::body.end', fn (): string => Blade::render('<script>document.addEventListener(\'alpine:initialized\', () => { if (window.Alpine && Alpine.store(\'sidebar\')) { Alpine.store(\'sidebar\').close(); } }); if (window.Alpine && Alpine.store(\'sidebar\') && Alpine.store(\'sidebar\').isOpen) { Alpine.store(\'sidebar\').close(); } </script>'), scopes: static::class);
-
-        // OTIMIZAÇÃO CRÍTICA: Não carregamos 'get()' em todos os prints para evitar estouro de memória em Terrenos Básicos.
-        // Buscamos diretamente o print padrão (inglês ou o mais recente)
-        
-        $defaultPrint = $this->record->cards()
-            ->with('set')
-            ->where('mtg_language_code', 'en')
-            ->orderBy('mtg_released_at', 'desc')
-            ->first();
-
-        // Se não tiver em inglês, pega qualquer um (o mais recente)
-        if (!$defaultPrint) {
-            $defaultPrint = $this->record->cards()
-                ->with('set')
-                ->orderBy('mtg_released_at', 'desc')
-                ->first();
-        }
-
-        if ($defaultPrint) {
-            $this->selectedCardPrint = $defaultPrint;
-            $this->selectedLanguage = $defaultPrint->mtg_language_code;
-            $this->selectedSetId = $defaultPrint->set_id;
-            $this->selectedCollectionNumber = $defaultPrint->mtg_collection_number;
-        }
-        
-        $this->recalculateAvailableLanguages();
+        $this->printPage++;
     }
 
-    protected function resetSelection()
+    public function previousPage()
     {
-        $this->selectedCardPrint = null;
-        $this->selectedLanguage = null;
-        $this->selectedSetId = null;
-        $this->selectedCollectionNumber = null;
-        $this->availableLanguages = [];
+        if ($this->printPage > 1) {
+            $this->printPage--;
+        }
     }
+
+    // --- AÇÕES DO CARD ---
 
     public function changePrint(int $cardId): void 
     {
@@ -89,10 +68,16 @@ class ViewCardFunctionality extends ViewRecord
     protected function loadSelectedCardPrint(): void {
         if (!$this->selectedSetId) return;
         
+        // Ajuste para buscar tanto por mtg_collection_number quanto bs_collection_number
         $query = $this->record->cards()
             ->with('set')
             ->where('set_id', $this->selectedSetId)
-            ->where('mtg_collection_number', $this->selectedCollectionNumber);
+            ->where(function($q) {
+                if ($this->selectedCollectionNumber) {
+                    $q->where('mtg_collection_number', $this->selectedCollectionNumber)
+                      ->orWhere('bs_collection_number', $this->selectedCollectionNumber);
+                }
+            });
 
         $newLanguageCard = (clone $query)->where('mtg_language_code', $this->selectedLanguage)->first();
 
@@ -114,7 +99,12 @@ class ViewCardFunctionality extends ViewRecord
         }
         $this->availableLanguages = $this->record->cards()
             ->where('set_id', $this->selectedSetId)
-            ->where('mtg_collection_number', $this->selectedCollectionNumber)
+            ->where(function($q) {
+                if ($this->selectedCollectionNumber) {
+                    $q->where('mtg_collection_number', $this->selectedCollectionNumber)
+                      ->orWhere('bs_collection_number', $this->selectedCollectionNumber);
+                }
+            })
             ->pluck('mtg_language_code')
             ->unique()
             ->sort()
@@ -122,10 +112,8 @@ class ViewCardFunctionality extends ViewRecord
     }
 
     public function getTitle(): string | Htmlable {
-        return $this->selectedCardPrint?->mtg_printed_name ?? $this->record->mtg_name ?? 'Card View';
+        return $this->selectedCardPrint?->mtg_printed_name ?? $this->record->name ?? 'Card View';
     }
-
-    // --- HELPERS ---
 
     protected function getStatString(?string $power, ?string $toughness): ?string { 
         if ($power !== null || $toughness !== null) { 
@@ -137,24 +125,16 @@ class ViewCardFunctionality extends ViewRecord
 
     protected static function convertManaSymbolsToHtml(?string $text): string { 
         if (empty($text)) { return ''; } 
-        
         preg_match_all('/({[^}]+})/', $text, $matches); 
-        if (empty($matches[0])) { 
-            return nl2br(e($text)); 
-        } 
-        
+        if (empty($matches[0])) { return nl2br(e($text)); } 
         $html = e($text); 
         foreach ($matches[0] as $symbol) { 
             $class = strtolower(trim($symbol, '{}')); 
             $class = str_replace(['/', 'p'], '', $class); 
-            
             if ($class === 't') $class = 'tap'; 
             if ($class === 'q') $class = 'untap'; 
-            
             $class = preg_replace('/[^a-z0-9\-]/', '', $class); 
-            
             if (!empty($class)) { 
-                // CSS Personalizado
                 $iconHtml = "<i class=\"ms ms-{$class} ms-cost ms-shadow\" style=\"vertical-align: -0.05em; font-size: 0.95em;\"></i>"; 
                 $html = str_replace($symbol, $iconHtml, $html);
             } 
@@ -164,140 +144,112 @@ class ViewCardFunctionality extends ViewRecord
 
     public function infolist(Schema $schema): Schema
     {
-        $tcgName = 'Magic: The Gathering';
+        $tcgName = $this->record->game->name ?? 'Magic: The Gathering'; 
 
-        // OTIMIZAÇÃO CRÍTICA: Limita a lista de impressões para evitar crash de memória em Basic Lands
-        $allPrintGroups = $this->record->cards()
-            ->with('set')
-            ->orderBy('mtg_released_at', 'desc')
-            ->limit(50) // Limita aos 50 prints mais recentes para não travar a página
+        // --- LÓGICA DE BUSCA PAGINADA ---
+        $cardsQuery = $this->record->cards()
+            ->with('set');
+
+        $totalPrints = $cardsQuery->count();
+        $totalPages = ceil($totalPrints / $this->perPage);
+
+        $allPrintGroups = $cardsQuery
+            ->forPage($this->printPage, $this->perPage)
             ->get()
             ->groupBy(function($card) {
-                return $card->set_id . '_' . $card->mtg_collection_number;
+                return $card->set_id . '_' . ($card->mtg_collection_number ?? $card->bs_collection_number);
             });
 
-        // Schema Específico do Magic
-        $magicSchema = [
-            TextEntry::make('mtg_mana_cost') 
-                ->label('Custo')
-                ->state(fn() => $this->selectedCardPrint?->mtg_mana_cost ?? $this->record->mtg_mana_cost)
-                ->html()
-                ->formatStateUsing(fn (?string $state): HtmlString =>
-                    new HtmlString("<span class=\"mana-cost text-xl\">" . static::convertManaSymbolsToHtml($state) . "</span>")
-                )
-                ->visible(fn() => !empty($this->selectedCardPrint?->mtg_mana_cost ?? $this->record->mtg_mana_cost)),
-            
-            TextEntry::make('mtg_cmc')
-                ->label('CMC')
+        // Schemas
+        $statsSchema = [
+            TextEntry::make('cost')->label('Custo')
+                ->state(fn() => $this->selectedCardPrint?->mtg_mana_cost ?? $this->record->cost)
+                ->html()->formatStateUsing(fn (?string $state): HtmlString => new HtmlString("<span class=\"mana-cost text-xl\">" . static::convertManaSymbolsToHtml($state) . "</span>"))
+                ->visible(fn() => !empty($this->selectedCardPrint?->mtg_mana_cost ?? $this->record->cost)),
+                
+            TextEntry::make('mtg_cmc')->label('CMC')
                 ->state(fn() => $this->selectedCardPrint?->mtg_cmc ?? $this->record->mtg_cmc)
-                ->visible(fn() => ($this->selectedCardPrint?->mtg_cmc ?? $this->record->mtg_cmc) > 0),
-
-            TextEntry::make('power_toughness')
-                ->label('Poder / Resistência')
-                ->state(fn() => $this->getStatString(
-                    $this->selectedCardPrint?->mtg_power ?? $this->record->mtg_power, 
-                    $this->selectedCardPrint?->mtg_toughness ?? $this->record->mtg_toughness
-                ))
-                ->visible(fn() => $this->getStatString(
-                    $this->selectedCardPrint?->mtg_power ?? $this->record->mtg_power, 
-                    $this->selectedCardPrint?->mtg_toughness ?? $this->record->mtg_toughness
-                ) !== null),
+                ->visible(fn() => ($this->selectedCardPrint?->mtg_cmc ?? $this->record->mtg_cmc) > 0 && $tcgName === 'Magic: The Gathering'),
+                
+            TextEntry::make('power_toughness')->label($tcgName === 'Battle Scenes' ? 'Energia / Escudo' : 'Poder / Resistência')
+                ->state(fn() => $this->getStatString($this->selectedCardPrint?->mtg_power ?? $this->record->power, $this->selectedCardPrint?->mtg_toughness ?? $this->record->toughness))
+                ->visible(fn() => $this->getStatString($this->selectedCardPrint?->mtg_power ?? $this->record->power, $this->selectedCardPrint?->mtg_toughness ?? $this->record->toughness) !== null),
             
-            TextEntry::make('mtg_loyalty')
-                ->label('Lealdade')
+            TextEntry::make('mtg_loyalty')->label('Lealdade')
                 ->state(fn() => $this->selectedCardPrint?->mtg_loyalty ?? $this->record->mtg_loyalty)
-                ->visible(fn($state) => !empty($state)),
+                ->visible(fn($state) => !empty($state) && $tcgName === 'Magic: The Gathering'),
                 
             Section::make('Legalidade')
-                ->schema([
-                    ViewEntry::make('mtg_legalities')
-                        ->hiddenLabel()
-                        ->view('filament.infolists.components.legalities-view')
-                        ->viewData(['legalities' => $this->record->mtg_legalities])
-                ])
-                ->collapsible()
-                ->collapsed(true),
+                ->schema([ViewEntry::make('mtg_legalities')->hiddenLabel()->view('filament.infolists.components.legalities-view')->viewData(['legalities' => $this->record->mtg_legalities])])
+                ->collapsible()->collapsed(true)
+                ->visible(fn() => !empty($this->record->mtg_legalities)),
         ];
 
-        // Schema Comum
         $commonSchema = [
-            TextEntry::make('name')
-                ->label('Nome')
-                ->state(fn() => $this->selectedCardPrint?->mtg_printed_name ?? $this->record->mtg_name),
+            // Usa 'name' accessor do Model
+            TextEntry::make('name')->label('Nome')
+                ->state(fn() => $this->selectedCardPrint ? ($this->selectedCardPrint->mtg_printed_name ?? $this->record->name) : $this->record->name),
+                
+            TextEntry::make('type_line')->label('Tipo')
+                ->state(fn() => $this->selectedCardPrint ? ($this->selectedCardPrint->mtg_printed_type_line ?? $this->record->type_line) : $this->record->type_line),
+                
+            TextEntry::make('rules_text')->label('Texto de Regras')->html()->state(function() use ($tcgName) {
+                if ($this->selectedCardPrint) {
+                    $text = $this->selectedCardPrint->mtg_printed_text ?? $this->record->rules_text;
+                } else {
+                    $text = $this->record->rules_text;
+                }
+                
+                $text = $text ?? '';
+                
+                if ($tcgName === 'Magic: The Gathering') {
+                    return new HtmlString(static::convertManaSymbolsToHtml($text));
+                }
+                return nl2br(e($text)); 
+            }),
             
-            TextEntry::make('type_line')
-                ->label('Tipo')
-                ->state(fn() => $this->selectedCardPrint?->mtg_printed_type_line ?? $this->record->mtg_type_line),
-            
-            TextEntry::make('rules_text')
-                ->label('Texto de Regras')
-                ->html()
-                ->state(function() use ($tcgName) {
-                    // Fallback para Oracle Text
-                    $text = $this->selectedCardPrint?->mtg_printed_text;
-                    if (empty($text)) {
-                        $text = $this->record->mtg_rules_text;
-                    }
-                    $text = $text ?? ''; // Garante string
-
-                    if ($tcgName === 'Magic: The Gathering') {
-                        return new HtmlString(static::convertManaSymbolsToHtml($text));
-                    }
-                    return nl2br(e($text)); 
-                }),
-
-            TextEntry::make('artist')
-                ->label('Artista')
-                ->state(fn() => $this->selectedCardPrint?->mtg_artist)
-                ->visible(fn() => !empty($this->selectedCardPrint?->mtg_artist)),
-
-            TextEntry::make('flavor_text')
-                ->label('Texto de Ambientação')
-                ->extraAttributes(['class' => 'italic text-gray-600']) 
-                ->state(fn() => $this->selectedCardPrint?->mtg_flavor_text)
-                ->visible(fn() => !empty($this->selectedCardPrint?->mtg_flavor_text)),
+            TextEntry::make('artist')->label('Artista')
+                ->state(fn() => $this->selectedCardPrint?->bs_artist ?? $this->selectedCardPrint?->mtg_artist ?? $this->record->cards->first()?->bs_artist)
+                ->visible(fn($state) => !empty($state)),
+                
+            TextEntry::make('flavor_text')->label('Texto de Ambientação')
+                ->extraAttributes(['class' => 'italic text-gray-600'])
+                ->state(fn() => $this->selectedCardPrint?->bs_flavor_text ?? $this->selectedCardPrint?->mtg_flavor_text ?? $this->record->bs_flavor_text)
+                ->visible(fn($state) => !empty($state)),
         ];
 
         return $schema
             ->record($this->record)
             ->schema([
                 Grid::make(3)->columnSpanFull()->schema([
+                    Section::make()->columnSpan(1)->schema([
+                        // --- PRIORIZAÇÃO DE IMAGEM ---
+                        ImageEntry::make('image_display')->hiddenLabel()->width('100%')->height('auto')->extraImgAttributes(['class' => 'rounded-lg shadow-md'])
+                            ->state(function () {
+                                $print = $this->selectedCardPrint ?? $this->record->cards->first();
+                                
+                                if ($print) {
+                                    // 1. Prioridade Máxima: Caminho Local do Battle Scenes (card_images/...)
+                                    if (!empty($print->local_image_path)) {
+                                        return asset($print->local_image_path);
+                                    }
+                                    
+                                    // 2. Caminho Local do Magic
+                                    if (!empty($print->local_image_path_large)) {
+                                        return asset($print->local_image_path_large);
+                                    }
+                                    
+                                    // 3. URLs remotas (fallback)
+                                    if (!empty($print->bs_image_url)) return $print->bs_image_url;
+                                    if (!empty($print->mtg_image_url_api)) return $print->mtg_image_url_api;
+                                }
+                                
+                                return 'https://placehold.co/600x850?text=No+Image';
+                            }),
+                        ViewEntry::make('languageButtons')->hiddenLabel()->view('filament.infolists.components.language-switcher-view')->viewData(['availableLanguages' => $this->availableLanguages, 'selectedLanguage' => $this->selectedLanguage]),
+                    ]),
+                    Section::make('Detalhes')->columnSpan(1)->schema(array_merge($commonSchema, $statsSchema))->collapsible(),
                     
-                    // COLUNA 1: IMAGEM
-                    Section::make()
-                        ->columnSpan(1)
-                        ->schema([
-                            ImageEntry::make('image_display')
-                                ->hiddenLabel()
-                                ->width('100%')
-                                ->height('auto')
-                                ->extraImgAttributes(['class' => 'rounded-lg shadow-md'])
-                                ->state(function () {
-                                    if ($this->selectedCardPrint && $this->selectedCardPrint->local_image_path_large) {
-                                        return asset($this->selectedCardPrint->local_image_path_large);
-                                    }
-                                    if ($this->selectedCardPrint && $this->selectedCardPrint->mtg_image_url_api) {
-                                        return $this->selectedCardPrint->mtg_image_url_api;
-                                    }
-                                    return 'https://placehold.co/600x850?text=No+Image';
-                                }),
-
-                            ViewEntry::make('languageButtons')
-                                ->hiddenLabel()
-                                ->view('filament.infolists.components.language-switcher-view')
-                                ->viewData([
-                                    'availableLanguages' => $this->availableLanguages,
-                                    'selectedLanguage' => $this->selectedLanguage,
-                                ]),
-                        ]),
-
-                    // COLUNA 2: DETALHES
-                    Section::make('Detalhes')
-                        ->columnSpan(1)
-                        ->schema(array_merge($commonSchema, $magicSchema))
-                        ->collapsible(),
-
-                    // COLUNA 3: LISTA DE PRINTS
                     Section::make('Impressões')
                         ->columnSpan(1)
                         ->schema([
@@ -307,7 +259,10 @@ class ViewCardFunctionality extends ViewRecord
                                 ->viewData([
                                     'allPrintGroups' => $allPrintGroups,
                                     'currentPrintId' => $this->selectedCardPrint?->id,
-                                    'tcgName' => $tcgName
+                                    'tcgName' => $tcgName,
+                                    'currentPage' => $this->printPage,
+                                    'totalPages' => $totalPages,
+                                    'totalPrints' => $totalPrints
                                 ])
                         ])
                 ]),

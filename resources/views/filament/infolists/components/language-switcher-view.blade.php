@@ -1,24 +1,31 @@
+{{--
+    Blade: Seletor de Idiomas
+    Objetivo: Exibir botões para trocar o print de uma carta para o idioma selecionado.
+    
+    Variáveis esperadas:
+    - $availableLanguages: array de códigos de idioma (ex: ['en', 'pt', 'ja'])
+    - $selectedLanguage: string (o código de idioma atualmente selecionado)
+--}}
+
 @php
-    // Não precisamos mais do array $languageNames
+    // Usamos um mapa simples para exibir o nome completo se quisermos.
+    // O código atual exibe apenas o código em maiúsculas (ex: EN).
 @endphp
 
-{{-- 
-  Este container terá os botões. 
---}}
 <div 
-    class="flex flex-wrap gap-2 mt-4" 
+    class="flex flex-wrap gap-2 mt-4 justify-center" 
     wire:loading.class="opacity-50" 
-    wire:target="changeLanguage"
+    {{-- Garante que o carregamento só afete o componente de troca --}}
+    wire:target="changeLanguage, changePrint" 
 >
     
-    {{-- Loopamos direto nas $availableLanguages (que agora são específicas do print) --}}
     @foreach ($availableLanguages as $lang)
         <x-filament::badge
+            {{-- Dispara a ação de Livewire no controlador (ViewCatalogConcept.php) --}}
+            wire:click="changeLanguage('{{ $lang }}')"
+            
             {{-- Define a cor com base no idioma selecionado --}}
             :color="$selectedLanguage === $lang ? 'primary' : 'gray'"
-            
-            {{-- CHAMA O MÉTODO changeLanguage() da sua classe PHP --}}
-            wire:click="changeLanguage('{{ $lang }}')"
             
             {{-- Adiciona o cursor de clique --}}
             class="cursor-pointer transition hover:scale-110"

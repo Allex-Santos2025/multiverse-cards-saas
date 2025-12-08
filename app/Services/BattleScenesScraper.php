@@ -2,21 +2,17 @@
 
 namespace App\Services;
 
-// Usando o HttpBrowser (rápido), que é o correto para este site
 use Symfony\Component\BrowserKit\HttpBrowser;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\DomCrawler\Crawler;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str; 
+use Illuminate\Support\Str;
 
 class BattleScenesScraper
 {
-    // 1. A página do formulário de busca (onde estão os sets)
     protected string $searchPageUrl = 'https://www.magicjebb.com.br/site/busca_cards_bs.php';
-    // 2. A página de resultados (que vamos usar para raspar os cards)
-    protected string $resultsUrl = 'https://www.magicjebb.com.br/site/busca.php';
+    protected string $resultsUrl = 'https://www.magicjebb.com.br/site/busca_avancada_bs.php';
+    protected string $detailUrlBase = 'https://www.magicjebb.com.br/site/';
 
     protected HttpBrowser $client;
 
@@ -26,117 +22,232 @@ class BattleScenesScraper
             'headers' => [
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36',
             ],
-            'timeout' => 15, // 15 segundos de timeout
+            'timeout' => 30,
         ];
 
         $this->client = new HttpBrowser(HttpClient::create($defaultOptions));
     }
 
-    /**
-     * Raspa a lista de Sets (Coleções) OFICIAIS a partir do MagicJebb.
-     */
     public function getSetsList(): array
     {
-        Log::info('Iniciando raspagem de Sets (MagicJebb).');
+        Log::channel('ingest')->info('Iniciando raspagem de Sets (MagicJebb).');
         
         try {
-            // Acessa a página do formulário de busca
             $crawler = $this->client->request('GET', $this->searchPageUrl);
-            
             $sets = [];
             
-            // Este é o seletor correto para o <select> de "Séries" no magicjebb
             $selector = 'select[name="serie"] option'; 
 
             $crawler->filter($selector)->each(function (Crawler $node) use (&$sets) {
-                
                 $name = trim($node->text() ?? '');
-                $code = trim($node->attr('value') ?? ''); // O 'value' é o próprio nome
+                $code = trim($node->attr('value') ?? '');
 
-                // Ignora o <option> inicial ("")
                 if (!empty($code)) {
-                    $sets[$code] = [ // Usando o code como chave para evitar duplicatas
+                    $normalizedCode = Str::slug($name);
+                    $sets[$code] = [
                         'name' => $name,
-                        'code' => $code, // Usando o nome como 'code' (ex: "Universo Marvel")
-                        
+                        'original_code' => $code,
+                        'db_code' => $normalizedCode,
                     ];
                 }
             });
 
-            Log::info('Raspagem de Sets (MagicJebb) concluída.', ['count' => count($sets)]);
             return array_values($sets);
             
         } catch (\Exception $e) {
-            // Se a requisição falhar, salva o erro
-            $errorMessage = $e->getMessage();
-            Storage::disk('local')->put('debug_magicjebb_FAILURE.txt', $errorMessage);
-            Log::error('Erro CRÍTICO na raspagem de Sets (MagicJebb). Erro salvo em storage/app/debug_magicjebb_FAILURE.txt');
+            Log::channel('ingest')->error('Erro ao buscar sets: ' . $e->getMessage());
             return [];
         }
     }
 
-    /**
-     * Raspa todos os cards de um Set específico (usando o nome do set).
-     */
-    public function scrapeCardsForSet(string $setName): \Generator
+    public function scrapeCardsForSet(string $originalSetCode, string $setName): \Generator
     {
-        Log::info("Iniciando raspagem de cards para o Set: {$setName}");
+        Log::channel('ingest')->info("Iniciando raspagem de cards para o Set: {$setName}");
         $page = 1;
+        $urlEncodedSetCode = urlencode($originalSetCode);
 
         do {
-            // Monta a URL da página de resultados
-            $urlEncodedSetName = urlencode($setName);
-            $url = $this->resultsUrl . "?serie={$urlEncodedSetName}&formato=detalhes&pag={$page}";
-            Log::debug("Processando URL: {$url}");
-
+            $url = $this->resultsUrl . "?serie={$urlEncodedSetCode}&formato=detalhes&pag={$page}&exibicaobs=lista&enviar=Buscar";
+            
             try {
                 $crawler = $this->client->request('GET', $url);
             } catch (\Exception $e) {
-                Log::error("Erro ao acessar {$url}: " . $e->getMessage());
-                break; // Pula para o próximo set
+                Log::channel('ingest')->error("Erro ao acessar {$url}: " . $e->getMessage());
+                break;
             }
 
-            // ***** SELETOR CORRIGIDO: Procurando pelas células de dados dos cards *****
-            // Cada card (imagem + dados) está dentro de uma tabela aninhada
-            $cardsInPage = $crawler->filter('td[width="550"] > table[width="550"]'); 
+            $linksInPage = $crawler->filter('a[href*="detalhes_bs.php"], a[href*="bs_card.php"]');
 
-            if ($cardsInPage->count() === 0) {
-                Log::info(" -> Página {$page} vazia. Terminando o set '{$setName}'.");
-                break; // Sai do loop 'do-while'
+            if ($linksInPage->count() === 0) {
+                if ($page === 1) {
+                    Log::channel('ingest')->warning("Nenhum link encontrado na pág 1. URL: {$url}");
+                }
+                break; 
             }
 
-            foreach ($cardsInPage as $domElement) {
-                $cardNode = new Crawler($domElement);
+            foreach ($linksInPage as $domElement) {
+                $linkNode = new Crawler($domElement);
 
                 try {
-                    // Extrai o link da imagem e o nome da imagem
-                    $imageElement = $cardNode->filter('img[src*="bs_cards/"]')->first();
-                    $imageUrl = $imageElement?->attr('src');
-                    $cardName = $imageElement?->attr('alt'); // O nome real está no ALT/Title
+                    $cardName = trim($linkNode->text());
+                    $detailHref = $linkNode->attr('href');
                     
-                    // Se não achou imagem ou nome, pula este bloco (provavelmente é lixo do HTML)
-                    if (!$imageUrl || !$cardName) {
-                        continue;
+                    if (empty($cardName) || !$detailHref) continue;
+
+                    $fullDetailUrl = $this->detailUrlBase . $detailHref;
+
+                    $detailData = $this->fetchCardDetailData($fullDetailUrl);
+                    
+                    if ($detailData && !empty($detailData['text_blob'])) {
+                        $parsedData = $this->parseTextData($detailData['text_blob']);
+                        
+                        $imageUrl = $detailData['image_url'];
+                        $finalImageUrl = null;
+                        
+                        if ($imageUrl) {
+                            $finalImageUrl = Str::startsWith($imageUrl, 'images/') 
+                                ? 'http://www.magicjebb.com.br/site/' . $imageUrl 
+                                : $imageUrl;
+                        }
+
+                        yield array_merge([
+                            'name' => trim($cardName),
+                            'image_url' => $finalImageUrl,
+                            'bs_collection_number' => $parsedData['collection_number'], 
+                        ], $parsedData);
                     }
 
-                    // O bloco de dados é a próxima célula <td> da tabela
-                    $dataBlock = $cardNode->filter('td[valign="top"]')->last();
-                    $html = $dataBlock?->html() ?? '';
-
-                    yield [
-                        'name' => trim($cardName),
-                        'image_url' => 'http://www.magicjebb.com.br/site/' . $imageUrl, // Corrigindo para URL absoluta
-                        'rules_text_html' => $html,
-                    ];
-
                 } catch (\Exception $e) {
-                    Log::warning("Erro ao raspar um card individual: " . $e->getMessage(), ['url' => $url]);
+                    // Log silencioso
                 }
             }
             $page++;
-            usleep(250000); // Pausa de 0.25 seg
+            usleep(250000); 
 
         } while (true);
     }
-}
 
+    protected function fetchCardDetailData(string $detailUrl): ?array
+    {
+        try {
+            $crawler = $this->client->request('GET', $detailUrl);
+            
+            $images = $crawler->filter('img');
+            $bestImage = null;
+            $maxScore = -1000; // Score inicial baixo
+
+            foreach ($images as $img) {
+                $src = $img->getAttribute('src');
+                $width = $img->getAttribute('width');
+                $srcLower = strtolower($src);
+                $currentScore = 0;
+
+                // 1. Blacklist (Elimina lixo óbvio)
+                if (Str::contains($srcLower, ['banner', 'titulo', 'spacer', 'transparente', 'shim', 'pixel', 'ponto', 'dot', 'blank', 'seta', 'linha'])) {
+                    continue; 
+                }
+
+                // 2. SISTEMA DE PONTUAÇÃO (Foco no PNG)
+                
+                // EXTENSÃO: Se for PNG, ganha MUITOS pontos (conforme sua observação)
+                if (Str::endsWith($srcLower, '.png')) {
+                    $currentScore += 200; 
+                }
+                
+                // LOCALIZAÇÃO: Se estiver nas pastas de cards
+                if (Str::contains($srcLower, ['bs_cards/', 'scan/', 'cards/', 'scans/'])) {
+                    $currentScore += 100;
+                }
+
+                // PENALIDADES
+                // Ícones de layout/poderes costumam ser GIF ou JPG pequenos, ou ter nomes suspeitos
+                if (Str::contains($srcLower, ['icone', 'icon', 'simbolo', 'poder', 'habilidade', 'mini', 'botoes'])) {
+                    $currentScore -= 100;
+                }
+                if (Str::endsWith($srcLower, '.gif')) {
+                    $currentScore -= 50; 
+                }
+                // Se for muito pequeno e a largura estiver definida
+                if (is_numeric($width) && (int)$width < 100) {
+                    $currentScore -= 100;
+                }
+
+                // Escolhe o vencedor
+                if ($currentScore > $maxScore) {
+                    $maxScore = $currentScore;
+                    $bestImage = $src;
+                }
+            }
+
+            // Fallback: Se não achou nada bom, tenta a primeira imagem da tabela
+            if (!$bestImage) {
+                $tableImg = $crawler->filter('table[width="550"] img')->first();
+                if ($tableImg->count() > 0) {
+                    $bestImage = $tableImg->attr('src');
+                }
+            }
+
+            // Texto
+            $html = $crawler->filter('body')->html();
+            $replacements = [
+                '<br>' => "\n", '<br/>' => "\n", '<br />' => "\n",
+                '</td>' => " \n", 
+                '</tr>' => "\n",
+                '</div>' => "\n",
+                '</p>' => "\n",
+                '</b>' => " ", 
+                '</strong>' => " ",
+            ];
+            $structuredHtml = strtr($html, $replacements);
+            $textBlob = strip_tags($structuredHtml);
+
+            return [
+                'text_blob' => $textBlob,
+                'image_url' => $bestImage
+            ];
+
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    protected function parseTextData(string $text): array
+    {
+        $data = [
+            'bs_type_line' => null,
+            'bs_rarity' => 'common',
+            'collection_number' => null,
+            'bs_artist' => null,
+            'bs_rules_text' => null,
+            'bs_flavor_text' => null,
+            'bs_power' => null,
+            'bs_toughness' => null,
+            'bs_cost' => null, 
+            'bs_affiliation' => null,
+            'bs_alter_ego' => null,
+        ];
+
+        if (preg_match('/Alter Ego:[\s]*(.*?)(?:\n|$)/iu', $text, $m)) $data['bs_alter_ego'] = trim($m[1]);
+        if (preg_match('/Tipo:[\s]*(.*?)(?:\n|$)/iu', $text, $m)) $data['bs_type_line'] = trim($m[1]);
+        if (preg_match('/Raridade:[\s]*(.*?)(?:\n|$)/iu', $text, $m)) $data['bs_rarity'] = trim($m[1]);
+        if (preg_match('/(?:Ilustrador|Artista|Ilustradores):[\s]*(.*?)(?:\n|$)/iu', $text, $m)) $data['bs_artist'] = trim($m[1]);
+        if (preg_match('/(?:Energia|Poder):[\s]*(\d+)/iu', $text, $m)) $data['bs_power'] = $m[1];
+        if (preg_match('/Escudo:[\s]*(\d+)/iu', $text, $m)) $data['bs_toughness'] = $m[1];
+        if (preg_match('/Afilia..o:[\s]*(.*?)(?:\n|$)/iu', $text, $m)) $data['bs_affiliation'] = trim($m[1]);
+
+        if (preg_match('/Card:[\s]*(\d+)/iu', $text, $m)) {
+             $data['collection_number'] = $m[1];
+        } elseif (preg_match('/N.mero:[\s]*(.*?)(?:\n|$)/iu', $text, $m)) {
+             $data['collection_number'] = trim($m[1]);
+        }
+
+        if (preg_match('/Texto:\s*(.+?)(?=\n\s*(?:S.rie|Outras|Raridade|Card|Ilustrador|$))/is', $text, $m)) {
+            $rules = trim($m[1]);
+            $rules = str_replace(['Formato Batalha Sitiada', 'Formato Batalha Infinita', 'Errata:', 'Voltar'], '', $rules);
+            $rules = preg_replace('/Formato .*?:.*?(?:\n|$)/i', '', $rules);
+            $data['bs_rules_text'] = trim($rules);
+        }
+
+        return $data;
+    }
+}

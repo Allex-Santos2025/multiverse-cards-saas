@@ -169,8 +169,8 @@ class ScryfallApi
             $setsToInsert[] = [
                 'game_id' => $this->gameId, 
                 'mtg_scryfall_id' => $setData['id'] ?? null, 
-                'mtg_code' => $setData['code'] ?? null, 
-                'mtg_icon_svg_uri' => $setData['icon_svg_uri'] ?? null,
+                'code' => $setData['code'] ?? null, 
+                'icon_svg_uri' => $setData['icon_svg_uri'] ?? null,
                 'name' => $setData['name'] ?? 'Set Sem Nome',
                 'set_type' => $setData['set_type'] ?? 'core',
                 'released_at' => $setData['released_at'] ?? null,
@@ -183,7 +183,7 @@ class ScryfallApi
         }
         
         Set::upsert($setsToInsert, ['mtg_scryfall_id', 'game_id'], [
-            'name', 'set_type', 'card_count', 'released_at', 'mtg_icon_svg_uri', 'digital', 'foil_only', 'mtg_code'
+            'name', 'set_type', 'card_count', 'released_at', 'icon_svg_uri', 'digital', 'foil_only', 'code'
         ]);
         
         return count($setsToInsert);

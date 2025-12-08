@@ -35,7 +35,7 @@ class IngestScryfallCards extends Command
 
     public function handle()
     {
-        // 1. Configuração Manual da API (Sem injeção automática para evitar erro)
+        // 1. Configuração Manual da API
         $this->game = Game::where('name', 'Magic: The Gathering')->first();
         
         if (!$this->game || empty($this->game->api_url)) {
@@ -56,20 +56,17 @@ class IngestScryfallCards extends Command
 
         // 2. Query de Sets
         $setsQuery = Set::where('game_id', $this->game->id)
-            ->orderBy('id', 'asc'); // Ordenação por ID é essencial para o checkpoint funcionar
+            ->orderBy('id', 'asc');
 
-        // 3. Lógica de Set Específico (Ignora checkpoint)
+        // 3. Lógica de Set Específico
         if ($setCode = $this->option('set-code')) {
-            $setsQuery->where('mtg_code', $setCode);
+            $setsQuery->where('code', $setCode); 
             $this->info("Modo Set Único: Processando apenas [{$setCode}].");
         } 
-        // 4. Lógica de Checkpoint (Retomada)
+        // 4. Lógica de Checkpoint
         else {
             $lastSetId = $this->getCheckpoint();
-            
-            // Se existe checkpoint e NÃO estamos forçando o reinício
             if ($lastSetId && !$this->option('force')) {
-                // Pega apenas os sets com ID MAIOR que o último processado
                 $setsQuery->where('id', '>', $lastSetId);
                 $this->info("Retomando a ingestão a partir do Set ID: {$lastSetId} (Checkpoint encontrado).");
             } else {
@@ -89,7 +86,6 @@ class IngestScryfallCards extends Command
         foreach ($sets as $set) {
              $this->processSetCards($set, $scryfallApi);
              
-             // Salva o checkpoint APÓS o sucesso do set inteiro
              if (!$this->option('set-code')) {
                  $this->setCheckpoint($set->id);
              }
@@ -97,7 +93,6 @@ class IngestScryfallCards extends Command
 
         $this->info("\nIngestão Finalizada!");
         
-        // Limpa o checkpoint apenas se rodou tudo com sucesso sem filtro de set
         if (!$this->option('set-code')) {
             $this->clearCheckpoint();
         }
@@ -107,15 +102,13 @@ class IngestScryfallCards extends Command
 
     protected function processSetCards(Set $set, ScryfallApi $scryfallApi): void
     {
-        // Limpa cache de IDs para economizar memória entre sets
         $this->functionalityIdCache = []; 
-        $setCode = $set->mtg_code ?? $set->code;
+        $setCode = $set->code; 
 
         $this->output->writeln("\nProcessando Set: [{$setCode}] {$set->name} (Total estimado: {$set->card_count})");
 
         $baseUrl = rtrim((string)$this->game->api_url, '/');
         
-        // Query: unique=prints (todas as versões) + extras (tokens/terrenos) + multilingual
         $url = "{$baseUrl}/cards/search?q=set:{$setCode}&unique=prints&include_extras=true&include_multilingual=true&order=collector&dir=asc";
         
         $cardsProcessed = 0;
@@ -123,7 +116,6 @@ class IngestScryfallCards extends Command
         $pageNumber = 1;
 
         do {
-            // Rate Limit antes da requisição da página
             usleep(100000); 
 
             $cardsData = $scryfallApi->getCardsByUrl($url);
@@ -132,10 +124,8 @@ class IngestScryfallCards extends Command
                 break;
             }
 
-            // Processa o Chunk de cartas
             $this->processPageChunk($cardsData['data'], $set, $imagesDownloaded, $cardsProcessed);
             
-            // Feedback visual
             $this->output->write("\r   -> Pág {$pageNumber} | Cards: {$cardsProcessed} | Imagens Novas: {$imagesDownloaded}   ", false);
 
             $url = $cardsData['has_more'] ? $cardsData['next_page'] : null;
@@ -155,7 +145,6 @@ class IngestScryfallCards extends Command
         foreach ($cardsPage as $cardData) {
             if (!isset($cardData['id'])) continue;
 
-            // 1. Lógica de CardFunctionality (Conceito)
             $hasOracleId = isset($cardData['oracle_id']);
             $functionalityId = null;
             
@@ -167,7 +156,6 @@ class IngestScryfallCards extends Command
                 $functionalityId = $this->getFunctionalityId($oracleId, $functionalitiesToInsert[$oracleId]);
             }
 
-            // 2. Mapeia o Card (Print)
             $mappedCard = $this->mapCard($cardData, $set, $functionalityId, $imagesDownloaded);
             
             if ($mappedCard) {
@@ -258,17 +246,21 @@ class IngestScryfallCards extends Command
             'mtg_produced_mana' => json_encode($cardData['produced_mana'] ?? []),
             'mtg_edhrec_rank' => $floatValid($cardData['edhrec_rank'] ?? null),
             'mtg_penny_rank' => $floatValid($cardData['penny_rank'] ?? null),
+            // searchable_names também é preenchido no model ou via evento, mas aqui focamos na compatibilidade
+            'searchable_names' => [$cardData['name'] ?? 'Unknown'],
         ];
     }
 
     protected function mapCard(array $cardData, Set $set, ?int $cardFunctionalityId, int &$imagesDownloaded): ?array
     {
         $nullIfEmpty = fn($v) => $v === "" ? null : $v;
-        $setCode = $set->mtg_code ?? $set->code;
+        $setCode = $set->code;
 
-        $printedName = $cardData['name'] ?? 'Unknown';
-        $printedText = null;
-        $printedTypeLine = $cardData['type_line'] ?? null;
+        $printedName = $cardData['printed_name'] ?? $cardData['name'] ?? 'Unknown'; 
+        
+        $printedText = $cardData['printed_text'] ?? $cardData['oracle_text'] ?? null;
+        $printedTypeLine = $cardData['printed_type_line'] ?? $cardData['type_line'] ?? null;
+        
         $imageUris = $cardData['image_uris'] ?? null;
         $artist = $cardData['artist'] ?? null;
         $flavorText = $cardData['flavor_text'] ?? null;
@@ -276,33 +268,28 @@ class IngestScryfallCards extends Command
         if (isset($cardData['card_faces'][0])) {
             $face = $cardData['card_faces'][0];
             $printedName = $face['printed_name'] ?? $face['name'] ?? $printedName;
-            $printedText = $face['oracle_text'] ?? null;
-            $printedTypeLine = $face['type_line'] ?? null;
+            $printedText = $face['printed_text'] ?? $face['oracle_text'] ?? null;
+            $printedTypeLine = $face['printed_type_line'] ?? $face['type_line'] ?? null;
+            
             $imageUris = $face['image_uris'] ?? $imageUris;
             $artist = $face['artist'] ?? $artist;
             $flavorText = $face['flavor_text'] ?? $flavorText;
-        } else {
-            $printedText = $cardData['oracle_text'] ?? null;
         }
 
-        // Download Imagem (Lógica original restaurada com caminho físico correto)
         $localPathLarge = null;
         if ($imageUris && isset($imageUris['large'])) {
             $lang = $cardData['lang'] ?? 'en';
             $collectorNum = $cardData['collector_number'] ?? '0';
-            $idPart = substr($cardData['id'], 0, 8);
             
-            // Caminho Relativo (banco): card_images/Magic/SET/LANG/NUM_ID.jpg
-            $relativePath = "card_images/Magic/{$setCode}/{$lang}/{$collectorNum}_{$idPart}.jpg";
+            $localPathLarge = $this->downloadImage(
+                $imageUris['large'], 
+                $setCode, 
+                $collectorNum, 
+                $lang
+            );
             
-            // Caminho Físico (disco): public/card_images/Magic/...
-            $absolutePath = public_path($relativePath);
-            
-            if ($this->downloadImage($imageUris['large'], $absolutePath)) {
-                $localPathLarge = $relativePath;
-                $imagesDownloaded++;
-            } elseif (File::exists($absolutePath)) {
-                $localPathLarge = $relativePath;
+            if ($localPathLarge) {
+                 // $imagesDownloaded++; 
             }
         }
 
@@ -311,15 +298,17 @@ class IngestScryfallCards extends Command
         return [
             'card_functionality_id' => $cardFunctionalityId,
             'set_id' => $set->id,
-            // 'game_id' => $this->game->id, // Descomente se a coluna existir
+            'game_id' => $this->game->id, // Força ID 1
             
             'mtg_scryfall_id' => $cardData['id'],
             'mtg_language_code' => $cardData['lang'] ?? 'en',
             'mtg_collection_number' => $cardData['collector_number'] ?? 'N/A',
             'mtg_collection_code' => $setCode,
+            
             'mtg_printed_name' => $nullIfEmpty($printedName),
             'mtg_printed_text' => $nullIfEmpty($printedText),
             'mtg_printed_type_line' => $nullIfEmpty($printedTypeLine),
+            
             'mtg_rarity' => $cardData['rarity'] ?? 'common',
             'mtg_artist' => $nullIfEmpty($artist),
             'mtg_flavor_text' => $nullIfEmpty($flavorText),
@@ -333,25 +322,32 @@ class IngestScryfallCards extends Command
             'mtg_image_uris' => json_encode($imageUris ?? []),
             'mtg_prices' => json_encode($priceData),
             'local_image_path_large' => $localPathLarge,
+            // Fallback para novo padrão
+            'local_image_path' => $localPathLarge,
         ];
     }
 
-    protected function downloadImage(string $url, string $absolutePath): bool
+    protected function downloadImage(string $url, string $setCode, string $collectorNum, string $lang): ?string
     {
-        if (File::exists($absolutePath)) return false;
+        $fileName = "{$setCode}_{$lang}_{$collectorNum}.jpg";
+        $relativePath = "card_images/Magic/{$setCode}/{$lang}/{$fileName}";
+        $fullAbsolutePath = public_path($relativePath);
+
+        if (File::exists($fullAbsolutePath)) {
+            return $relativePath; 
+        }
 
         try {
-            $response = Http::timeout(20)->get($url);
+            $response = Http::timeout(30)->get($url);
             if ($response->successful()) {
-                File::ensureDirectoryExists(dirname($absolutePath)); 
-                File::put($absolutePath, $response->body()); 
-                usleep(150000); // Rate Limit Imagem
-                return true;
+                File::ensureDirectoryExists(dirname($fullAbsolutePath)); 
+                File::put($fullAbsolutePath, $response->body()); 
+                usleep(150000); 
+                return $relativePath; 
             }
         } catch (\Exception $e) {
-            // Log::warning("Falha imagem: " . $e->getMessage());
         }
-        return false;
+        return null; 
     }
 
     protected function setCheckpoint(int $id) { File::put($this->checkpointPath, $id); }

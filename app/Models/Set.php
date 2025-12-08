@@ -18,20 +18,16 @@ class Set extends Model
      */
     protected $fillable = [
         'game_id',      
-        // 'tcg_name', << REMOVIDO: Coluna removida para centralizar a unicidade em game_id
         'is_fanmade',
         'digital', 
         'foil_only', 
-        // CORREÇÃO ESSENCIAL: Usar os nomes de coluna com prefixo mtg_
         'mtg_scryfall_id', // CORRIGIDO: Deve ser prefixado
-        'mtg_code',        // CORRIGIDO: Deve ser prefixado
-        'mtg_icon_svg_uri',// CORRIGIDO: Deve ser prefixado
-        'name',
-        'code', 
+        'code',        // CORRIGIDO: Deve ser prefixado
+        'name', 
         'released_at',
         'set_type',
         'card_count',
-        'icon_svg_uri', // Mantemos este aqui, mas ele não deve ser preenchido pela ScryfallApi
+        'icon_svg_uri',
     ];
 
     /**

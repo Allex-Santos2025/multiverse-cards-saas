@@ -1,10 +1,20 @@
+{{--
+    Blade: Lista de Impressões (Prints)
+    Objetivo: Mostrar todas as edições de um Conceito com preços e permitir a troca de print na imagem principal.
+
+    Variáveis esperadas:
+    - $allPrintGroups: Collection de Prints (agrupada por Set ID)
+    - $currentPrintId: ID do print atualmente selecionado
+    - $tcgName: Nome do TCG (Ex: 'Magic: The Gathering')
+    - $currentPage, $totalPages, $totalPrints: Dados de paginação
+--}}
+
 @php
-    // Defina se quer mostrar o BRL (true/false)
+    // --- VARIÁVEIS DE CONFIGURAÇÃO (Mantidas do Legado) ---
     $showBrl = true;
-    // Defina a taxa de conversão
     $usdToBrlRate = 5.00; 
 
-    // Mapeia raridade para classe de cor da Keyrune
+    // Mapeia raridade para classe de cor da Keyrune (apenas visual)
     $rarityClassMap = [
         'common' => 'ss-common',
         'uncommon' => 'ss-uncommon',
@@ -15,9 +25,9 @@
     // Mapeia raridade para cor de Badge do Filament
     $badgeColorMap = [
         'common' => 'gray',
-        'uncommon' => 'info',    // Prata
-        'rare' => 'warning', // Dourado
-        'mythic' => 'danger',  // Mítico/Bronze
+        'uncommon' => 'info',
+        'rare' => 'warning',
+        'mythic' => 'danger',
         'special' => 'primary',
     ];
 @endphp
@@ -41,94 +51,58 @@
     @else
         @foreach($allPrintGroups as $groupKey => $printGroup)
             @php
-                // Pega o primeiro card do grupo (ex: 'en') como representante
+                // Pega o primeiro print do grupo como representante
                 $print = $printGroup->first(); 
+                $set = $print->set;
+                $specific = $print->specific; // <--- CHAVE DA V4
                 
                 // ----------------------------------------------------
-                // INÍCIO DA LÓGICA REATORADA (TCG-AWARE)
+                // INÍCIO DA LÓGICA TCG-AWARE (V4)
                 // ----------------------------------------------------
                 
-               // $tcgName = $print->tcg_name;
-                
-                $set = $print->set; 
                 $setCode = strtolower($set?->code ?? ''); 
                 $setName = $set?->name ?? 'Set Desconhecido';
-                
-                // --- 1. LÓGICA DE RARIDADE (CORRIGIDA) ---
-                // Puxa a raridade direto do campo do BD correto
-                $rarity = match ($tcgName) {
-                    'Magic: The Gathering' => $print->mtg_rarity,
-                    'Battle Scenes' => $print->bs_rarity,
-                    // TODO: Adicionar os campos de raridade que faltam (dos outros 6 TCGs)
-                    // quando os adicionarmos ao banco de dados `cards`.
-                    default => 'common', // Fallback
-                };
-                $rarity = strtolower($rarity); // Garante minúsculas
+
+                // --- 1. LÓGICA DE RARIDADE ---
+                // Leitura polimórfica (assumindo que 'rarity' é um campo comum ou acessado via Specific)
+                $rarity = strtolower($specific?->rarity ?? 'common'); 
                 $rarityClass = $rarityClassMap[$rarity] ?? 'ss-common'; 
                 $badgeColor = $badgeColorMap[$rarity] ?? 'gray';
 
-                // --- 2. LÓGICA DE NÚMERO (CORRIGIDA) ---
-                // Puxa o número direto do campo do BD correto
-                $collectionNumber = match ($tcgName) {
-                    'Magic: The Gathering' => $print->mtg_collection_number,
-                    'Pokémon TCG' => $print->pk_number,
-                    'Lorcana TCG' => $print->lor_collector_number,
-                    'Star Wars: Unlimited' => $print->swu_card_number,
-                    'Battle Scenes' => $print->bs_collection_number,
-                    'One Piece Card Game' => $print->op_card_id_name,
-                    'Flesh and Blood' => $print->fab_identifier,
-                    'Yu-Gi-Oh!' => $print->ygo_konami_id, // Fallback para o ID
-                    default => 'N/A',
-                };
-
-                // --- 3. LÓGICA DE PREÇOS (CORRIGIDA) ---
-                // Puxa os preços direto do campo JSON do BD correto
+                // --- 2. LÓGICA DE NÚMERO ---
+                $collectionNumber = $specific->number ?? 'N/A'; // Campo 'number' existe em PkPrint/MtgPrint
+                
+                // --- 3. LÓGICA DE PREÇOS (TCG-Aware no Blade) ---
                 $priceUsd = null;
                 $priceEur = null;
                 $priceTix = null;
-                $pricesJson = null;
+                $pricesJson = [];
 
-                switch ($tcgName) {
-                    case 'Magic: The Gathering':
-                        $pricesJson = $print->mtg_prices ?? [];
-                        $priceUsd = $pricesJson['usd'] ?? $pricesJson['usd_foil'] ?? null;
-                        $priceEur = $pricesJson['eur'] ?? $pricesJson['eur_foil'] ?? null;
-                        $priceTix = $pricesJson['tix'] ?? null;
-                        break;
-                    case 'Pokémon TCG':
-                        // O 'pk_tcgplayer_prices' tem uma estrutura diferente
-                        $pricesJson = $print->pk_tcgplayer_prices ?? [];
-                        // Tenta achar o preço de qualquer raridade (normal, holofoil, reverse)
-                        $priceUsd = $pricesJson['normal']['market'] 
-                                 ?? $pricesJson['holofoil']['market'] 
-                                 ?? $pricesJson['reverseHolofoil']['market'] 
-                                 ?? $pricesJson[array_key_first($pricesJson ?? [])]['market']['price'] // Tenta o primeiro que achar
-                                 ?? null;
-                        break;
-                    case 'Yu-Gi-Oh!':
-                        // YGO (ygo_card_prices) é um array
-                        $pricesJson = $print->ygo_card_prices[0] ?? [];
-                        $priceUsd = $pricesJson['tcgplayer_price'] ?? null;
-                        $priceEur = $pricesJson['cardmarket_price'] ?? null;
-                        break;
-                    case 'Lorcana TCG':
-                        $pricesJson = $print->lor_prices ?? [];
-                        $priceUsd = $pricesJson['usd'] ?? $pricesJson['usd_foil'] ?? null;
-                        break;
+                if ($tcgName === 'Magic: The Gathering') {
+                    // MtgPrint (mtg_prices)
+                    $pricesJson = $specific->mtg_prices ?? [];
+                    $priceUsd = $pricesJson['usd'] ?? $pricesJson['usd_foil'] ?? null;
+                    $priceEur = $pricesJson['eur'] ?? $pricesJson['eur_foil'] ?? null;
+                    $priceTix = $pricesJson['tix'] ?? null;
+                } elseif ($tcgName === 'Pokémon TCG') {
+                    // PkPrint (tcgplayer)
+                    $pricesJson = $specific->tcgplayer ?? [];
+                    $priceUsd = $pricesJson['normal']['market'] 
+                                ?? $pricesJson['holofoil']['market'] 
+                                ?? $pricesJson['reverseHolofoil']['market'] 
+                                ?? null;
+                    $priceEur = $specific->cardmarket['suggestedPrice'] ?? null; // Exemplo de busca Cardmarket
                 }
                 
+                // Conversão BRL
                 $priceBrl = $showBrl && $priceUsd ? number_format((float)$priceUsd * $usdToBrlRate, 2) : null;
                 
-                // ----------------------------------------------------
-                // FIM DA LÓGICA REATORADA
-                // ----------------------------------------------------
-
                 $isCurrent = $printGroup->contains('id', $currentPrintId);
             @endphp
         
             {{-- O ITEM CLICÁVEL (div inteira) --}}
             <div 
-                {{-- Passa o ID do card representante ('en') para o método changePrint --}}
+                {{-- Passa o ID do card representante para o método changePrint no controlador --}}
                 wire:click="changePrint({{ $print->id }})" 
                 wire:loading.class="opacity-50"
                 wire:target="changePrint"
@@ -136,35 +110,39 @@
                     flex items-center p-1 rounded-lg transition cursor-pointer 
                     {{ $isCurrent ? 'bg-primary-100 dark:bg-primary-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800' }}
                 "
-                title="Selecionar {{ $setName }} #{{ $collectionNumber }}" {{-- CORRIGIDO --}}
+                title="Selecionar {{ $setName }} #{{ $collectionNumber }}"
             >
-                {{-- Ícone Keyrune com Cor --}}
-                <i class="ss ss-{{ $setCode }} {{ $rarityClass }} mr-2 text-lg" 
-                   style="flex-shrink: 0; width: 1.25em; text-align: center;" 
-                   aria-hidden="true"></i> 
+                {{-- Ícone Keyrune com Cor (Funciona para Magic. Para Pokémon, será apenas o código) --}}
+                <div class="flex-shrink-0 mr-2 text-lg" style="width: 1.25em; text-align: center;">
+                    @if ($tcgName === 'Magic: The Gathering')
+                        <i class="ss ss-{{ $setCode }} {{ $rarityClass }}" aria-hidden="true"></i>
+                    @else
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ $set->code }}</span>
+                    @endif
+                </div> 
                 
-                {{-- Nome do Set e Número/Raridade (com Badge) --}}
+                {{-- Nome do Set e Número/Raridade --}}
                 <div class="flex-1 text-sm overflow-hidden">
                     <p class="font-medium truncate {{ $isCurrent ? 'text-primary-700 dark:text-primary-400' : 'text-gray-800 dark:text-gray-200' }}">
                         {{ $setName }} 
                     </p>
                     <div class="flex items-center text-xs mt-0.5"> 
                         <span class="{{ $isCurrent ? 'text-primary-600 dark:text-primary-500' : 'text-gray-500' }}">
-                            #{{ $collectionNumber }} {{-- CORRIGIDO --}}
+                            #{{ $collectionNumber }}
                         </span>
                         <x-filament::badge :color="$badgeColor" class="ml-1.5" size="xs">
-                            {{ $rarity }} {{-- CORRIGIDO --}}
+                            {{ $rarity }}
                         </x-filament::badge>
                     </div>
                 </div>
 
-                {{-- Preços Alinhados (do card representante 'en') --}}
+                {{-- Preços Alinhados --}}
                 <div class="flex text-sm font-semibold pl-2 text-right">
                     <span class="w-12 {{ $priceUsd ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500' }}">
-                        {{ $priceUsd ? '$' . $priceUsd : '—' }}
+                        {{ $priceUsd ? '$' . number_format((float)$priceUsd, 2) : '—' }}
                     </span>
                     <span class="w-12 {{ $priceEur ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500' }}">
-                        {{ $priceEur ? '€' . $priceEur : '—' }}
+                        {{ $priceEur ? '€' . number_format((float)$priceEur, 2) : '—' }}
                     </span>
                     <span class="w-12 {{ $priceTix ? 'text-orange-500' : 'text-gray-500' }}">
                         {{ $priceTix ?? '—' }}
@@ -179,7 +157,16 @@
         @endforeach
     @endif
     
-    <a href="#" class="pt-2 mt-2 border-t border-gray-200 dark:border-gray-700 text-sm text-primary-600 dark:text-primary-400 hover:underline">
-        View all prints →
-    </a>
+    {{-- Navegação de Paginação Inferior --}}
+    @if($totalPages > 1)
+        <div class="pt-2 mt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center text-sm">
+            <button wire:click="previousPage" @if($currentPage <= 1) disabled @endif class="text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50">
+                &laquo; Anterior
+            </button>
+            <span class="text-xs text-gray-500">Pág {{ $currentPage }} de {{ $totalPages }}</span>
+            <button wire:click="nextPage" @if($currentPage >= $totalPages) disabled @endif class="text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50">
+                Próxima &raquo;
+            </button>
+        </div>
+    @endif
 </div>
