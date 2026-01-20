@@ -1,11 +1,34 @@
-@import 'tailwindcss';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+/* =========================================
+   VARIÁVEIS GLOBAIS (REALMENTE GLOBAIS)
+   ========================================= */
+:root {
+    --bg-body: #050505;
+    --color-primary: #f59e0b; /* Amber 500 */
+    --color-secondary: #3b82f6; /* Blue 500 */
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    /* Cores Específicas dos Planos (Versus TCG) - Mantidas aqui se forem usadas em mais de uma página via CSS */
+    --plan-orange-start: #ff9900;
+    --plan-orange-end: #ff5500;
+    --plan-card-bg: #111111;
+    --plan-card-border: #222222;
 }
+
+/* ESTILOS DO BODY (MANTIDOS AQUI POIS PARECEM ESTAR PREVALECENDO E DEFININDO O VISUAL ATUAL) */
+body {
+    background-color: var(--bg-body); /* Mantido para preservar o fundo atual da Home/Planos */
+    color: white; /* Mantido para preservar a cor do texto atual da Home/Planos */
+    font-family: 'Inter', 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* =========================================
+   COMPONENTES GERAIS (NENHUM POR ENQUANTO, FORAM MOVIDOS PARA SUAS PÁGINAS)
+   ========================================= */
+/* @layer components {
+    // Este bloco está vazio agora, pois os componentes foram movidos.
+} */

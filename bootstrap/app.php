@@ -11,7 +11,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->web(append: [
+            \App\Http\Middleware\HandleInertiaRequests::class,
+        ]);
+
+        // Adicionando os aliases dos novos middlewares para uso em rotas
+        $middleware->alias([
+            'store.onboarding' => \App\Http\Middleware\RedirectIfStoreOnboarded::class,
+            'store.onboarded' => \App\Http\Middleware\RedirectIfNotStoreOnboarded::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

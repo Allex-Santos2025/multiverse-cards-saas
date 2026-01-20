@@ -7,6 +7,7 @@ use App\Filament\Resources\Stores\Pages\EditStore;
 use App\Filament\Resources\Stores\Pages\ListStores;
 use App\Filament\Resources\Stores\Schemas\StoreForm;
 use App\Filament\Resources\Stores\Tables\StoresTable;
+use Filament\Forms\Components\Toggle;
 use App\Models\Store;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -35,8 +36,10 @@ class StoreResource extends Resource
             // 1. CAMPO DE POSSE (HIDDEN)
             // ----------------------------------------------------
             Hidden::make('user_id')
-                ->default(Auth::id())
-                ->required(), 
+                ->default(fn () => Auth::id())
+                ->dehydrated(false)
+                ->visibleOn('create'),
+ 
             
             // ----------------------------------------------------
             // 2. CAMPOS DE IDENTIDADE (Aquisição)
@@ -102,6 +105,11 @@ class StoreResource extends Resource
                 ->maxValue(0.10) 
                 ->default(0.050) 
                 ->columnSpan(1),
+
+            Toggle::make('is_active')
+                ->label('Loja Ativa?')
+                ->default(true)
+                ->columnSpan(1),
         ]);
         // Não podemos usar ->columns(2) em Schema.
         // O layout será resolvido no Painel Admin.
@@ -130,9 +138,10 @@ class StoreResource extends Resource
                     ->label('Status')
                     ->badge() // Exibe um indicador visual (badge)
                     ->color(fn (string $state): string => match ($state) {
-                        '1' => 'success',
-                        '0' => 'danger',
-                    }),
+                        '1' => 'success', // Para lojas ativas
+                        '0' => 'danger',  // Adicione esta linha para lojas inativas
+                        default => 'gray', // Garante que nunca dê erro se o valor for nulo
+                    })
             ])
             ->filters([
                 // Filtros virão aqui

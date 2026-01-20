@@ -185,7 +185,7 @@ class CatalogConceptResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListCatalogConcepts::route('/'),
+            'index' => Pages\ListCatalogConcept::route('/'),
             'create' => Pages\CreateCatalogConcept::route('/create'),
             'view' => Pages\ViewCatalogConcept::route('/{record}'),
             'edit' => Pages\EditCatalogConcept::route('/{record}/edit'),

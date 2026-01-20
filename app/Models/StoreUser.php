@@ -6,53 +6,70 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Contracts\Auth\MustVerifyEmail; // Importante: Adicionar esta linha
+use App\Traits\HasEmailVerificationWizard;
 
-class StoreUser extends Authenticatable
+class StoreUser extends Authenticatable implements MustVerifyEmail // Importante: Adicionar 'implements MustVerifyEmail'
 {
-    use HasFactory, Notifiable;
-
-    protected $table = 'store_users'; // Conecta à tabela correta (criada via SQL/migration)
+    use HasFactory, Notifiable; 
+    use \Illuminate\Auth\MustVerifyEmail;
+    use HasEmailVerificationWizard;
 
     /**
-     * Os campos que podem ser preenchidos em massa.
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
      */
     protected $fillable = [
-        'current_store_id', // FK para a Store (NULLABLE)
         'name',
         'surname',
         'login',
         'email',
         'password',
-        'document_number',
-        'id_document_number', // RG/ID
-        'phone_number',
         'is_active',
+        'phone_number',
+        'current_store_id',
+        'document_number',
+        'id_document_number',
         'social_name',
         'company_phone',
     ];
 
     /**
-     * Os atributos que devem ser escondidos (segurança).
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
-        'remember_token',
+        'remember_token', // Adicionado para ocultar o remember_token
     ];
 
     /**
-     * Conversão de tipos de dados.
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
      */
     protected $casts = [
-        'is_active' => 'boolean',
-        // 'config_json' => 'array', // Removido pois não está no schema atual, evitamos o erro
+        'email_verified_at' => 'datetime', // Adicionado para tratar como data/hora
+        'password' => 'hashed', // Adicionado para hash automático no Laravel 12
+        'is_active' => 'boolean', // Já existia, mas bom confirmar
     ];
 
     /**
-     * Relacionamento: Este usuário pertence à loja (ou é o dono atual).
+     * Get the store that the user currently owns.
      */
-    public function store(): BelongsTo
+    public function currentStore(): BelongsTo
     {
-        // Define o relacionamento com a tabela 'stores' usando a FK correta
-        return $this->belongsTo(Store::class, 'current_store_id'); 
+        return $this->belongsTo(Store::class, 'current_store_id');
+    }
+
+    /**
+     * Get the subscriptions for the store user.
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
     }
 }

@@ -10,7 +10,7 @@ use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 
-class ListCatalogConcepts extends ListRecords
+class ListCatalogConcept extends ListRecords
 {
     protected static string $resource = CatalogConceptResource::class;
 
