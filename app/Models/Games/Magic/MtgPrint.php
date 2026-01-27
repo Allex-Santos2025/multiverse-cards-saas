@@ -11,12 +11,20 @@ class MtgPrint extends Model
     protected $table = 'mtg_prints';
 
     protected $fillable = [
-        'scryfall_id',
+        'api_id',
         'rarity',
         'artist',
         'collector_number',
         'language_code',
         'flavor_text',
+
+        // --- NOVOS CAMPOS (Localização e Variantes) ---
+        'printed_name',
+        'printed_type_line',
+        'printed_text',
+        'flavor_name',
+        'variation_of',
+        // ----------------------------------------------
         
         // Dados Técnicos de Impressão
         'frame',

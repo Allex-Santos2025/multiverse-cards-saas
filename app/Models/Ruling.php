@@ -14,7 +14,7 @@ class Ruling extends Model
      * A "lista de permissões" para o guarda de segurança do Laravel.
      */
     protected $fillable = [
-        'card_functionality_id',
+        'mtg_concept_id',
         'source',
         'published_at',
         'comment',

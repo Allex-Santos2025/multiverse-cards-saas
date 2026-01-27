@@ -28,30 +28,34 @@
     </style>
 
 </head>
-<body class="">
+<body class="antialiased" 
+      x-data="{ isModalOpen: false }"
+      {{-- Ouve os eventos disparados pelo Livewire --}}
+      @modal-opened.window="isModalOpen = true"
+      @modal-closed.window="isModalOpen = false"
+      :class="{ 'overflow-hidden': isModalOpen }">
 
-    {{-- Header --}}
-    @include('partials.header')
+    {{-- TUDO o que deve ser distorcido --}}
+    <div id="site-wrapper" 
+         class="transition-all duration-700 ease-in-out"
+         :class="{ 'blur-xl opacity-20 grayscale scale-[0.95] pointer-events-none': isModalOpen }">
+        
+        @include('partials.header')
+        <main>{{ $slot ?? '' }} @yield('content') </main>
+        @include('partials.footer')
+    </div>
 
-        {{-- Conteúdo principal --}}
-    <main>
-        {{-- Se for uma página Livewire (como Planos), entra aqui: --}}
-        {{ $slot ?? '' }}
+    {{-- O Modal DEVE ficar aqui, no final de tudo --}}
+    @livewire('marketplace.auth-modal')
+    @livewire('marketplace.auth-modal-login')
 
-        {{-- Se for uma página normal (como Home), entra aqui: --}}
-        @yield('content')
-    </main>
-
-  
-    {{-- Footer --}}
-    @include('partials.footer')
-
-    {{-- 3. Scripts do Livewire (Essencial para a interatividade) --}}
     @livewireScripts
-
-    {{-- 4. JS Compilado pelo Mix (Substitui o @vite JS) --}}
     <script src="{{ mix('js/app.js') }}"></script>
-
     @stack('scripts')
+    <script>
+    window.addEventListener('modal-opened', () => {
+        console.log('O sinal de abrir chegou no Layout!');
+    });
+    </script>
 </body>
 </html>

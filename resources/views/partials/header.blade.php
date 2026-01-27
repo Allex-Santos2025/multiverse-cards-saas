@@ -28,7 +28,7 @@
         @else
             {{-- MODO PADRÃO: Menu de Navegação --}}
             <nav class="hidden md:flex gap-8 text-sm font-bold text-gray-400">
-                <a href="#eventos" class="hover:text-white transition flex items-center gap-2">Eventos</a>
+                <a href="{{ route('events.index') }}" class="hover:text-white transition flex items-center gap-2">Eventos</a>
                 <a href="#lojista" class="text-orange-500 hover:text-orange-400 transition font-bold border border-orange-500/20 px-3 py-1 rounded-full hover:bg-orange-500/10">Área do Lojista</a>
             </nav>
         @endif
@@ -45,8 +45,8 @@
                 </a>
             @else
                 {{-- MODO PADRÃO: Botões de Auth --}}
-                <button class="text-sm font-bold text-gray-300 hover:text-white transition">Entrar</button>
-                <button class="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition shadow-[0_0_15px_rgba(255,255,255,0.1)] transform hover:scale-105">Criar Conta</button>
+                <button onclick="Livewire.dispatch('open-login-modal')" class="text-sm font-bold text-gray-300 hover:text-white transition">Entrar</button>
+                <button onclick="Livewire.dispatch('open-auth-modal')" class="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition shadow-[0_0_15px_rgba(255,255,255,0.1)] transform hover:scale-105">Criar Conta</button>
             @endif
         </div>
 

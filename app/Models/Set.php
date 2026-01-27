@@ -21,8 +21,8 @@ class Set extends Model
         'is_fanmade',
         'digital', 
         'foil_only', 
-        'mtg_scryfall_id', // CORRIGIDO: Deve ser prefixado
-        'code',        // CORRIGIDO: Deve ser prefixado
+        'api_id',
+        'code',
         'name', 
         'released_at',
         'set_type',

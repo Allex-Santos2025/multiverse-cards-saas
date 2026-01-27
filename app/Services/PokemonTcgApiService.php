@@ -109,7 +109,7 @@ class PokemonTcgApiService
 
             // 1. Tenta achar pelo ID Técnico (o mais seguro)
             $set = Set::where('game_id', $this->gameId)
-                      ->where('mtg_scryfall_id', $technicalId)
+                      ->where('api_id', $technicalId)
                       ->first();
 
             // 2. Se não achou, tenta achar pelo Código Visual (evita colisão de chave única)
@@ -124,14 +124,14 @@ class PokemonTcgApiService
                 // Isso garante que registros antigos ganhem o mtg_scryfall_id correto
                 $set->update(array_merge($setData, [
                     'code' => $displayCode,
-                    'mtg_scryfall_id' => $technicalId
+                    'api_id' => $technicalId
                 ]));
             } else {
                 // Se não existe de jeito nenhum, CRIA
                 Set::create(array_merge($setData, [
                     'game_id' => $this->gameId,
                     'code' => $displayCode,
-                    'mtg_scryfall_id' => $technicalId
+                    'api_id' => $technicalId
                 ]));
             }
 

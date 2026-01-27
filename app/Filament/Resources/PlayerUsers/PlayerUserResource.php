@@ -56,7 +56,7 @@ class PlayerUserResource extends Resource
                 // DADOS BÁSICOS
                 TextInput::make('name')->label('Nome')->required()->maxLength(100),
                 TextInput::make('surname')->label('Sobrenome')->required()->maxLength(100),
-                TextInput::make('login')->label('Login')->required()->unique(ignoreRecord: true)->maxLength(100),
+                TextInput::make('nickname')->label('Login')->required()->unique(ignoreRecord: true)->maxLength(100),
                 TextInput::make('email')->label('Email')->required()->email()->unique(ignoreRecord: true)->maxLength(100),
                 
                 // SEGURANÇA E AUTENTICAÇÃO

@@ -34,8 +34,7 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 ---
 
 **Versão:** `alpha v0.0.2`  
-**Data:** 20/01/2026  
-**Descrição da Versão:**  
+**Data:** 20/01/2026   
 **Descrição da Versão:** 
 **Branding & Domínio:** 
 - Renomeado oficialmente para **Versus TCG** e migração para `versustcg.com.br`.
@@ -51,6 +50,30 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 - Home, Planos, Registro e Fallback de Aguarde (Placeholder).  
 **Segurança:**
 - Segurança: Implementada validação de e-mail via Signed URLs (URLs assinadas) e isolamento de autenticação por Guards.  
+
+---
+
+**Versão:** `alpha v0.0.3`  
+**Data:** 26/01/2026   
+**Descrição da Versão:** 
+- Implementação de portais de autenticação centralizados, segregação de segurança via Multi-Guards e expansão da malha de redirecionamento (Fallbacks).
+**Arquitetura de Autenticação:** 
+- Implementação do Guard `player` e Provider `player_users` para isolamento total entre Clientes e Lojistas.
+- Refatoração da lógica de login para suporte híbrido: identificação automática via E-mail ou Nickname (resolução do conflito de colunas do banco de dados).
+**Funcionalidades (UX/UI):** 
+**Modal Unificado de Cadastro (Domingo):**
+- Consolidação do fluxo de registro de lojistas com o novo sistema de registro de jogadores em um único portal de entrada.
+**Modal de Login Centralizado (Hoje):**
+- Criação da interface de acesso para jogadores com suporte ao localizador de lojas (Slug) para lojistas.
+**Trava de Centro UI:**
+- Implementação de regras de posicionamento absoluto (translate-50%) para garantir que os modais permaneçam centralizados em qualquer resolução.
+**Páginas Adicionadas:**
+- Tela de destino pós-login para validação de dados e boas-vindas.
+- Estrutura de destino para a trilha de torneios e competições
+- Lógica implementada para conduzir lojistas ao seu ambiente de gestão pré-existente e jogadores à sua área logada  
+**Segurança:**
+- Finalização da estabilização de rede e conectividade SSH para desenvolvimento remoto seguro (Concluído no Sábado).
+- Implementação de session()->regenerate() pós-autenticação para prevenção de ataques de fixação de sessão.  
 
 ---
 

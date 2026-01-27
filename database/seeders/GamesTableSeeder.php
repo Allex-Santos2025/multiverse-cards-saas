@@ -12,7 +12,17 @@ class GamesTableSeeder extends Seeder
         // LISTA ALINHADA COM O BANCO DE DADOS EXISTENTE (BASEADO NA IMAGEM)
         // IDs 1 a 8 já existem e devem ser respeitados.
         $games = [
-            // 1. MAGIC (Já existe)
+
+            // 1. MAGIC: THE GATHERING (Essencial para o Ingestor Scryfall)
+            [
+                'id' => 1,
+                'name' => 'Magic: The Gathering',
+                'url_slug' => 'magic-the-gathering',
+                'is_active' => true,
+                'ingestor_class' => 'App\Services\ScryfallApi', // Ou a classe correta do ingestor
+                'api_url' => 'https://api.scryfall.com',
+                'rate_limit_ms' => 100,
+            ],
             
             // 2. POKÉMON TCG (Internacional) - FOCO ATUAL
             [
@@ -35,7 +45,16 @@ class GamesTableSeeder extends Seeder
                 'api_url' => 'https://db.ygoprodeck.com/api/v7/',
             ],
 
-            // 4. BATTLE SCENES (Já existe)
+            // 4. BATTLE SCENES (Adicionei para garantir ID 4)
+            [
+                'id' => 4,
+                'name' => 'Battle Scenes',
+                'url_slug' => 'battle-scenes',
+                'is_active' => false,
+                'ingestor_class' => null,
+                'api_url' => null,
+                'rate_limit_ms' => 100,
+            ],
 
             // 5. ONE PIECE CARD GAME (Na imagem é o ID 5)
             [

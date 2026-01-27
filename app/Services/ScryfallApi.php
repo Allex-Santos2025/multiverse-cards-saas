@@ -168,7 +168,7 @@ class ScryfallApi
         foreach ($setsData as $setData) {
             $setsToInsert[] = [
                 'game_id' => $this->gameId, 
-                'mtg_scryfall_id' => $setData['id'] ?? null, 
+                'api_id' => $setData['id'] ?? null, 
                 'code' => $setData['code'] ?? null, 
                 'icon_svg_uri' => $setData['icon_svg_uri'] ?? null,
                 'name' => $setData['name'] ?? 'Set Sem Nome',
@@ -182,7 +182,7 @@ class ScryfallApi
             ];
         }
         
-        Set::upsert($setsToInsert, ['mtg_scryfall_id', 'game_id'], [
+        Set::upsert($setsToInsert, ['api_id', 'game_id'], [
             'name', 'set_type', 'card_count', 'released_at', 'icon_svg_uri', 'digital', 'foil_only', 'code'
         ]);
         
