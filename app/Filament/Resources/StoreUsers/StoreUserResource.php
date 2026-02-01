@@ -33,9 +33,12 @@ class StoreUserResource extends Resource
         return $schema
             ->schema([
                 // VINCULO CRUCIAL COM A LOJA (FK)
-                Select::make('store_id')
+                Select::make('current_store_id')
                     ->label('Loja Vinculada')
+                    ->relationship('currentStore', 'name')
                     ->options(Store::all()->pluck('name', 'id'))
+                    ->searchable()
+                    ->preload()
                     ->nullable() // Permite NULL, para transferência de loja
                     ->helperText('Obrigatório se este usuário é um Lojista ativo.'),
                 

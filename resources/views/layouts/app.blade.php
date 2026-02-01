@@ -13,10 +13,10 @@
     <link rel="apple-touch-icon" href="{{ asset('assets/site-logo.png') }}">
     <link rel="image_src" href="{{ asset('assets/site-logo.png') }}">
 
-    {{-- 1. CSS Compilado pelo Mix (Substitui o @vite CSS) --}}
+    {{-- 1. CSS Compilado pelo Mix --}}
     <link rel="stylesheet" href="{{ mix('css/app.css') }}">
 
-    {{-- 2. Estilos do Livewire (Essencial para a nova stack) --}}
+    {{-- 2. Estilos do Livewire --}}
     @livewireStyles
 
     @stack('head')
@@ -30,7 +30,6 @@
 </head>
 <body class="antialiased" 
       x-data="{ isModalOpen: false }"
-      {{-- Ouve os eventos disparados pelo Livewire --}}
       @modal-opened.window="isModalOpen = true"
       @modal-closed.window="isModalOpen = false"
       :class="{ 'overflow-hidden': isModalOpen }">
@@ -41,7 +40,12 @@
          :class="{ 'blur-xl opacity-20 grayscale scale-[0.95] pointer-events-none': isModalOpen }">
         
         @include('partials.header')
+
+        {{-- INJEÇÃO DO MENU FUNIL (MAGIC, POKEMON, ETC) --}}
+        
+
         <main>{{ $slot ?? '' }} @yield('content') </main>
+
         @include('partials.footer')
     </div>
 

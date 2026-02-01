@@ -64,7 +64,11 @@ class StoreUser extends Authenticatable implements MustVerifyEmail // Importante
     {
         return $this->belongsTo(Store::class, 'current_store_id');
     }
-
+    public function store(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        // O usuário TEM UMA loja onde o 'owner_user_id' é o ID dele.
+        return $this->hasOne(Store::class, 'owner_user_id');
+    }
     /**
      * Get the subscriptions for the store user.
      */

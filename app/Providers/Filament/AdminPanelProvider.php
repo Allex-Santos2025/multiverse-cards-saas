@@ -70,9 +70,10 @@ class AdminPanelProvider extends PanelProvider
     public function boot(): void
     {
         FilamentView::registerRenderHook(
-            'panels::head.end',
-            // Simplesmente renderiza o arquivo Blade
-            fn (): string => View::make('partials.custom-styles')->render()
-        );
+    'panels::head.end',
+    fn (): string => view()->exists('partials.custom-styles') 
+        ? view('partials.custom-styles')->render() 
+        : '' // Se não existir, renderiza vazio e não quebra o site
+);
     }
 }

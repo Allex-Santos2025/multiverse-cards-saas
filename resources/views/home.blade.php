@@ -96,7 +96,7 @@
             </div>
             <div class="flex flex-col md:flex-row h-[100vh] md:h-[85vh] w-full bg-black overflow-x-hidden">
                 {{-- MAGIC --}}
-                <a href="#" class="relative flex-1 group hover:flex-[12] transition-all duration-700 ease-in-out cursor-pointer border-r border-white/5 overflow-hidden">
+                <a href="{{ route('marketplace.magic.home') }}" class="relative flex-1 group hover:flex-[12] transition-all duration-700 ease-in-out cursor-pointer border-r border-white/5 overflow-hidden">
                     <div 
                         class="absolute inset-0 bg-cover bg-center transition-all duration-1000 group-hover:scale-105 grayscale group-hover:grayscale-0"
                         style="background-image: url('{{ asset('assets/magic-background.jpg') }}');">

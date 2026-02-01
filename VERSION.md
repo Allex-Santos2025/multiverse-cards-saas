@@ -77,6 +77,32 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.0.4`  
+**Data:** 01/02/2026   
+**Descrição da Versão:** 
+- Expansão do Ecossistema Versus TCG com lançamento do núcleo operacional da Loja (Dashboard v0.1.3) e centralização de logs.
+**Branding & Domínio:**
+- Consolidação da identidade visual e estabilização do ambiente de desenvolvimento em `versustcg.com.br`
+**Banco de Dados (Refatoração):**
+- Implementação das tabelas de auditoria e comunicação: `changelogs` e `changelog_user_reads`
+- Otimização de relacionamentos entre `store_users` e as novas entidades de notificações.
+**Funcionalidades (UX/UI):** 
+**Funcionalidades (Loja / Dashboard):**
+- v0.1.0: Lançamento da interface base do Dashboard (Engine da Loja) com sistema de temas (Light/Dark).
+- v0.1.1: Implementação da primeira funcionalidade operacional: `Central de Logs do Sistema`.
+- v0.1.2: Implementação da segunda funcionalidade: `Hub de Novidades` e `Sininho de Notificações` com contador dinâmico.
+- v0.1.3: Correção de bugs de interface (Z-Index), padronização de ícones e lançamento do sistema de Leitura Inteligente (Dedução automática).
+**Páginas Adicionadas:**
+- Hub de Novidades (Listagem).
+- Detalhe da Novidade (Leitura em Markdown).
+- Dashboard Index (Home do lojista).
+- Painel de Logs.  
+**Segurança:**
+- Navegação: Implementação de camadas de profundidade (Z-Index) para evitar sobreposição de menus suspensos.
+- Autenticação: Refatoração da lógica de Logout para redirecionamento inteligente baseado no Slug da loja.  
+
+---
+
 ## 📈 Próxima Versão Planejada
 
 **Próxima versão:** `alpha v0.1.0`  

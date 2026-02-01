@@ -25,3 +25,5 @@ Thumbs.db
 /public/card_images
 /vendor
 .env
+# Database dumps
+*.sql
