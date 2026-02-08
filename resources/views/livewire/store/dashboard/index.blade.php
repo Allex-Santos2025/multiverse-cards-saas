@@ -1,6 +1,7 @@
 @extends('layouts.dashboard')
 
 @section('content')
+<div>
 @push('cards')
 <style>
     /* Card Styles */
@@ -445,20 +446,22 @@ function stockEvolution() {
             Cadastrar Estoque (Entrada Rápida)
         </h2>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            <button class="game-btn fi-card p-6 flex flex-col items-center justify-center gap-3 transition-all border border-transparent group"
+            <a href="{{ route('store.dashboard.stock.index', ['slug' => $slug, 'game_slug' => 'magic']) }}" 
+             wire:navigate class="game-btn fi-card p-6 flex flex-col items-center justify-center gap-3 transition-all border border-transparent group"
             style="--game-color: #ea580c">
                 <div class="w-12 h-12 bg-orange-600 rounded-full flex items-center justify-center shadow-lg shadow-orange-600/20 group-hover:scale-110 transition-transform">
                     <span class="font-black text-white text-xs">MTG</span>
                 </div>
                 <span class="font-bold text-slate-300 group-hover:text-white">Magic</span>
-            </button>
+            </a>
 
-            <button class="game-btn fi-card p-6 flex flex-col items-center justify-center gap-3 transition-all border border-transparent group" style="--game-color: #facc15">
+            <a href="{{ route('store.dashboard.stock.index', ['slug' => $slug, 'game_slug' => 'pokemon']) }}" 
+             wire:navigate class="game-btn fi-card p-6 flex flex-col items-center justify-center gap-3 transition-all border border-transparent group" style="--game-color: #facc15">
                 <div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg shadow-yellow-500/20 group-hover:scale-110 transition-transform">
                     <span class="font-black text-black text-xs">PKM</span>
                 </div>
                 <span class="font-bold text-slate-300 group-hover:text-white">Pokémon</span>
-            </button>
+            </a>
 
             <button class="game-btn fi-card p-6 flex flex-col items-center justify-center gap-3 transition-all border border-transparent group" style="--game-color: #a855f7">
                 <div class="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-600/20 group-hover:scale-110 transition-transform">
@@ -483,4 +486,5 @@ function stockEvolution() {
         </div>
     </div>
 </main>
+</div>
 @endsection

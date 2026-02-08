@@ -79,7 +79,8 @@ class IngestionManagerCommand extends Command
             $apiService = new $ingestorClass(
                 $game->api_url,
                 $game->rate_limit_ms,
-                $game->id // ESSENCIAL: O ID do jogo é injetado no serviço para uso no saveSets
+                $game->id, 
+                $game->url_slug
             );
 
             // 2. Chama o ponto de entrada principal de ingestão no Serviço ESPECÍFICO.

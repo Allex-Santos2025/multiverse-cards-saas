@@ -103,6 +103,39 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.0.5`  
+**Data:** 08/02/2026   
+**Descrição da Versão:** 
+- Lançamento do módulo crítico de `Gestão de Estoque em Massa (Bulk Manager)` para Magic: The Gathering.
+**Branding & Domínio:**
+- Refatoração completa da performance de renderização de listas longas e implementação de arquitetura híbrida (Visualização/Importação).
+**Banco de Dados (Refatoração):**
+- Otimização de Queries: Implementação de Eager Loading `(with(['concept', 'set', 'stockItems']))` para reduzir o número de consultas ao carregar a lista de cartas.
+- Model StockItem: Configuração de `casts => array` para a coluna `extras`, permitindo salvamento correto de dados JSON (Foil, Etched, Promo) no banco.
+- Sanitização de Dados: Implementação de lógica no back-end para tratamento de decimais (conversão automática de `0,25` para `0.25`) e prevenção de "registros fantasmas" (não salva linhas vazias/zeradas).
+**Funcionalidades (UX/UI):** 
+- Edição em Lote (Batch Edit): Substituição do `wire:model` linha a linha por formulário nativo HTML, permitindo salvar 50+ itens simultaneamente sem travamentos no navegador.
+**Páginas Adicionadas:**
+**Dropdown de Extras "Pixel Perfect":**
+- Implementação de Teleport via Alpine.js para menus flutuantes que ignoram as barreiras da tabela (`overflow`).
+- Lógica de Posicionamento Inteligente: O menu detecta o fim da tela e abre para cima ou para baixo automaticamente.
+- Hidden Scroll: Barra de rolagem invisível para manter a estética limpa ("Apple-like").
+**Filtros Avançados:**
+- Adição do filtro lógico "Minha Loja", que exibe apenas cartas com estoque positivo (> 0)
+- Preservação de estado dos filtros (Busca, Edição, Cor) durante a navegação entre páginas.
+**Funcionalidades (Loja / Dashboard):**
+- v0.1.4: Lançamento do Menu `Estoque` onde esse Módulo de gestão de estoque se encontra.
+- Lógica de salvamento inteligente (`updateOrCreate`) que preserva o idioma original da carta via `Input Hidden`.
+- Sistema de paginação fluido integrado ao Livewire.
+- Ordenação dinâmica por Preço, Quantidade, Nome (PT/EN) e Numeração (Collector Number).
+**Correções e Melhorias:**
+- Visual: Correção do "z-index" no menu de Extras para sobrepor o cabeçalho e rodapé.
+- Usabilidade: Adição de "padding" (colchão de ar) no final da tabela para permitir que o último item seja editado confortavelmente sem ser cortado pelo rodapé.
+**Segurança:**
+- Validação no Back-end para garantir que apenas variantes existentes na loja sejam atualizadas ou criadas corretamente.  
+
+---
+
 ## 📈 Próxima Versão Planejada
 
 **Próxima versão:** `alpha v0.1.0`  

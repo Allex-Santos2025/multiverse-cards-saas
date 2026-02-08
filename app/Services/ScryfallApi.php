@@ -3,9 +3,10 @@
 namespace App\Services;
 
 use App\Models\Set;
-use App\Models\Card; // Necessário se formos adicionar lógica de card aqui futuramente
+use App\Models\Card; 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Arr;
 
 class ScryfallApi
@@ -16,15 +17,136 @@ class ScryfallApi
     
     protected float $lastRequestTime = 0;
     protected string $userAgent = 'multiverse-cards-saas/1.0';
+    protected string $gameSlug; // Propriedade do Slug
 
     /**
-     * Construtor que recebe a configuração do TCG da tabela 'games'.
+     * Construtor ÚNICO que recebe a configuração do TCG da tabela 'games'.
      */
-    public function __construct(string $baseUrl, int $rateLimitMs, int $gameId)
+    public function __construct(string $baseUrl, int $rateLimitMs, int $gameId, string $gameSlug)
     {
         $this->baseUrl = $baseUrl;
         $this->rateLimitMs = $rateLimitMs;
         $this->gameId = $gameId;
+        
+        // Salvando o slug para usar no download da imagem
+        $this->gameSlug = $gameSlug;
+    }
+
+    /**
+     * O método de entrada que o IngestionManager chama.
+     */
+    public function runIngestionJob(): void
+    {
+        Log::info("Iniciando ingestão de Magic: The Gathering (Game ID: {$this->gameId}) usando API base: {$this->baseUrl}");
+
+        // 1. Ingestão de SETS (com lógica de download de imagem)
+        $this->ingestSets();
+
+        Log::info("Ingestão de Sets finalizada. A ingestão de Cards deve ser rodada separadamente via comando scryfall:ingest-cards.");
+    }
+
+    /**
+     * Busca todos os Sets do Scryfall, baixa os ícones e salva no banco.
+     */
+    protected function ingestSets(): void
+    {
+        Log::info("Buscando sets na API: {$this->baseUrl}/sets");
+
+        // 1. Busca os dados da API do Scryfall
+        $response = Http::timeout(30)->get("{$this->baseUrl}/sets");
+
+        if ($response->failed()) {
+            Log::error("Falha ao buscar sets do Scryfall: " . $response->status());
+            return;
+        }
+
+        $json = $response->json();
+        // Scryfall retorna a lista dentro da chave 'data'
+        $sets = $json['data'] ?? [];
+
+        Log::info("Encontrados " . count($sets) . " sets. Iniciando processamento e download de imagens...");
+
+        foreach ($sets as $setData) {
+            
+            // --- LÓGICA DE DOWNLOAD DO ÍCONE ---
+            // Baixa a imagem e retorna o caminho relativo (public/card_images/...)
+            $iconPath = $this->downloadSetIcon(
+                $setData['icon_svg_uri'] ?? '', 
+                $setData['code']
+            );
+            // -----------------------------------
+
+            // 2. Salva ou Atualiza no Banco
+            Set::updateOrCreate(
+                [
+                    'code' => $setData['code'], 
+                    'game_id' => $this->gameId
+                ],
+                [
+                    'name' => $setData['name'],
+                    'released_at' => $setData['released_at'] ?? null,
+                    // Aqui salvamos o caminho local (card_images/magic/lea/lea.svg)
+                    'icon_url' => $iconPath, 
+                    
+                    // Outros campos opcionais
+                    'set_type' => $setData['set_type'] ?? 'core',
+                    'card_count' => $setData['card_count'] ?? 0,
+                    'digital' => $setData['digital'] ?? false,
+                    'foil_only' => $setData['foil_only'] ?? false,
+                ]
+            );
+        }
+
+        Log::info("Processamento de Sets finalizado.");
+    }
+
+    /**
+     * Baixa o SVG e salva em: public/card_images/{game}/{set_code}/{set_code}.svg
+     * Retorna o caminho relativo para salvar no banco.
+     */
+    protected function downloadSetIcon(string $url, string $setCode): string
+    {
+        // Se a URL for vazia, retorna vazio
+        if (empty($url)) return '';
+
+        try {
+            // Normaliza o código (ex: 'LEA' vira 'lea')
+            $safeCode = strtolower($setCode);
+            
+            // Caminho relativo para salvar no banco (para usar no asset())
+            // Ex: card_images/magic/lea/lea.svg
+            $relativePath = "card_images/{$this->gameSlug}/{$safeCode}/{$safeCode}.svg";
+            
+            // Caminho absoluto do sistema para salvar o arquivo
+            $fullPath = public_path($relativePath);
+
+            // 1. Verifica se já existe para economizar banda
+            if (File::exists($fullPath)) {
+                return $relativePath;
+            }
+
+            // 2. Garante que a pasta existe (card_images/magic/lea)
+            $directory = dirname($fullPath);
+            if (!File::exists($directory)) {
+                File::makeDirectory($directory, 0755, true);
+            }
+
+            // 3. Baixa o arquivo
+            $response = Http::timeout(10)->get($url);
+
+            if ($response->successful()) {
+                // 4. Salva o conteúdo no arquivo
+                File::put($fullPath, $response->body());
+                return $relativePath; // Sucesso! Retorna o caminho novo.
+            }
+
+        } catch (\Exception $e) {
+            // Se der erro, loga e segue a vida
+            Log::warning("Erro ao baixar ícone do set {$setCode}: " . $e->getMessage());
+        }
+
+        // Se falhar, retorna a URL original externa como fallback
+        return $url; 
     }
 
     /**
@@ -33,7 +155,7 @@ class ScryfallApi
     protected function respectRateLimit(): void
     {
         $timeSinceLastRequest = (microtime(true) * 1000) - $this->lastRequestTime;
-        $delayNeeded = $this->rateLimitMs - $timeSinceLastRequest; // Usando a propriedade correta rateLimitMs
+        $delayNeeded = $this->rateLimitMs - $timeSinceLastRequest;
 
         if ($delayNeeded > 0) {
             usleep((int)($delayNeeded * 1000));
@@ -88,38 +210,6 @@ class ScryfallApi
     }
 
     /**
-     * O método de entrada que o IngestionManager chama.
-     */
-    public function runIngestionJob(): void
-    {
-        Log::info("Iniciando ingestão de Magic: The Gathering (Game ID: {$this->gameId}) usando API base: {$this->baseUrl}");
-
-        // 1. Ingestão de SETS (com lógica de resgate)
-        $this->ingestSets();
-
-        Log::info("Ingestão de Sets finalizada. A ingestão de Cards deve ser rodada separadamente via comando scryfall:ingest-cards.");
-    }
-
-    /**
-     * Busca todos os Sets do Scryfall e os salva no banco de dados.
-     */
-    protected function ingestSets(): void
-    {
-        $setsData = $this->getAllSets();
-        $totalCount = count($setsData['data'] ?? []);
-        
-        // Lógica de resgate se faltarem sets
-        if ($totalCount < 1019) { 
-            Log::warning("Contagem de Sets Baixa ({$totalCount}). Ativando modo de Resgate via Paginação de Cards.");
-            $setsData = $this->getSetsViaCardPagination();
-        }
-
-        if ($setsData && isset($setsData['data'])) {
-            $this->mapAndUpsertSets($setsData['data']);
-        }
-    }
-
-    /**
      * Tenta obter todos os sets via endpoint direto.
      */
     public function getAllSets(): ?array
@@ -162,48 +252,17 @@ class ScryfallApi
         return ['object' => 'list', 'data' => array_values($uniqueSets)];
     }
 
-    protected function mapAndUpsertSets(array $setsData): int
-    {
-        $setsToInsert = [];
-        foreach ($setsData as $setData) {
-            $setsToInsert[] = [
-                'game_id' => $this->gameId, 
-                'api_id' => $setData['id'] ?? null, 
-                'code' => $setData['code'] ?? null, 
-                'icon_svg_uri' => $setData['icon_svg_uri'] ?? null,
-                'name' => $setData['name'] ?? 'Set Sem Nome',
-                'set_type' => $setData['set_type'] ?? 'core',
-                'released_at' => $setData['released_at'] ?? null,
-                'card_count' => $setData['card_count'] ?? 0,
-                'digital' => $setData['digital'] ?? false,
-                'foil_only' => $setData['foil_only'] ?? false,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-        }
-        
-        Set::upsert($setsToInsert, ['api_id', 'game_id'], [
-            'name', 'set_type', 'card_count', 'released_at', 'icon_svg_uri', 'digital', 'foil_only', 'code'
-        ]);
-        
-        return count($setsToInsert);
-    }
-
     /**
      * Obtém um conjunto de cartas de uma URL de paginação.
-     * ESTE É O MÉTODO QUE ESTAVA FALTANDO.
-     * @param string $url A URL completa ou parcial para buscar.
-     * @return array
      */
     public function getCardsByUrl(string $url): array
     {
-        // Remove a base URL se ela já estiver presente para evitar duplicação no makeRequest
+        // Remove a base URL se ela já estiver presente para evitar duplicação
         $path = str_replace($this->baseUrl, '', $url);
         
         $data = $this->makeRequest($path);
 
         if ($data === null) {
-            // Retorna estrutura vazia consistente para evitar erros no loop
             return ['data' => [], 'has_more' => false];
         }
 

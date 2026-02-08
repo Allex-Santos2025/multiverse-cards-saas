@@ -43,5 +43,9 @@ module.exports = {
             }
         },
     },
-    plugins: [],
+    // AQUI ESTÁ A CORREÇÃO DAS BORDAS SUMIDAS
+    plugins: [
+        require('@tailwindcss/forms'),
+        require('@tailwindcss/typography'),
+    ],
 }

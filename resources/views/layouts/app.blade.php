@@ -15,8 +15,10 @@
 
     {{-- 1. CSS Compilado pelo Mix --}}
     <link rel="stylesheet" href="{{ mix('css/app.css') }}">
-
-    {{-- 2. Estilos do Livewire --}}
+    {{-- 2. JS Compilado pelo Mix--}}
+    {{-- O 'defer' é vital para o Alpine não brigar com o Livewire --}}
+    <script src="{{ mix('js/app.js') }}" defer></script>
+    {{-- 3. Estilos do Livewire --}}
     @livewireStyles
 
     @stack('head')

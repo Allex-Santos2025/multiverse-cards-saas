@@ -6,6 +6,7 @@
     $latestUpdates = collect();
     $slug = 'admin';
 
+    
     if ($user) {
         $store = $user->current_store ?? $user->store; 
         $storeName = $store->name ?? 'Minha Loja';
@@ -21,7 +22,7 @@
     $initials = Str::upper(Str::substr($storeName, 0, 2));
 @endphp
 
-<div class="h-20 px-6 flex items-center justify-between gap-8">
+<div class="h-20 lg:h-20 px-4 lg:px-6 flex items-center justify-between gap-2 lg:gap-8">
     {{-- LOGO / INICIAIS --}}
     <div class="flex items-center gap-4 shrink-0">
         <div class="w-10 h-10 bg-zinc-900 dark:bg-white rounded flex items-center justify-center">
@@ -31,16 +32,18 @@
     </div>
 
     {{-- BUSCA --}}
-    <div class="flex-1 max-w-2xl">
-        <div class="relative">
+    <div class="hidden lg:flex flex-1 justify-center px-8">
+        <div class="relative w-full max-w-2xl"> {{-- 'w-full' aqui força o preenchimento --}}
             <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"></i>
+            
+            {{-- 2. O input agora é 'w-full' real, sem limite de largura --}}
             <input type="text" placeholder="Buscar pedido, carta, cliente..." 
-            class="w-full bg-zinc-50 dark:bg-[#0f172a] border border-slate-200 dark:border-zinc-400/5 rounded-lg py-2 pl-12 pr-4 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-orange-500 transition-all">
+                class="w-full bg-zinc-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700 rounded-lg py-2 pl-12 pr-4 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-orange-500 transition-all">
         </div>
     </div>
 
     {{-- AÇÕES (TEMA, SININHO, PERFIL) --}}
-    <div class="flex items-center gap-5 shrink-0" x-data="{ openProfile: false, openNotifications: false }">
+    <div class="flex items-center gap-1 lg:gap-5 shrink-0" x-data="{ openProfile: false, openNotifications: false }">
         
         <button onclick="toggleTheme()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:white/5 text-zinc-500 transition-all">
             <i id="theme-icon" class="ph ph-moon text-xl dark:ph-sun"></i>
@@ -67,7 +70,10 @@
      x-transition:enter-start="opacity-0 scale-95"
      x-transition:enter-end="opacity-100 scale-100"
      @click.away="openNotifications = false"
-     class="absolute right-0 mt-3 w-80 bg-white dark:bg-[#1e293b] rounded-xl shadow-2xl border border-zinc-200 dark:border-white/5 overflow-hidden z-[200]">
+     class="fixed inset-x-4 top-20 lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-3 
+            w-auto lg:w-[450px] 
+            bg-white dark:bg-[#1e293b] rounded-2xl shadow-2xl border border-zinc-200 dark:border-white/5 
+            z-[200] overflow-hidden">
     
     {{-- Cabeçalho --}}
     <div class="p-4 border-b border-zinc-100 dark:border-white/5 flex items-center justify-between bg-zinc-50/50 dark:bg-white/5">
@@ -76,7 +82,7 @@
     </div>
 
     {{-- Lista de Itens --}}
-    <div class="max-h-[350px] overflow-y-auto">
+    <div class="max-h-[60vh] overflow-y-auto lg:max-h-none lg:overflow-visible custom-scrollbar">
         @forelse($latestUpdates as $update)
             @php
                 // Checa se já foi lido para aplicar o estilo
@@ -92,9 +98,26 @@
                 @endif
 
                 {{-- Ícone Dinâmico --}}
-                <div class="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center 
-                    {{ $isRead ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400' : 'bg-orange-500/10 text-orange-600' }}">
-                    <i class="ph {{ $update->category === 'Recurso' ? 'ph-star' : ($update->category === 'Melhoria' ? 'ph-rocket-launch' : 'ph-wrench') }} text-lg"></i>
+                @php
+                    // Usamos a variável $isRead que você já definiu no início do seu loop
+                    $corSininho = match($update->category) {
+                        'Recurso'  => 'bg-emerald-500/10 text-emerald-600',
+                        'Melhoria' => 'bg-blue-500/10 text-blue-600',
+                        'Correção' => 'bg-orange-500/10 text-orange-600',
+                        default    => 'bg-zinc-100 text-zinc-400',
+                    };
+
+                    // Se já foi lido (usando a sua variável $isRead), forçamos o cinza
+                    if ($isRead) {
+                        $corSininho = 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400';
+                    }
+                @endphp
+
+                <div class="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center transition-colors {{ $corSininho }}">
+                    <i class="ph {{ 
+                        $update->category === 'Recurso' ? 'ph-star' : 
+                        ($update->category === 'Melhoria' ? 'ph-rocket-launch' : 'ph-wrench') 
+                    }} text-lg"></i>
                 </div>
 
                 {{-- Texto --}}
@@ -155,7 +178,7 @@
                         <span class="text-xs font-bold truncate w-32">{{ $user->name ?? 'Usuário' }}</span>
                     </div>
                     {{-- Botão de Saída Rápido --}}
-                    <form action="{{ route('logout') }}" method="POST">
+                    <form action="{{ route('logout', ['slug' => request()->route('slug')]) }}" method="POST">
                         @csrf
                         <button type="submit" class="text-white/80 hover:text-white transition-colors">
                             <i class="ph ph-sign-out text-xl"></i>
@@ -177,7 +200,7 @@
                     <div class="my-2 border-t border-zinc-100 dark:border-white/5"></div>
 
                     {{-- Botão de Saída Vermelho --}}
-                    <form action="{{ route('logout') }}" method="POST">
+                    <form action="{{ route('logout', ['slug' => request()->route('slug')]) }}" method="POST">
                         @csrf
                         <button type="submit" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors text-left">
                             <i class="ph ph-power"></i> Deslogar do Sistema

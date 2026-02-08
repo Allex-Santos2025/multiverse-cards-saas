@@ -4,29 +4,41 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes; // <--- Importante para a lixeira
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Catalog\CatalogPrint; // Importa o novo Model
+use App\Models\Catalog\CatalogPrint;
 
 class StockItem extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    /**
-     * A "lista de permissões" para o Laravel, com os nomes corretos das colunas.
-     * CORREÇÃO: Renomeado 'card_id' para 'catalog_print_id'.
-     */
+    protected $table = 'stock_items';
+
     protected $fillable = [
         'store_id',
-        'catalog_print_id', // <--- NOVO CAMPO DE RELACIONAMENTO
-        'condition',
-        'language',
-        'is_foil',
-        'quantity',
+        'catalog_print_id',
         'price',
+        'quantity',
+        'condition',    // NM, SP...
+        'language',     // en, pt...
+        'extras',       // JSON: { "foil": true }
+        'comments',     // Texto livre
+        'real_photos',  // JSON: ["path/to/img1.jpg"]
     ];
 
     /**
-     * Define a ponte: Um item de estoque PERTENCE A uma Loja.
+     * Casts: Transforma dados brutos do banco em tipos PHP utilizáveis.
+     * Fundamental para os campos JSON funcionarem como Arrays.
+     */
+    protected $casts = [
+        'price'       => 'decimal:2',
+        'quantity'    => 'integer',
+        'extras'      => 'array', // O Laravel faz o json_decode/encode sozinho
+        'real_photos' => 'array', // O Laravel faz o json_decode/encode sozinho
+    ];
+
+    /**
+     * Relacionamento: A loja dona deste item.
      */
     public function store(): BelongsTo
     {
@@ -34,29 +46,19 @@ class StockItem extends Model
     }
 
     /**
-     * Define a ponte: Um item de estoque PERTENCE A um CatalogPrint (impressão).
-     * CORREÇÃO: Relacionamento alterado para CatalogPrint.
+     * Relacionamento: A "identidade" da carta (Imagem, Nome, Edição).
      */
     public function catalogPrint(): BelongsTo
     {
         return $this->belongsTo(CatalogPrint::class, 'catalog_print_id');
     }
 
-    // --- RELAÇÃO INDIRETA COM O CONCEITO ---
-
     /**
-     * Relação indireta para buscar o Conceito Pai através do Print.
-     * Necessário para a busca e filtro no Resource.
+     * Acessor: Atalho para pegar o Conceito (Nome Abstrato) através do Print.
+     * Uso: $stockItem->concept->name
      */
-    public function concept()
+    public function getConceptAttribute()
     {
-        return $this->hasOneThrough(
-            \App\Models\Catalog\CatalogConcept::class,
-            CatalogPrint::class,
-            'id', // Chave local na tabela CatalogPrint
-            'id', // Chave local na tabela CatalogConcept
-            'catalog_print_id', // Chave estrangeira no StockItem
-            'concept_id' // Chave estrangeira no CatalogPrint (se existir a relação no CatalogPrint)
-        );
+        return $this->catalogPrint->concept ?? null;
     }
 }
