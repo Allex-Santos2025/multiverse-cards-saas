@@ -26,7 +26,7 @@ class CatalogPrint extends Model
     // Helper para pegar o estoque APENAS da loja atual (muito útil na view)
     public function myStock()
     {
-        return $this->hasOne(\App\Models\StockItem::class, 'catalog_print_id')
+        return $this->hasMany(\App\Models\StockItem::class, 'catalog_print_id')
             ->where('store_id', auth('store_user')->user()->store_id ?? 0);
     }
 

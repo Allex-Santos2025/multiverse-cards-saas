@@ -18,6 +18,12 @@ class ManageInventory extends Component
 
     protected $paginationTheme = 'tailwind'; 
 
+
+    // --- VARIÁVEIS DE CONTROLE DE TELA (O QUE FALTOU) ---
+    public $viewMode = 'list'; // Define qual tela aparece: 'list', 'import', 'export'
+    public $importText = '';   // Onde ficará o texto colado
+    public $importLog = [];    // Para mostrar o resultado depois
+
     // ... Restante do código IGUAL ...
     public $search = '';
     public $gameSlug;
@@ -51,7 +57,9 @@ class ManageInventory extends Component
     {
         $this->slug = $slug;
         $this->gameSlug = $game_slug;
-        $this->userStoreId = auth('store_user')->user()->store_id ?? 1;
+        
+        // Agora sim, pegando o ID correto da loja que o lojista está operando!
+        $this->userStoreId = auth('store_user')->user()->current_store_id;
     }
 
     public function applyFilters() 
@@ -168,97 +176,102 @@ class ManageInventory extends Component
 
     public function render()
     {
-        $query = CatalogPrint::query()
-            ->with([
-                'concept', 
-                'set', 
-                'stockItems' => fn($q) => $q->where('store_id', $this->userStoreId)
-            ]);
+    // 1. Buscamos o ID do Jogo primeiro. Isso tira um peso gigantesco da consulta principal.
+    $gameId = \App\Models\Game::where('url_slug', $this->gameSlug)->value('id');
 
-        $query->whereHas('concept.game', fn($q) => $q->where('url_slug', $this->gameSlug));
+    $query = CatalogPrint::query()
+        ->with([
+            'concept', 
+            'set', 
+            'stockItems' => fn($q) => $q->where('store_id', $this->userStoreId)
+        ]);
 
-        if ($this->searchType === 'minhaLoja') {
-            $query->whereHas('stockItems', function($q) {
-                $q->where('store_id', $this->userStoreId)
-                  ->where('quantity', '>', 0);
-            });
-        }
+    // 2. Filtro ultra-otimizado (1 nível apenas, usando o ID em vez do slug na tabela distante)
+    $query->whereHas('concept', fn($q) => $q->where('game_id', $gameId));
 
-        if ($this->search) {
-            $term = $this->search;
-            $query->where(function(Builder $q) use ($term) {
-                $q->where('printed_name', 'like', "%{$term}%")
-                  ->orWhereHas('concept', fn($c) => $c->where('name', 'like', "%{$term}%"))
-                  ->orWhere('collector_number', $term);
-            });
-        }
+    if ($this->searchType === 'minhaLoja') {
+        $query->whereHas('stockItems', function($q) {
+            $q->where('store_id', $this->userStoreId)
+            ->where('quantity', '>', 0);
+        });
+    }
 
-        if ($this->filterSet) $query->whereHas('set', fn($q) => $q->where('code', $this->filterSet)->orWhere('name', 'like', "%{$this->filterSet}%"));
-        if ($this->filterColor) $query->whereHas('concept', fn($q) => $q->where('color_identity', $this->filterColor));
-        if ($this->filterRarity) $query->where('rarity', $this->filterRarity);
-        if ($this->filterLanguage) $query->where('language_code', $this->filterLanguage);
+    if ($this->search) {
+        $term = $this->search;
+        $query->where(function(Builder $q) use ($term) {
+            $q->where('printed_name', 'like', "%{$term}%")
+            ->orWhereHas('concept', fn($c) => $c->where('name', 'like', "%{$term}%"))
+            ->orWhere('collector_number', $term);
+        });
+    }
 
-        switch ($this->sortOption) {
-            case 'name_asc': 
-                $query->orderBy('printed_name', 'asc');
-                break;
+    if ($this->filterSet) $query->whereHas('set', fn($q) => $q->where('code', $this->filterSet)->orWhere('name', 'like', "%{$this->filterSet}%"));
+    if ($this->filterColor) $query->whereHas('concept', fn($q) => $q->where('color_identity', $this->filterColor));
+    if ($this->filterRarity) $query->where('rarity', $this->filterRarity);
+    if ($this->filterLanguage) $query->where('language_code', $this->filterLanguage);
 
-            case 'name_desc': 
-                $query->orderBy('printed_name', 'desc');
-                break;    
+    switch ($this->sortOption) {
+        case 'name_asc': 
+            $query->orderBy('printed_name', 'asc');
+            break;
 
-            case 'name_en_asc': 
-                $query->join('catalog_concepts', 'catalog_prints.catalog_concept_id', '=', 'catalog_concepts.id')
-                      ->orderBy('catalog_concepts.name', 'asc')
-                      ->select('catalog_prints.*');
-                break;
+        case 'name_desc': 
+            $query->orderBy('printed_name', 'desc');
+            break;    
 
-            case 'name_en_desc': 
-                $query->join('catalog_concepts', 'catalog_prints.catalog_concept_id', '=', 'catalog_concepts.id')
-                      ->orderBy('catalog_concepts.name', 'desc')
-                      ->select('catalog_prints.*');
-                break;
+        case 'name_en_asc': 
+            $query->join('catalog_concepts', 'catalog_prints.concept_id', '=', 'catalog_concepts.id')
+                ->orderBy('catalog_concepts.name', 'asc')
+                ->select('catalog_prints.*');
+            break;
 
-            case 'price_asc': 
-                $query->leftJoin('stock_items', function($join) {
-                    $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
-                         ->where('stock_items.store_id', $this->userStoreId);
-                })->orderBy('stock_items.price', 'asc')->select('catalog_prints.*');
-                break;
+        case 'name_en_desc': 
+            $query->join('catalog_concepts', 'catalog_prints.concept_id', '=', 'catalog_concepts.id')
+                ->orderBy('catalog_concepts.name', 'desc')
+                ->select('catalog_prints.*');
+            break;
 
-            case 'price_desc': 
-                $query->leftJoin('stock_items', function($join) {
-                    $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
-                         ->where('stock_items.store_id', $this->userStoreId);
-                })->orderBy('stock_items.price', 'desc')->select('catalog_prints.*');
-                break;
+        case 'price_asc': 
+            $query->leftJoin('stock_items', function($join) {
+                $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
+                    ->where('stock_items.store_id', $this->userStoreId);
+            })->orderBy('stock_items.price', 'asc')->select('catalog_prints.*');
+            break;
 
-            case 'quantity_asc': 
-                $query->leftJoin('stock_items', function($join) {
-                    $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
-                         ->where('stock_items.store_id', $this->userStoreId);
-                })->orderBy('stock_items.quantity', 'asc')->select('catalog_prints.*');
-                break;
+        case 'price_desc': 
+            $query->leftJoin('stock_items', function($join) {
+                $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
+                    ->where('stock_items.store_id', $this->userStoreId);
+            })->orderBy('stock_items.price', 'desc')->select('catalog_prints.*');
+            break;
 
-            case 'quantity_desc': 
-                $query->leftJoin('stock_items', function($join) {
-                    $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
-                         ->where('stock_items.store_id', $this->userStoreId);
-                })->orderBy('stock_items.quantity', 'desc')->select('catalog_prints.*');
-                break;
+        case 'quantity_asc': 
+            $query->leftJoin('stock_items', function($join) {
+                $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
+                    ->where('stock_items.store_id', $this->userStoreId);
+            })->orderBy('stock_items.quantity', 'asc')->select('catalog_prints.*');
+            break;
 
-            case 'number_desc': 
-                $query->orderByRaw('CAST(regexp_replace(collector_number, "[^9-0]", "") AS UNSIGNED) DESC');
-                break;
+        case 'quantity_desc': 
+            $query->leftJoin('stock_items', function($join) {
+                $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
+                    ->where('stock_items.store_id', $this->userStoreId);
+            })->orderBy('stock_items.quantity', 'desc')->select('catalog_prints.*');
+            break;
 
-            case 'number_asc':
-            default: 
-                $query->orderByRaw('CAST(regexp_replace(collector_number, "[^0-9]", "") AS UNSIGNED) ASC');
-                break;
-        }
+        case 'number_desc': 
+            $query->orderBy('collector_number', 'desc');
+            break;
 
-        return view('livewire.store.dashboard.stock.manage-inventory', [
-            'items' => $query->paginate(50)
-        ])->extends('layouts.dashboard')->section('content');
+        case 'number_asc':
+        default: 
+            $query->orderBy('collector_number', 'asc');
+            break;
+    }
+
+    // 3. Voltamos ao paginate(50) para respeitar o seu Blade e mostrar a contagem total
+    return view('livewire.store.dashboard.stock.manage-inventory', [
+        'items' => $query->paginate(50)
+    ])->extends('layouts.dashboard')->section('content');
     }
 }

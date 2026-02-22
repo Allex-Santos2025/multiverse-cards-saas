@@ -57,34 +57,99 @@
     <div class="flex-1 flex overflow-hidden bg-gray-100 dark:bg-[#0f172a] border-t border-gray-200 dark:border-white/10 relative transition-colors duration-300">
         
         {{-- SIDEBAR --}}
-        <aside id="sidebar" class="bg-white dark:bg-black/20 border-r border-gray-200 dark:border-white/5 flex flex-col shrink-0 group transition-colors duration-300" :class="{ 'collapsed': sidebarCollapsed }">
-            <div class="p-3 flex justify-end border-b border-gray-200 dark:border-white/5">
-                <button @click="toggleSidebar()" class="text-gray-500 hover:text-gray-900 dark:text-zinc-500 dark:hover:text-white p-1 rounded transition-colors"><i class="ph text-xl" :class="sidebarCollapsed ? 'ph-arrows-out-line-horizontal' : 'ph-arrows-in-line-horizontal'"></i></button>
-            </div>
-            <nav class="flex-1 overflow-y-auto py-4 space-y-6">
-                <div>
-                    <span class="group-title px-4 text-[8px] font-black text-gray-500 dark:text-zinc-600 uppercase tracking-widest block mb-2">Entrada</span>
-                    <ul class="space-y-1 px-2">
-                        <li><a href="#" class="nav-link flex items-center px-3 py-2 rounded bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black text-[10px] uppercase"><i class="ph ph-list-plus nav-icon text-lg mr-3"></i> <span class="nav-label">Grade Magic</span></a></li>
-                        <li><a href="#" class="nav-link flex items-center px-3 py-2 rounded text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-all font-bold text-[10px] uppercase"><i class="ph ph-file-txt nav-icon text-lg mr-3"></i> <span class="nav-label">Importar Bulk</span></a></li>
-                    </ul>
-                </div>
-                <div>
-                    <span class="group-title px-4 text-[8px] font-black text-gray-500 dark:text-zinc-600 uppercase tracking-widest block mb-2">Gestão</span>
-                    <ul class="space-y-1 px-2">
-                        <li><a href="#" class="nav-link flex items-center px-3 py-2 rounded text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-all font-bold text-[10px] uppercase"><i class="ph ph-chart-line-up nav-icon text-lg mr-3"></i> <span class="nav-label">Curva ABC</span></a></li>
-                        <li><a href="#" class="nav-link flex items-center px-3 py-2 rounded text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-all font-bold text-[10px] uppercase"><i class="ph ph-tags nav-icon text-lg mr-3"></i> <span class="nav-label">Precificação</span></a></li>
-                    </ul>
-                </div>
-            </nav>
-            <div class="p-4 border-t border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-black/20">
-                <button class="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-none hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-600 dark:text-zinc-300 py-2 rounded font-black text-[9px] uppercase flex items-center justify-center transition-all shadow-sm dark:shadow-none"><i class="ph ph-gear text-lg"></i> <span class="sidebar-footer-text ml-2">Config. Magic</span></button>
-            </div>
-        </aside>
+        <aside id="sidebar" class="bg-white dark:bg-black/20 border-r border-gray-200 dark:border-white/5 flex flex-col shrink-0 group transition-colors duration-300 self-start" :class="{ 'collapsed': sidebarCollapsed }">
+    {{-- Botão de Toggle --}}
+    <div class="p-3 flex justify-end border-b border-gray-200 dark:border-white/5">
+        <button @click="toggleSidebar()" class="text-gray-500 hover:text-gray-900 dark:text-zinc-500 dark:hover:text-white p-1 rounded transition-colors">
+            <i class="ph text-xl" :class="sidebarCollapsed ? 'ph-arrows-out-line-horizontal' : 'ph-arrows-in-line-horizontal'"></i>
+        </button>
+    </div>
+
+    {{-- Navegação --}}
+    <nav class="py-4 space-y-6">
+        {{-- ENTRADA --}}
+        <div>
+            <span class="group-title px-4 text-[8px] font-black text-gray-500 dark:text-zinc-600 uppercase tracking-widest block mb-2">Entrada</span>
+            <ul class="space-y-1 px-2">
+                <li>
+                    <button type="button" @click="$dispatch('mudar-aba', 'lista')" class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
+                       {{ $viewMode === 'list' 
+                          ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
+                          : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white' 
+                       }}">
+                        <i class="ph ph-squares-four nav-icon text-lg mr-3"></i> 
+                        <span class="nav-label">Inventário Geral</span>
+                    </button>
+                </li>
+                <li>
+                    <button type="button" @click="$dispatch('mudar-aba', 'importar')" 
+                       class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
+                       {{ $viewMode === 'import' 
+                          ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
+                          : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white' 
+                       }}">
+                        <i class="ph ph-file-txt nav-icon text-lg mr-3"></i> 
+                        <span class="nav-label">Importar Cards</span>
+                    </button>
+                </li>
+                <li>
+                    <a href="#" wire:click.prevent="$set('viewMode', 'export')" 
+                    class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
+                    {{ $viewMode === 'export' 
+                        ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
+                        : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white' 
+                    }}">
+                        <i class="ph ph-export nav-icon text-lg mr-3"></i> 
+                        <span class="nav-label">Exportar Cards</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+
+        {{-- GESTÃO --}}
+        <div>
+            <span class="group-title px-4 text-[8px] font-black text-gray-500 dark:text-zinc-600 uppercase tracking-widest block mb-2">Gestão</span>
+            <ul class="space-y-1 px-2">
+                <li>
+                    <a href="#" wire:click.prevent="$set('viewMode', 'products')" 
+                       class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
+                       {{ $viewMode === 'products' 
+                          ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
+                          : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white' 
+                       }}">
+                        <i class="ph ph-package nav-icon text-lg mr-3"></i> 
+                        <span class="nav-label">Meus Produtos</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" wire:click.prevent="$set('viewMode', 'discounts')" 
+                       class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
+                       {{ $viewMode === 'discounts' 
+                          ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
+                          : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white' 
+                       }}">
+                        <i class="ph ph-tag nav-icon text-lg mr-3"></i> 
+                        <span class="nav-label">Descontos</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    {{-- Footer --}}
+    <div class="p-4 border-t border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-black/20">
+        <button class="w-full bg-white dark:bg-zinc-800 border border-gray-200 dark:border-none hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-600 dark:text-zinc-300 py-2 rounded font-black text-[9px] uppercase flex items-center justify-center transition-all shadow-sm dark:shadow-none">
+            <i class="ph ph-gear text-lg"></i> 
+            <span class="sidebar-footer-text ml-2">Config. Magic</span>
+        </button>
+    </div>
+</aside>
     
         {{-- MAIN CONTENT --}}
         <main class="flex-grow p-6 md:p-10 w-full max-w-8xl overflow-x-auto no-scrollbar overflow-y-auto" x-data="cardPreview()">
-        
+        <div x-data="{ aba: 'lista' }" @mudar-aba.window="aba = $event.detail">
+            <div x-show="aba === 'lista'">
             {{-- ÁREA DE BUSCA --}}
             <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8 transition-colors duration-300">
                 <div class="flex justify-between items-center mb-6">
@@ -471,7 +536,12 @@
             </div>
 
             {{-- Imagem de Preview --}}
-            <img x-ref="previewImg" src="" class="card-image-preview" :class="{ 'opacity-100 block': show, 'opacity-0 hidden': !show }" style="display: none;">
+            <img x-ref="previewImg" src="" class="card-image-preview" :class="{ 'opacity-100 block': show, 'opacity-0 hidden': !show }" style="display: none;">  
+            </div>
+                <div x-show="aba === 'importar'" x-cloak>
+                @include('livewire.store.dashboard.stock.inventory-import')
+                </div>
+            </div>
         </main>
     </div>
 

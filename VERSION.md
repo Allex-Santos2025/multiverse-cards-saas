@@ -136,6 +136,24 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.0.6`  
+**Data:** 22/02/2026   
+**Descrição da Versão:** 
+- Correção crítica de vazamento de dados (Multi-tenant) e otimização de performance no carregamento do Inventário Geral (Magic: The Gathering).
+**Branding & Domínio:**
+- Refinamento da arquitetura Multi-tenant do sistema, assegurando o isolamento absoluto das operações de banco de dados entre diferentes lojistas ativos no marketplace.
+**Banco de Dados (Refatoração):**
+- Otimização de Queries (Filtros): Remoção do aninhamento profundo (`whereHas('concept.game')`) e substituição por resolução prévia do ID do jogo (`$gameId`). Isso eliminou múltiplos `EXISTS` no banco, cortando o Full Table Scan em cascata na tabela de 530+ mil registros.
+- Otimização de Queries (Ordenação): Remoção de cálculos pesados de Expressão Regular (`regexp_replace`) na coluna de numeração do colecionador (`collector_number`), substituindo pela ordenação nativa para devolver a velocidade à tela.
+**Funcionalidades (UX/UI):** 
+- Estabilidade de Interface: Manutenção da contagem exata do catálogo em tempo real para o lojista (`$items->total()`), revertendo tentativas de paginação simples que quebravam o contrato com a view Blade.
+**Correções e Melhorias:**
+- Bugfix Crítico (Erro 500): Resolução da exceção `BadMethodCallException` causada pela incompatibilidade de métodos de paginação com o contador visual do layout.
+**Segurança:**
+- Isolamento de Lojas (Tenant Context): Correção de vulnerabilidade lógica na função `mount()` do Livewire. O identificador da loja logada foi alterado de `store_id` (que permitia fallbacks perigosos para o ID 1) para a coluna correta de operação `current_store_id`. Isso garante que nenhuma loja tenha acesso de leitura ou gravação ao estoque de terceiros.  
+
+---
+
 ## 📈 Próxima Versão Planejada
 
 **Próxima versão:** `alpha v0.1.0`  
