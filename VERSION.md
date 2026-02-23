@@ -154,6 +154,30 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.0.7`  
+**Data:** 22/02/2026   
+**Descrição da Versão:** 
+- Lançamento do módulo de `Importação de Inventário via Arquivo (.txt / .csv)` com suporte a Drag & Drop e processamento agnóstico.
+**Branding & Domínio:**
+- Implementação de arquitetura de leitura local via `FileReader` (JavaScript/Alpine.js), eliminando a necessidade de uploads temporários no servidor e aumentando a privacidade dos dados do lojista.
+**Banco de Dados (Refatoração):**
+- Integração de Catálogo Agnóstico: Refatoração da lógica de busca para conectar arquivos externos ao `CatalogPrint` através do `set_code` e `printed_name`, garantindo que o estoque seja vinculado corretamente à identidade global da carta.
+- Persistência Segura: Implementação de `DB::beginTransaction` e `Rollback` no processo de importação em lote para garantir integridade total do banco em caso de falha em linhas específicas.
+**Funcionalidades (UX/UI):** 
+- Drag & Drop Inteligente: Área de upload receptiva que identifica o arraste de arquivos, com feedback visual de estado (borda dashed/highlight) via Alpine.js.
+- Processamento Instantâneo: Leitura automática do conteúdo do arquivo para o campo de edição (`textarea`), permitindo que o lojista revise ou corrija dados antes da gravação final.
+**Páginas Adicionadas:**
+**Importação de Estoque:**
+- Aba de Importação de Estoque: Interface dedicada com dicionário de termos (Qualidade/Idioma) e exemplo de formatação integrada ao Dashboard.
+**Funcionalidades (Loja / Dashboard):**
+- Regex Universal: Motor de extração de dados configurado para aceitar siglas de edições de 2 a 5 caracteres (`[A-Z0-9]{2,5}`), preparando o sistema para expansão de múltiplos TCGs.
+- Regras de Negócio em Lote: Integração do seletor de "Extras do Lote" (Foil, Etched, etc.) e limitador de quantidade (Regra de 4 unidades) aplicados automaticamente durante o processamento da lista.
+- Sincronização de Abas: Implementação de `dispatch` para alternância automática entre a aba de importação e a lista de estoque após o sucesso da operação.
+**Segurança:**
+- Tenant Isolation: Validação rigorosa do `current_store_id` em cada inserção do `updateOrCreate`, impedindo que importações massivas afetem ou visualizem estoques de outras lojas do marketplace.  
+
+---
+
 ## 📈 Próxima Versão Planejada
 
 **Próxima versão:** `alpha v0.1.0`  

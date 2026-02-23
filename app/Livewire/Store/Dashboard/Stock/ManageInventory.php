@@ -20,8 +20,7 @@ class ManageInventory extends Component
 
 
     // --- VARIÁVEIS DE CONTROLE DE TELA (O QUE FALTOU) ---
-    public $viewMode = 'list'; // Define qual tela aparece: 'list', 'import', 'export'
-    public $importText = '';   // Onde ficará o texto colado
+    public $viewMode = 'list'; // Define qual tela aparece: 'list', 'import', 'export'    
     public $importLog = [];    // Para mostrar o resultado depois
 
     // ... Restante do código IGUAL ...
@@ -43,6 +42,15 @@ class ManageInventory extends Component
     public $editingPrintId;
     
     public $sortOption = 'number_asc';
+
+    // Propriedades para o Módulo de Importação
+    public $importText = '';
+    public $importErrors = [];
+    public $limitToFour = 1; 
+    public $selectedExtras = []; 
+
+    // Regex Universal: Aceita códigos de edição de 2 a 5 caracteres
+    protected $importPattern = '/^(\d+)\s+(.+?)\s+\[([A-Z0-9]{2,5})\]\s+(NM|SP|MP|HP|D)\s+(PT|EN|JP|ES|IT)\s+([\d\.]+)$/i';
 
     protected $queryString = [
         'search'          => ['except' => ''],
@@ -273,5 +281,99 @@ class ManageInventory extends Component
     return view('livewire.store.dashboard.stock.manage-inventory', [
         'items' => $query->paginate(50)
     ])->extends('layouts.dashboard')->section('content');
+    }
+
+    public function processImport()
+    {
+        $this->importErrors = [];
+        $lines = explode("\n", str_replace("\r", "", trim($this->importText)));
+        
+        if (empty($lines[0])) {
+            $this->importErrors[] = "A caixa de texto está vazia.";
+            return;
+        }
+
+        $validData = [];
+        // Pega o ID da loja logada (Ajustado para o seu padrão de autenticação)
+        $storeId = auth('store_user')->user()->current_store_id;
+
+        foreach ($lines as $index => $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+
+            if (preg_match($this->importPattern, $line, $matches)) {
+                $qtd = (int)$matches[1];
+                if ($this->limitToFour == 1 && $qtd > 4) $qtd = 4;
+
+                $validData[] = [
+                    'line'      => $index + 1,
+                    'quantity'  => $qtd,
+                    'name'      => trim($matches[2]),
+                    'set_code'  => strtoupper($matches[3]),
+                    'condition' => strtoupper($matches[4]),
+                    'language'  => strtoupper($matches[5]),
+                    'price'     => (float)$matches[6],
+                ];
+            } else {
+                $this->importErrors[] = "Linha " . ($index + 1) . ": Formato inválido.";
+            }
+        }
+
+        if (!empty($this->importErrors)) return;
+
+        \DB::beginTransaction();
+
+        try {
+            foreach ($validData as $item) {
+                // BUSCA CIRÚRGICA: CatalogPrint -> Set (code) -> Concept (name)
+                $print = \App\Models\Catalog\CatalogPrint::whereHas('set', function($q) use ($item) {
+                    $q->where('code', $item['set_code']);
+                })
+                ->where(function($q) use ($item) {
+                    $q->where('printed_name', $item['name'])
+                    ->orWhereHas('concept', function($sub) use ($item) {
+                        $sub->where('name', $item['name']);
+                    });
+                })->first();
+
+                if (!$print) {
+                    $this->importErrors[] = "Linha {$item['line']}: Carta '{$item['name']}' [{$item['set_code']}] não encontrada.";
+                    continue;
+                }
+
+                // SALVAMENTO AGNOSTICO: Vincula o estoque ao CatalogPrint
+                \App\Models\StockItem::updateOrCreate(
+                    [
+                        'store_id'         => $storeId,
+                        'catalog_print_id' => $print->id,
+                        'condition'        => $item['condition'],
+                        'language'         => $item['language'],
+                        'extras'           => $this->selectedExtras, // Vem do seu checkbox Alpine
+                    ],
+                    [
+                        // Incrementa se já existir (DB::raw para evitar race conditions)
+                        'quantity' => \DB::raw("quantity + {$item['quantity']}"),
+                        'price'    => $item['price']
+                    ]
+                );
+            }
+
+            if (!empty($this->importErrors)) {
+                \DB::rollBack();
+                return;
+            }
+
+            \DB::commit();
+
+            // Limpa tudo e volta para a aba de lista
+            $this->reset(['importText', 'selectedExtras']);
+            $this->activeTab = 'lista';
+            
+            $this->dispatch('inventory-updated');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            $this->importErrors[] = "Erro técnico: " . $e->getMessage();
+        }
     }
 }
