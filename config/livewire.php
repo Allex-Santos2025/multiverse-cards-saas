@@ -80,8 +80,7 @@ return [
     /*
     |---------------------------------------------------------------------------
     | Render On Redirect
-    |---------------------------------------------------------------------------
-    |
+            |
     | This value determines if Livewire will run a component's `render()` method
     | after a redirect has been triggered using something like `redirect(...)`
     | Setting this to true will render the view once more before redirecting

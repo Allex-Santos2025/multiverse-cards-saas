@@ -178,6 +178,25 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.0.8`  
+**Data:** 06/03/2026  
+**Descrição da Versão:** - Lançamento do módulo de `Exportação em Massa .TXT` para inventário de loja, complementado por estabilização estrutural do motor de importação e performance de banco de dados.
+**Funcionalidades (Loja / Dashboard):**
+- Módulo de Exportação (Export Manager): Implementação de rotina de extração de dados que converte o estoque da loja autenticada (`current_store_id`) para o formato padrão universal de TCGs (`Qtd Name [Set] Cond Lang (Extras) Price`).
+- Download Dinâmico: Geração de arquivos `.txt` construídos em memória (sem gravar arquivos temporários no servidor), forçando o download direto no navegador do lojista.
+- Isolamento de Exportação: A query de exportação respeita rigidamente o escopo Multi-tenant, garantindo que o arquivo gerado contenha estritamente os itens com quantidade maior que zero pertencentes à loja logada.
+**Banco de Dados (Refatoração):**
+- Preparação para Carga Pesada (Export/Import): Criação de índices no MariaDB (`idx_catalog_prints_name`, `idx_catalog_prints_set_number`, `idx_stock_items_price`, `idx_stock_items_qty`) para garantir que a varredura do banco na hora de exportar milhares de cartas seja executada em milissegundos.
+- Paginação Global e Joins: Refatoração da query principal da lista de estoque para ordenar os itens globais do catálogo via SQL antes da paginação, permitindo que a visualização da tela seja idêntica à ordem do arquivo exportado.
+**Correções e Melhorias:**
+- Estabilização do Interpretador Híbrido (`saveForm`): Atualização da lógica de salvamento para decodificar chaves de array mistas (prefixos `p` para novos e `s` para itens já em estoque), evitando erros de colisão e permitindo edições limpas pós-importação.
+- Tratamento Silencioso no Importador: Remoção de interrupções de debug (dumps residuais) e adição de *Graceful Degradation* — linhas com formatos inválidos ou cartas inexistentes no upload não quebram mais o processamento em lote, apenas geram log de erro visual na tela.
+
+**Filtros Avançados:**
+- Restauração de Integridade ("Minha Loja"): Correção do filtro isolado usando o relacionamento `whereHas('stockItems')` para garantir que a visualização em tela espelhe perfeitamente a base que será enviada para o arquivo de exportação.
+
+---
+
 ## 📈 Próxima Versão Planejada
 
 **Próxima versão:** `alpha v0.1.0`  

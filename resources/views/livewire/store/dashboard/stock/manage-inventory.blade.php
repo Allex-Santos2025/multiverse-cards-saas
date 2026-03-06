@@ -93,7 +93,7 @@
                     </button>
                 </li>
                 <li>
-                    <a href="#" wire:click.prevent="$set('viewMode', 'export')" 
+                    <button type="button" @click="$dispatch('mudar-aba', 'exportar')" 
                     class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
                     {{ $viewMode === 'export' 
                         ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
@@ -101,7 +101,7 @@
                     }}">
                         <i class="ph ph-export nav-icon text-lg mr-3"></i> 
                         <span class="nav-label">Exportar Cards</span>
-                    </a>
+                    </button>
                 </li>
             </ul>
         </div>
@@ -270,7 +270,7 @@
                             </select>
                         </div>
                         <div class="text-gray-500 dark:text-gray-400 text-sm font-medium">
-                            Mostrando {{ $items->firstItem() }}-{{ $items->lastItem() }} de {{ number_format($items->total(), 0, ',', '.') }}
+                            Mostrando {{ $pagination->firstItem() }}-{{ $pagination->lastItem() }} de {{ number_format($pagination->total(), 0, ',', '.') }}
                         </div>
                     </div>
                 </div>
@@ -299,30 +299,31 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                @forelse($items as $print)
-                                    @php
-                                        $rarity = strtolower($print->rarity ?? 'common');
-                                        $colors = match($rarity) {
-                                            'common' => ['text-gray-400', 'bg-gray-500'],
-                                            'uncommon' => ['text-slate-400', 'bg-slate-500'],
-                                            'rare' => ['text-yellow-500', 'bg-yellow-600'],
-                                            'mythic' => ['text-orange-500', 'bg-orange-600'],
-                                            default => ['text-gray-300', 'bg-gray-400'],
-                                        };
-                                        [$textColor, $iconBgColor] = $colors;
-                                        
-                                        $stock = $print->stockItems->first();
-                                        $qty = $stock ? $stock->quantity : 0;
-                                        $dbPrice = $stock ? $stock->price : '';
-                                        $condition = $stock ? $stock->condition : 'NM';
-                                        $currentExtras = $stock ? ($stock->extras ?? []) : [];
-                                    @endphp
+                                @forelse($items as $item) {{-- Mudamos de $print para $item --}}
+                                @php
+                                    // Extraímos os dados do array que criamos no render
+                                    $print = $item['print'];
+                                    $stock = $item['stock'];
+                                    $uniqueId = $item['unique_row_id'];
+
+                                    $rarity = strtolower($print->rarity ?? 'common');
+                                    $colors = match($rarity) {
+                                        'common' => ['text-gray-400', 'bg-gray-500'],
+                                        'uncommon' => ['text-slate-400', 'bg-slate-500'],
+                                        'rare' => ['text-yellow-500', 'bg-yellow-600'],
+                                        'mythic' => ['text-orange-500', 'bg-orange-600'],
+                                        default => ['text-gray-300', 'bg-gray-400'],
+                                    };
+                                    [$textColor, $iconBgColor] = $colors;
+                                    
+                                    // O $stock já vem pronto do nosso array expandido, não precisa de ->first()
+                                @endphp
                                     
                                     <tr wire:key="row-{{ $print->id }}">
                                         
                                         {{-- COLUNA ESTOQUE --}}
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div x-data="{ qty: {{ $qty }} }" class="flex items-center space-x-2">
+                                        <td class="px-6 py-4 whitespace-nowrap">       
+                                            <div x-data="{ qty: {{ $stock->quantity ?? 0 }} }" class="flex items-center space-x-2">
                                                 <button type="button" @click="qty > 0 ? qty-- : 0" class="text-gray-400 hover:text-orange-500 focus:outline-none">
                                                     <i class="ph ph-minus-circle text-xl"></i>
                                                 </button>
@@ -344,7 +345,7 @@
                                                 <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-gray-500 sm:text-sm">R$</span>
                                                 <input type="number" 
                                                        name="items[{{ $print->id }}][price]"
-                                                       value="{{ $dbPrice }}"
+                                                       value="{{ number_format($stock->price ?? 0, 2, '.', '') }}"
                                                        step="0.01" 
                                                        class="block w-24 rounded-md border-0 py-1.5 pl-8 pr-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm dark:bg-gray-700 dark:text-white dark:ring-gray-600" placeholder="0.00">
                                             </div>
@@ -365,13 +366,13 @@
 
                                         {{-- COLUNA QUALIDADE --}}
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <select name="items[{{ $print->id }}][condition]" class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm focus:outline-none focus:border-orange-500 text-gray-900 dark:text-white transition-colors">
-                                                <option value="M" {{ $condition == 'M' ? 'selected' : '' }}>M</option>
-                                                <option value="NM" {{ $condition == 'NM' ? 'selected' : '' }}>NM</option>
-                                                <option value="SP" {{ $condition == 'SP' ? 'selected' : '' }}>SP</option>
-                                                <option value="MP" {{ $condition == 'MP' ? 'selected' : '' }}>MP</option>
-                                                <option value="HP" {{ $condition == 'HP' ? 'selected' : '' }}>HP</option>
-                                                <option value="D" {{ $condition == 'D' ? 'selected' : '' }}>D</option>
+                                            <select name="items[{{ $uniqueId }}][condition]" class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm focus:outline-none focus:border-orange-500 text-gray-900 dark:text-white transition-colors">
+                                                <option value="M" {{ ($stock->condition ?? '') == 'M' ? 'selected' : '' }}>M</option>
+                                                <option value="NM" {{ ($stock->condition ?? 'NM') == 'NM' ? 'selected' : '' }}>NM</option>
+                                                <option value="SP" {{ ($stock->condition ?? '') == 'SP' ? 'selected' : '' }}>SP</option>
+                                                <option value="MP" {{ ($stock->condition ?? '') == 'MP' ? 'selected' : '' }}>MP</option>
+                                                <option value="HP" {{ ($stock->condition ?? '') == 'HP' ? 'selected' : '' }}>HP</option>
+                                                <option value="D" {{ ($stock->condition ?? '') == 'D' ? 'selected' : '' }}>D</option>
                                             </select>
                                         </td>
 
@@ -380,7 +381,7 @@
 <td class="px-6 py-4 whitespace-nowrap" 
     x-data="{ 
         open: false,
-        selections: {{ json_encode($currentExtras) }},
+        selections: {{ json_encode($stock->extras ?? []) }},
         style: { left: '0px', top: 'auto', bottom: 'auto', width: 'auto', maxHeight: '250px' },
         
         toggle() {
@@ -531,7 +532,7 @@
 
                 {{-- Paginação --}}
                 <div class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
-                    {{ $items->links() }}
+                    {{ $pagination->links() }}
                 </div>
             </div>
 
@@ -540,6 +541,9 @@
             </div>
                 <div x-show="aba === 'importar'" x-cloak>
                 @include('livewire.store.dashboard.stock.inventory-import')
+                </div>
+                <div x-show="aba === 'exportar'" x-cloak>
+                    @livewire('store.dashboard.stock.inventory-export')
                 </div>
             </div>
         </main>

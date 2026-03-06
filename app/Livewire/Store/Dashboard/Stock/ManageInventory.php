@@ -50,7 +50,7 @@ class ManageInventory extends Component
     public $selectedExtras = []; 
 
     // Regex Universal: Aceita códigos de edição de 2 a 5 caracteres
-    protected $importPattern = '/^(\d+)\s+(.+?)\s+\[([A-Z0-9]{2,5})\]\s+(NM|SP|MP|HP|D)\s+(PT|EN|JP|ES|IT)\s+([\d\.]+)$/i';
+    protected $importPattern = '/^(?<qtd>\d+)\s+(?<name>.+?)\s+\[(?<set>[A-Z0-9]{2,5})\]\s+(?<cond>M|NM|SP|MP|HP|D)\s+(?<lang>[A-Z]{2,3})(?:\s+\((?<extras>[^\)]+)\))?(?:\s+(?<price>[\d\.,]+))?\s*$/iu';
 
     protected $queryString = [
         'search'          => ['except' => ''],
@@ -85,20 +85,15 @@ class ManageInventory extends Component
     {
         if (!isset($formData['items']) || empty($formData['items'])) return;
 
-        // 1. Descobre quais itens dessa página JÁ existem no banco para não fazer consultas repetidas
-        $printIds = array_keys($formData['items']);
-        $existingItems = StockItem::where('store_id', $this->userStoreId)
-            ->whereIn('catalog_print_id', $printIds)
-            ->pluck('catalog_print_id')
-            ->toArray();
-
         DB::beginTransaction();
         try {
-            foreach ($formData['items'] as $printId => $data) {
+            foreach ($formData['items'] as $uniqueId => $data) {
                 
+                // 1. Identifica se é registro novo (Catálogo = p) ou existente (Estoque = s)
+                $isExistingStock = str_starts_with($uniqueId, 's');
+                $realId = substr($uniqueId, 1); // Remove a letra 'p' ou 's' para pegar o número real
+
                 // --- CORREÇÃO 1: PREÇO ---
-                // Simplesmente troca vírgula por ponto. 
-                // "0,25" vira "0.25". "25,00" vira "25.00".
                 $priceRaw = $data['price'] ?? 0;
                 $price = (float) str_replace(',', '.', $priceRaw); 
 
@@ -108,32 +103,44 @@ class ManageInventory extends Component
                 $extras = $data['extras'] ?? [];
 
                 // --- CORREÇÃO 2: EVITAR SALVAR VAZIOS ---
-                // Verifica se tem algum dado relevante (Preço, Qtd ou Extras)
                 $hasData = ($qty > 0) || ($price > 0.0) || (!empty($extras));
-                
-                // Verifica se o item já existe no banco
-                $existsInDb = in_array($printId, $existingItems);
 
-                // SE não existe no banco E não tem dados preenchidos -> PULA (Não salva lixo)
-                if (!$existsInDb && !$hasData) {
-                    continue;
+                if ($isExistingStock) {
+                    // SE JÁ EXISTE NO ESTOQUE (s + ID do StockItem)
+                    // Atualiza diretamente o registro específico usando o ID dele
+                    \App\Models\StockItem::where('id', $realId)
+                        ->where('store_id', $this->userStoreId)
+                        ->update([
+                            'quantity'  => $qty,
+                            'price'     => $price,
+                            'condition' => $cond,
+                            'extras'    => $extras, 
+                            'language'  => $language,
+                            'updated_at'=> now()
+                        ]);
+                } else {
+                    // SE É UMA CARTA NOVA NA LOJA (p + ID do CatalogPrint)
+                    // Se não tem dados preenchidos, pula para não salvar lixo
+                    if (!$hasData) {
+                        continue;
+                    }
+
+                    // Se tem dados, cria o item atrelando ao ID do catálogo
+                    \App\Models\StockItem::updateOrCreate(
+                        [
+                            'store_id'         => $this->userStoreId,
+                            'catalog_print_id' => $realId,
+                        ],
+                        [
+                            'quantity'  => $qty,
+                            'price'     => $price,
+                            'condition' => $cond,
+                            'extras'    => $extras,
+                            'language'  => $language,
+                            'updated_at'=> now()
+                        ]
+                    );
                 }
-
-                // Se chegou aqui, ou já existia (e vamos atualizar) ou é novo e tem dados
-                StockItem::updateOrCreate(
-                    [
-                        'store_id'         => $this->userStoreId,
-                        'catalog_print_id' => $printId,
-                    ],
-                    [
-                        'quantity'  => $qty,
-                        'price'     => $price,
-                        'condition' => $cond,
-                        'extras'    => $extras,
-                        'language'  => $language,
-                        'updated_at'=> now()
-                    ]
-                );
             }
             DB::commit();
             $this->dispatch('notify', type: 'success', message: 'Estoque salvo com sucesso!');
@@ -184,103 +191,65 @@ class ManageInventory extends Component
 
     public function render()
     {
-    // 1. Buscamos o ID do Jogo primeiro. Isso tira um peso gigantesco da consulta principal.
-    $gameId = \App\Models\Game::where('url_slug', $this->gameSlug)->value('id');
+        $gameId = \App\Models\Game::where('url_slug', $this->gameSlug)->value('id');
+        $sort = $this->sortOption ?? 'name_asc';
 
-    $query = CatalogPrint::query()
-        ->with([
-            'concept', 
-            'set', 
-            'stockItems' => fn($q) => $q->where('store_id', $this->userStoreId)
-        ]);
+        $query = \App\Models\Catalog\CatalogPrint::query()
+            ->select('catalog_prints.*')
+            ->with(['concept', 'set', 'stockItems' => fn($q) => $q->where('store_id', $this->userStoreId)]);
 
-    // 2. Filtro ultra-otimizado (1 nível apenas, usando o ID em vez do slug na tabela distante)
-    $query->whereHas('concept', fn($q) => $q->where('game_id', $gameId));
-
-    if ($this->searchType === 'minhaLoja') {
-        $query->whereHas('stockItems', function($q) {
-            $q->where('store_id', $this->userStoreId)
-            ->where('quantity', '>', 0);
-        });
-    }
-
-    if ($this->search) {
-        $term = $this->search;
-        $query->where(function(Builder $q) use ($term) {
-            $q->where('printed_name', 'like', "%{$term}%")
-            ->orWhereHas('concept', fn($c) => $c->where('name', 'like', "%{$term}%"))
-            ->orWhere('collector_number', $term);
-        });
-    }
-
-    if ($this->filterSet) $query->whereHas('set', fn($q) => $q->where('code', $this->filterSet)->orWhere('name', 'like', "%{$this->filterSet}%"));
-    if ($this->filterColor) $query->whereHas('concept', fn($q) => $q->where('color_identity', $this->filterColor));
-    if ($this->filterRarity) $query->where('rarity', $this->filterRarity);
-    if ($this->filterLanguage) $query->where('language_code', $this->filterLanguage);
-
-    switch ($this->sortOption) {
-        case 'name_asc': 
-            $query->orderBy('printed_name', 'asc');
-            break;
-
-        case 'name_desc': 
-            $query->orderBy('printed_name', 'desc');
-            break;    
-
-        case 'name_en_asc': 
+        // APLICAÇÃO DA ORDENAÇÃO GLOBAL COM OS NOVOS ÍNDICES
+        if (str_contains($sort, 'name_en')) {
             $query->join('catalog_concepts', 'catalog_prints.concept_id', '=', 'catalog_concepts.id')
-                ->orderBy('catalog_concepts.name', 'asc')
-                ->select('catalog_prints.*');
-            break;
+                ->orderBy('catalog_concepts.name', str_contains($sort, 'asc') ? 'asc' : 'desc');
+        } elseif (str_contains($sort, 'number')) {
+            $query->join('sets', 'catalog_prints.set_id', '=', 'sets.id')
+                ->orderBy('sets.released_at', str_contains($sort, 'asc') ? 'desc' : 'asc')
+                ->orderBy('catalog_prints.collector_number', 'asc');
+        } elseif (str_contains($sort, 'price')) {
+            $query->leftJoin('stock_items', 'catalog_prints.id', '=', 'stock_items.catalog_print_id')
+                ->orderBy('stock_items.price', str_contains($sort, 'asc') ? 'asc' : 'desc');
+        } elseif (str_contains($sort, 'qty')) {
+            $query->leftJoin('stock_items', 'catalog_prints.id', '=', 'stock_items.catalog_print_id')
+                ->orderBy('stock_items.quantity', str_contains($sort, 'asc') ? 'asc' : 'desc');
+        } else {
+            $query->orderBy('catalog_prints.printed_name', str_contains($sort, 'asc') ? 'asc' : 'desc');
+        }
 
-        case 'name_en_desc': 
-            $query->join('catalog_concepts', 'catalog_prints.concept_id', '=', 'catalog_concepts.id')
-                ->orderBy('catalog_concepts.name', 'desc')
-                ->select('catalog_prints.*');
-            break;
+        $query->whereHas('set', fn($q) => $q->where('game_id', $gameId));
 
-        case 'price_asc': 
-            $query->leftJoin('stock_items', function($join) {
-                $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
-                    ->where('stock_items.store_id', $this->userStoreId);
-            })->orderBy('stock_items.price', 'asc')->select('catalog_prints.*');
-            break;
+        if ($this->searchType === 'minhaLoja') {
+            $query->whereHas('stockItems', function($q) {
+                $q->where('store_id', $this->userStoreId)
+                  ->where('quantity', '>', 0);
+            });
+        }
 
-        case 'price_desc': 
-            $query->leftJoin('stock_items', function($join) {
-                $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
-                    ->where('stock_items.store_id', $this->userStoreId);
-            })->orderBy('stock_items.price', 'desc')->select('catalog_prints.*');
-            break;
+        if ($this->search) {
+            $term = $this->search;
+            $query->where(function($q) use ($term) {
+                $q->where('printed_name', 'like', "%{$term}%")
+                ->orWhereHas('concept', fn($c) => $c->where('name', 'like', "%{$term}%"));
+            });
+        }
 
-        case 'quantity_asc': 
-            $query->leftJoin('stock_items', function($join) {
-                $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
-                    ->where('stock_items.store_id', $this->userStoreId);
-            })->orderBy('stock_items.quantity', 'asc')->select('catalog_prints.*');
-            break;
+        $catalogItems = $query->paginate(50);
+        $expandedItems = collect();
 
-        case 'quantity_desc': 
-            $query->leftJoin('stock_items', function($join) {
-                $join->on('catalog_prints.id', '=', 'stock_items.catalog_print_id')
-                    ->where('stock_items.store_id', $this->userStoreId);
-            })->orderBy('stock_items.quantity', 'desc')->select('catalog_prints.*');
-            break;
+        foreach ($catalogItems as $print) {
+            if ($print->stockItems->isEmpty()) {
+                $expandedItems->push(['print' => $print, 'stock' => null, 'unique_row_id' => 'p' . $print->id]);
+            } else {
+                foreach ($print->stockItems as $stock) {
+                    $expandedItems->push(['print' => $print, 'stock' => $stock, 'unique_row_id' => 's' . $stock->id]);
+                }
+            }
+        }
 
-        case 'number_desc': 
-            $query->orderBy('collector_number', 'desc');
-            break;
-
-        case 'number_asc':
-        default: 
-            $query->orderBy('collector_number', 'asc');
-            break;
-    }
-
-    // 3. Voltamos ao paginate(50) para respeitar o seu Blade e mostrar a contagem total
-    return view('livewire.store.dashboard.stock.manage-inventory', [
-        'items' => $query->paginate(50)
-    ])->extends('layouts.dashboard')->section('content');
+        return view('livewire.store.dashboard.stock.manage-inventory', [
+            'items' => $expandedItems,
+            'pagination' => $catalogItems
+        ])->extends('layouts.dashboard')->section('content');
     }
 
     public function processImport()
@@ -294,7 +263,6 @@ class ManageInventory extends Component
         }
 
         $validData = [];
-        // Pega o ID da loja logada (Ajustado para o seu padrão de autenticação)
         $storeId = auth('store_user')->user()->current_store_id;
 
         foreach ($lines as $index => $line) {
@@ -302,17 +270,25 @@ class ManageInventory extends Component
             if (empty($line)) continue;
 
             if (preg_match($this->importPattern, $line, $matches)) {
-                $qtd = (int)$matches[1];
+                $qtd = (int)$matches['qtd'];
                 if ($this->limitToFour == 1 && $qtd > 4) $qtd = 4;
+
+                $lineExtras = [];
+                if (!empty($matches['extras'])) {
+                    $lineExtras = array_map('trim', explode(',', strtolower($matches['extras'])));
+                }
+                $finalExtras = array_values(array_unique(array_merge($this->selectedExtras, $lineExtras)));
+                sort($finalExtras);
 
                 $validData[] = [
                     'line'      => $index + 1,
                     'quantity'  => $qtd,
-                    'name'      => trim($matches[2]),
-                    'set_code'  => strtoupper($matches[3]),
-                    'condition' => strtoupper($matches[4]),
-                    'language'  => strtoupper($matches[5]),
-                    'price'     => (float)$matches[6],
+                    'name'      => trim($matches['name']),
+                    'set_code'  => strtoupper($matches['set']),
+                    'condition' => strtoupper($matches['cond']),
+                    'language'  => strtoupper($matches['lang']),
+                    'extras'    => $finalExtras,
+                    'price'     => !empty($matches['price']) ? (float)$matches['price'] : 0,
                 ];
             } else {
                 $this->importErrors[] = "Linha " . ($index + 1) . ": Formato inválido.";
@@ -325,7 +301,6 @@ class ManageInventory extends Component
 
         try {
             foreach ($validData as $item) {
-                // BUSCA CIRÚRGICA: CatalogPrint -> Set (code) -> Concept (name)
                 $print = \App\Models\Catalog\CatalogPrint::whereHas('set', function($q) use ($item) {
                     $q->where('code', $item['set_code']);
                 })
@@ -337,43 +312,63 @@ class ManageInventory extends Component
                 })->first();
 
                 if (!$print) {
-                    $this->importErrors[] = "Linha {$item['line']}: Carta '{$item['name']}' [{$item['set_code']}] não encontrada.";
-                    continue;
+                    // Substituímos o dd() por um erro visual que não trava o processo
+                    $this->importErrors[] = "Carta não encontrada no catálogo: " . $item['name'] . " [" . $item['set_code'] . "]";
+                    continue; 
                 }
 
-                // SALVAMENTO AGNOSTICO: Vincula o estoque ao CatalogPrint
-                \App\Models\StockItem::updateOrCreate(
-                    [
+                $existingItems = \App\Models\StockItem::where('store_id', $storeId)
+                    ->where('catalog_print_id', $print->id)
+                    ->where('condition', $item['condition'])
+                    ->where('language', $item['language'])
+                    ->get();
+
+                $existing = $existingItems->first(function($si) use ($item) {
+                    return $si->extras === $item['extras'];
+                });
+
+                if ($existing) {
+                    $existing->quantity = $existing->quantity + $item['quantity'];
+                    if ($this->limitToFour == 1 && $existing->quantity > 4) $existing->quantity = 4;
+                    $existing->price = $item['price'] > 0 ? $item['price'] : $existing->price;
+                    $existing->save();
+                } else {
+                    \App\Models\StockItem::create([
                         'store_id'         => $storeId,
                         'catalog_print_id' => $print->id,
                         'condition'        => $item['condition'],
                         'language'         => $item['language'],
-                        'extras'           => $this->selectedExtras, // Vem do seu checkbox Alpine
-                    ],
-                    [
-                        // Incrementa se já existir (DB::raw para evitar race conditions)
-                        'quantity' => \DB::raw("quantity + {$item['quantity']}"),
-                        'price'    => $item['price']
-                    ]
-                );
+                        'extras'           => $item['extras'],
+                        'quantity'         => $item['quantity'],
+                        'price'            => $item['price']
+                    ]);
+                    // O dd() de teste de criação foi removido daqui
+                }
             }
 
             if (!empty($this->importErrors)) {
-                \DB::rollBack();
-                return;
+                \DB::rollBack();                
+                return; // Impede que finalize se houve erro em alguma carta
             }
 
             \DB::commit();
+            // O dd() do último ID foi removido daqui
 
-            // Limpa tudo e volta para a aba de lista
             $this->reset(['importText', 'selectedExtras']);
-            $this->activeTab = 'lista';
+            
+            if (property_exists($this, 'activeTab')) {
+                $this->activeTab = 'lista';
+            } elseif (property_exists($this, 'viewMode')) {
+                $this->viewMode = 'list';
+            }
             
             $this->dispatch('inventory-updated');
+            $this->dispatch('notify', type: 'success', message: 'Importação concluída com sucesso!');
 
         } catch (\Exception $e) {
             \DB::rollBack();
-            $this->importErrors[] = "Erro técnico: " . $e->getMessage();
+            // Substituímos o dd() do "Assassino Silencioso" por um alerta de erro na tela
+            $this->dispatch('notify', type: 'error', message: 'Erro crítico: ' . $e->getMessage());
         }
     }
 }

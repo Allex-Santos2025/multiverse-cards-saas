@@ -14,8 +14,8 @@ class InventoryImporter extends Component
     public $limitToFour = 1; 
     public $selectedExtras = []; 
 
-    // Regex Universal: Aceita códigos de edição de 2 a 5 caracteres
-    protected $pattern = '/^(\d+)\s+(.+?)\s+\[([A-Z0-9]{2,5})\]\s+(NM|SP|MP|HP|D)\s+(PT|EN|JP|ES|IT)\s+([\d\.]+)$/i';
+    // Regex Universal: Aceita códigos de edição de 2 a 5 caracteres e Extras
+    protected $pattern = '/^(?<qtd>\d+)\s+(?<name>.+?)\s+\[(?<set>[A-Z0-9]{2,5})\]\s+(?<cond>M|NM|SP|MP|HP|D)\s+(?<lang>[A-Z]{2,3})(?:\s+\((?<extras>[^\)]+)\))?(?:\s+(?<price>[\d\.,]+))?\s*$/iu';
 
     public function processImport()
     {
@@ -34,21 +34,44 @@ class InventoryImporter extends Component
             $line = trim($line);
             if (empty($line)) continue;
 
+            // --- COLOQUE A ARMADILHA AQUI ---
+            dd(
+                'Texto exato que o Laravel leu:', 
+                $line, 
+                'Tamanho (caracteres):', 
+                strlen($line),
+                'Testando Regex:', 
+                preg_match($this->pattern, $line, $matches), 
+                'O que ele conseguiu capturar:', 
+                $matches
+            );
+            // --------------------------------
+
             if (preg_match($this->pattern, $line, $matches)) {
-                $qtd = (int)$matches[1];
+                $qtd = (int)$matches['qtd']; // Puxando pelo nome correto da Regex
                 if ($this->limitToFour == 1 && $qtd > 4) $qtd = 4;
+
+                // Lê os extras digitados na linha e junta com os marcados nos botões
+                $lineExtras = [];
+                if (!empty($matches['extras'])) {
+                    $lineExtras = array_map('trim', explode(',', strtolower($matches['extras'])));
+                }
+                $finalExtras = array_values(array_unique(array_merge($this->selectedExtras, $lineExtras)));
+                sort($finalExtras);
 
                 $validData[] = [
                     'line_number' => $index + 1,
                     'quantity'    => $qtd,
-                    'name'        => trim($matches[2]),
-                    'edition'     => strtoupper($matches[3]),
-                    'condition'   => strtoupper($matches[4]),
-                    'language'    => strtoupper($matches[5]),
-                    'price'       => (float)$matches[6],
+                    'name'        => trim($matches['name']),
+                    'edition'     => strtoupper($matches['set']),
+                    'condition'   => strtoupper($matches['cond']),
+                    'language'    => strtoupper($matches['lang']),
+                    'extras'      => $finalExtras,
+                    'price'       => !empty($matches['price']) ? (float)$matches['price'] : 0,
                 ];
             } else {
-                $this->importErrors[] = "Linha " . ($index + 1) . ": Formato inválido.";
+                $this->importErrors[] = "Linha " . ($index + 1) . ": Formato inválido.Texto lido: [" . $line . "]";
+                
             }
         }
 
@@ -57,7 +80,7 @@ class InventoryImporter extends Component
         DB::beginTransaction();
         try {
             foreach ($validData as $item) {
-                // Busca no catálogo central (ajuste os nomes das colunas se necessário)
+                // Busca no catálogo central
                 $print = \App\Models\Print::whereHas('set', function($q) use ($item) {
                     $q->where('code', $item['edition']);
                 })
@@ -73,20 +96,37 @@ class InventoryImporter extends Component
                     continue;
                 }
 
-                // Salva ou atualiza somando a quantidade
-                \App\Models\StockItem::updateOrCreate(
-                    [
+                // Busca as cartas dessa loja, edição, condição e idioma (sem bater o extras no MySQL)
+                $existingItems = \App\Models\StockItem::where('store_id', $storeId)
+                    ->where('print_id', $print->id)
+                    ->where('condition', $item['condition'])
+                    ->where('language', $item['language'])
+                    ->get();
+
+                // Filtra os extras direto no PHP, blindando o erro de banco!
+                $existing = $existingItems->first(function($si) use ($item) {
+                    return $si->extras === $item['extras'];
+                });
+
+                if ($existing) {
+                    // Soma manual e segura, sem DB::raw
+                    $existing->quantity = $existing->quantity + $item['quantity'];
+                    if ($this->limitToFour == 1 && $existing->quantity > 4) $existing->quantity = 4;
+                    // Se a linha tiver preço, atualiza. Se não tiver, mantém o que já tava no banco.
+                    $existing->price = $item['price'] > 0 ? $item['price'] : $existing->price;
+                    $existing->save();
+                } else {
+                    // Inserção de carta nova sem DB::raw para não dar "Expression"
+                    \App\Models\StockItem::create([
                         'store_id'  => $storeId,
                         'print_id'  => $print->id,
                         'condition' => $item['condition'],
                         'language'  => $item['language'],
-                        'extras'    => $this->selectedExtras 
-                    ],
-                    [
-                        'quantity' => DB::raw("quantity + {$item['quantity']}"),
-                        'price'    => $item['price']
-                    ]
-                );
+                        'extras'    => $item['extras'],
+                        'quantity'  => $item['quantity'],
+                        'price'     => $item['price']
+                    ]);
+                }
             }
 
             if (!empty($this->importErrors)) {
@@ -101,9 +141,6 @@ class InventoryImporter extends Component
             // Feedback e navegação
             $this->dispatch('inventory-updated'); 
             $this->dispatch('mudar-aba', 'lista'); 
-            
-            // Opcional: Uma notificação visual (se você tiver o pacote de Toasts)
-            // session()->flash('message', 'Importação concluída com sucesso!');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -113,6 +150,7 @@ class InventoryImporter extends Component
 
     public function render()
     {
+        dd('BINGO! ELE ESTÁ LENDO O ARQUIVO CERTO!'); // <--- COLOQUE ISSO
         return view('livewire.store.dashboard.stock.inventory-import');
     }
 }
