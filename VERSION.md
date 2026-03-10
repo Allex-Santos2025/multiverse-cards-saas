@@ -197,6 +197,32 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.0.9`  
+**Data:** 10/03/2026   
+**Descrição da Versão:** - Lançamento do módulo de `Gestão de Produtos Oficiais` (Selados e Acessórios) integrado ao Dashboard e otimização profunda do motor de processamento e salvamento em lote para alta performance.
+
+### Banco de Dados (Refatoração & Performance):
+- **Escudo de Persistência (Preço > 0):** Nova regra de negócio estrutural que exige um valor monetário válido para novas inserções. Isso impede o salvamento acidental de dezenas de itens não preenchidos do catálogo global diretamente para o estoque da loja durante salvamentos em lote.
+- **Otimização de Queries em Lote (`isDirty`):** Implementação de checagem inteligente de estado no motor de salvamento. Operações de `UPDATE` no banco de dados agora só são disparadas se houver alterações reais nos campos (preço, quantidade, etc.), economizando processamento massivo.
+- **Leitura Transparente (`withoutGlobalScopes`):** Refatoração nas queries de listagem para contornar filtros restritivos do ORM (Laravel), garantindo a recuperação e visualização exata da base de dados sem filtros ocultos.
+
+### Funcionalidades (UX/UI & Melhorias):
+- **Retenção de Estoque Zero:** Alteração na regra de ciclo de vida do inventário. Itens que chegam a 0 de quantidade não são mais deletados do banco de dados, preservando a identidade visual, histórico de preços e facilitando a reposição futura na interface da "Minha Loja".
+- **Auto-Filtro Instantâneo:** A seleção da origem de busca (ex: alternar entre "Catálogo Global" e "Minha Loja") agora atualiza a tabela e aplica as regras de negócio de forma instantânea, eliminando a fricção de ter que clicar manualmente no botão "Buscar".
+- **Transições de Interface (Alpine.js):** Navegação entre os módulos (Cartas, Selados, Acessórios, Importação) otimizada para ocorrer puramente no lado do cliente (DOM), mantendo o estado de filtros abertos/fechados intacto sem recarregamentos desnecessários do servidor.
+
+### Páginas Adicionadas:
+
+**Gestão de Produtos (Selados e Acessórios):**
+- **Integração do componente `ProductInventory`:** Nova interface dedicada ao gerenciamento de produtos fechados (Booster Boxes, Decks, Bundles) e acessórios (Sleeves, Playmats), seguindo a mesma arquitetura de edição em massa das cartas avulsas.
+- **Dicionário de Dados Específico:** Colunas e seletores adaptados para a realidade de produtos (ex: listagem de idiomas para caixas e métricas de qualidade focadas na embalagem: *Selado / Novo*, *Caixa Danificada*, *Aberto*).
+- **Modal de Detalhes Dinâmico:** Suporte total à anexação de fotos reais e observações de avarias de embalagem diretamente na linha do produto oficial.
+
+### Segurança & Isolamento de Estado:
+- **Prevenção de Colisão de URL (Query String Aliases):** Implementação de isolamento nas chaves de busca (`search` vs `p_search`) para garantir que os filtros da listagem de cartas e da listagem de produtos funcionem de maneira totalmente independente, mesmo coexistindo no mesmo ambiente de Dashboard. 
+
+---
+
 ## 📈 Próxima Versão Planejada
 
 **Próxima versão:** `alpha v0.1.0`  

@@ -17,6 +17,7 @@ class StockItem extends Model
     protected $fillable = [
         'store_id',
         'catalog_print_id',
+        'catalog_product_id',
         'price',
         'quantity',
         'condition',    // NM, SP...
@@ -52,7 +53,12 @@ class StockItem extends Model
     {
         return $this->belongsTo(CatalogPrint::class, 'catalog_print_id');
     }
-
+    
+    // Relacionamento com o Produto Global (Selados ou Acessórios)
+    public function catalogProduct()
+    {
+        return $this->belongsTo(CatalogProduct::class);
+    }
     /**
      * Acessor: Atalho para pegar o Conceito (Nome Abstrato) através do Print.
      * Uso: $stockItem->concept->name

@@ -23,6 +23,7 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /public/card_images
+/public/product_images/
 /vendor
 .env
 # Database dumps

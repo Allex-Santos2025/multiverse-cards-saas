@@ -64,78 +64,80 @@
             <i class="ph text-xl" :class="sidebarCollapsed ? 'ph-arrows-out-line-horizontal' : 'ph-arrows-in-line-horizontal'"></i>
         </button>
     </div>
-
+    
     {{-- Navegação --}}
-    <nav class="py-4 space-y-6">
-        {{-- ENTRADA --}}
-        <div>
-            <span class="group-title px-4 text-[8px] font-black text-gray-500 dark:text-zinc-600 uppercase tracking-widest block mb-2">Entrada</span>
-            <ul class="space-y-1 px-2">
-                <li>
-                    <button type="button" @click="$dispatch('mudar-aba', 'lista')" class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
-                       {{ $viewMode === 'list' 
-                          ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
-                          : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white' 
-                       }}">
-                        <i class="ph ph-squares-four nav-icon text-lg mr-3"></i> 
-                        <span class="nav-label">Inventário Geral</span>
-                    </button>
-                </li>
-                <li>
-                    <button type="button" @click="$dispatch('mudar-aba', 'importar')" 
-                       class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
-                       {{ $viewMode === 'import' 
-                          ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
-                          : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white' 
-                       }}">
-                        <i class="ph ph-file-txt nav-icon text-lg mr-3"></i> 
-                        <span class="nav-label">Importar Cards</span>
-                    </button>
-                </li>
-                <li>
-                    <button type="button" @click="$dispatch('mudar-aba', 'exportar')" 
-                    class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
-                    {{ $viewMode === 'export' 
-                        ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
-                        : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white' 
-                    }}">
-                        <i class="ph ph-export nav-icon text-lg mr-3"></i> 
-                        <span class="nav-label">Exportar Cards</span>
-                    </button>
-                </li>
-            </ul>
-        </div>
-        
+    <nav wire:ignore class="py-4 space-y-6" x-data="{ activeTab: '{{ $viewMode }}' }">
+    {{-- ESTOQUE --}}
+    <div>
+        <span class="group-title px-4 text-[8px] font-black text-gray-500 dark:text-zinc-600 uppercase tracking-widest block mb-2">Estoque</span>
+        <ul class="space-y-1 px-2">
+            <li>
+                <button type="button" @click="activeTab = 'list'; $dispatch('mudar-aba', 'lista')" 
+                   class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase"
+                   :class="activeTab === 'list' ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white'">
+                    <i class="ph ph-squares-four nav-icon text-lg mr-3"></i> 
+                    <span class="nav-label">Cards Avulsos</span>
+                </button>
+            </li>
+            <li>
+                <button type="button" 
+                   @click="activeTab = 'selados'; $wire.dispatch('set-product-filter', { filter: 'sealed' }); $dispatch('mudar-aba', 'produtos')" 
+                   class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase"
+                   :class="activeTab === 'selados' ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white'">
+                    <i class="ph ph-package nav-icon text-lg mr-3"></i> 
+                    <span class="nav-label">Selados</span>
+                </button>
+            </li>
+            <li>
+                <button type="button" 
+                   @click="activeTab = 'acessorios'; $wire.dispatch('set-product-filter', { filter: 'accessory' }); $dispatch('mudar-aba', 'produtos')" 
+                   class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase"
+                   :class="activeTab === 'acessorios' ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white'">
+                    <i class="ph ph-tote nav-icon text-lg mr-3"></i> 
+                    <span class="nav-label">Acessórios</span>
+                </button>
+            </li>
+        </ul>
+    </div>
+    
+    {{-- FERRAMENTAS --}}
+    <div>
+        <span class="group-title px-4 text-[8px] font-black text-gray-500 dark:text-zinc-600 uppercase tracking-widest block mb-2">Ferramentas</span>
+        <ul class="space-y-1 px-2">
+            <li>
+                <button type="button" @click="activeTab = 'import'; $dispatch('mudar-aba', 'importar')" 
+                   class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase"
+                   :class="activeTab === 'import' ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white'">
+                    <i class="ph ph-file-txt nav-icon text-lg mr-3"></i> 
+                    <span class="nav-label">Importar Cards</span>
+                </button>
+            </li>
+            <li>
+                <button type="button" @click="activeTab = 'export'; $dispatch('mudar-aba', 'exportar')" 
+                class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase"
+                :class="activeTab === 'export' ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white'">
+                    <i class="ph ph-export nav-icon text-lg mr-3"></i> 
+                    <span class="nav-label">Exportar Cards</span>
+                </button>
+            </li>
+        </ul>
+    </div>
 
-        {{-- GESTÃO --}}
-        <div>
-            <span class="group-title px-4 text-[8px] font-black text-gray-500 dark:text-zinc-600 uppercase tracking-widest block mb-2">Gestão</span>
-            <ul class="space-y-1 px-2">
-                <li>
-                    <a href="#" wire:click.prevent="$set('viewMode', 'products')" 
-                       class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
-                       {{ $viewMode === 'products' 
-                          ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
-                          : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white' 
-                       }}">
-                        <i class="ph ph-package nav-icon text-lg mr-3"></i> 
-                        <span class="nav-label">Meus Produtos</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" wire:click.prevent="$set('viewMode', 'discounts')" 
-                       class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase
-                       {{ $viewMode === 'discounts' 
-                          ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' 
-                          : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white' 
-                       }}">
-                        <i class="ph ph-tag nav-icon text-lg mr-3"></i> 
-                        <span class="nav-label">Descontos</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </nav>
+    {{-- GESTÃO --}}
+    <div>
+        <span class="group-title px-4 text-[8px] font-black text-gray-500 dark:text-zinc-600 uppercase tracking-widest block mb-2">Gestão</span>
+        <ul class="space-y-1 px-2">
+            <li>
+                <a href="#" @click.prevent="activeTab = 'discounts'"
+                   class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase"
+                   :class="activeTab === 'discounts' ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white'">
+                    <i class="ph ph-tag nav-icon text-lg mr-3"></i> 
+                    <span class="nav-label">Descontos</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>
 
     {{-- Footer --}}
     <div class="p-4 border-t border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-black/20">
@@ -163,15 +165,19 @@
                 <div class="mb-6">
                     <div class="flex items-center gap-2 mb-2 pl-1">
                         <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Origem da Busca</label>
-                        <button class="text-red-400 hover:text-red-500 cursor-help" title="Filtre por relevância de vendas"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>
+                        <button class="text-red-400 hover:text-red-500 cursor-help" title="Filtre por relevância de vendas"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>
                     </div>
                     <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg inline-flex w-full md:w-auto">
                         @foreach(['padrao' => 'Padrão', 'marketplace' => 'Marketplace', 'minhaLoja' => 'Minha Loja'] as $key => $label)
-                            <button type="button" @click="activeTab = '{{ $key }}'" class="flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all duration-200" :class="activeTab === '{{ $key }}' ? 'bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm ring-1 ring-gray-200 dark:ring-gray-500' : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200'">{{ $label }}</button>
+                            <button type="button" 
+                                    @click="activeTab = '{{ $key }}'; $wire.set('searchType', '{{ $key }}').then(() => { $wire.applyFilters() })" 
+                                    class="flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all duration-200" 
+                                    :class="activeTab === '{{ $key }}' ? 'bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm ring-1 ring-gray-200 dark:ring-gray-500' : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200'">
+                                {{ $label }}
+                            </button>
                         @endforeach
                     </div>
                 </div>
-
                 {{-- BARRA DE INPUT + BOTÃO BUSCAR (LARANJA) --}}
                 <div class="flex items-center gap-3 relative z-10">
                     <div class="relative flex-grow">
@@ -242,7 +248,30 @@
                     <div class="flex items-center space-x-4 mt-4 md:mt-0">
                         
                         {{-- BOTÃO SALVAR (AGORA AZUL: bg-blue-600) --}}
-                        <button onclick="submitInventoryForm()" 
+                        <button type="button" 
+                                x-data
+                                @click="
+                                    const form = document.getElementById('cardsInventoryForm');
+                                    const fd = new FormData(form);
+                                    const data = { items: {} };
+                                    for (let [k, v] of fd.entries()) {
+                                        const match = k.match(/items\[([^\]]+)\]\[([^\]]+)\](\[\])?/);
+                                        if (match) {
+                                            const id = match[1];
+                                            const field = match[2];
+                                            const isArray = match[3];
+
+                                            if (!data.items[id]) data.items[id] = {};
+                                            if (isArray) {
+                                                if (!data.items[id][field]) data.items[id][field] = [];
+                                                data.items[id][field].push(v);
+                                            } else {
+                                                data.items[id][field] = v;
+                                            }
+                                        }
+                                    }
+                                    $wire.saveForm(data);
+                                "
                                 wire:loading.attr="disabled"
                                 class="relative inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm transition-all">
                             
@@ -284,251 +313,205 @@
                 </div>
 
                 {{-- FORMULÁRIO ENVOLVENDO A TABELA --}}
-                <form id="inventoryForm" onsubmit="event.preventDefault();">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Estoque</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Preço</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Idioma</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Qualidade</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Extras</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Card</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                @forelse($items as $item) {{-- Mudamos de $print para $item --}}
-                                @php
-                                    // Extraímos os dados do array que criamos no render
-                                    $print = $item['print'];
-                                    $stock = $item['stock'];
-                                    $uniqueId = $item['unique_row_id'];
+                <form id="cardsInventoryForm" onsubmit="event.preventDefault();">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Estoque</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Preço</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Idioma</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Qualidade</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Extras</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Card</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                @forelse($items as $item)
+                @php
+                    $print = $item['print'];
+                    $stock = $item['stock'];
+                    $uniqueId = $item['unique_row_id'];
 
-                                    $rarity = strtolower($print->rarity ?? 'common');
-                                    $colors = match($rarity) {
-                                        'common' => ['text-gray-400', 'bg-gray-500'],
-                                        'uncommon' => ['text-slate-400', 'bg-slate-500'],
-                                        'rare' => ['text-yellow-500', 'bg-yellow-600'],
-                                        'mythic' => ['text-orange-500', 'bg-orange-600'],
-                                        default => ['text-gray-300', 'bg-gray-400'],
-                                    };
-                                    [$textColor, $iconBgColor] = $colors;
+                    $rarity = strtolower($print->rarity ?? 'common');
+                    $colors = match($rarity) {
+                        'common' => ['text-gray-400', 'bg-gray-500'],
+                        'uncommon' => ['text-slate-400', 'bg-slate-500'],
+                        'rare' => ['text-yellow-500', 'bg-yellow-600'],
+                        'mythic' => ['text-orange-500', 'bg-orange-600'],
+                        default => ['text-gray-300', 'bg-gray-400'],
+                    };
+                    [$textColor, $iconBgColor] = $colors;
+                @endphp
+                    
+                    <tr wire:key="row-{{ $uniqueId }}">
+                        
+                        {{-- COLUNA ESTOQUE --}}
+                        <td class="px-6 py-4 whitespace-nowrap">       
+                            <div x-data="{ qty: {{ $stock->quantity ?? 0 }} }" class="flex items-center space-x-2">
+                                <button type="button" @click="qty > 0 ? qty-- : 0" class="text-gray-400 hover:text-orange-500 focus:outline-none">
+                                    <i class="ph ph-minus-circle text-xl"></i>
+                                </button>
+                                <input type="number" 
+                                       name="items[{{ $uniqueId }}][qty]"
+                                       x-model.number="qty" 
+                                       class="w-16 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-center text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 transition-colors">
+                                <button type="button" @click="qty++" class="text-gray-400 hover:text-orange-500 focus:outline-none">
+                                    <i class="ph ph-plus-circle text-xl"></i>
+                                </button>
+                            </div>
+                        </td>
+                        
+                        {{-- COLUNA PREÇO --}}
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="relative rounded-md shadow-sm">
+                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-gray-500 sm:text-sm">R$</span>
+                                <input type="number" 
+                                       name="items[{{ $uniqueId }}][price]"
+                                       value="{{ $stock->price ?? '0.00' }}"
+                                       step="0.01" 
+                                       class="block w-24 rounded-md border-0 py-1.5 pl-8 pr-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm dark:bg-gray-700 dark:text-white dark:ring-gray-600" placeholder="0.00">
+                            </div>
+                        </td>
+
+                        {{-- COLUNA IDIOMA --}}
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="relative">
+                                <select disabled class="appearance-none w-full bg-gray-100 dark:bg-[#1e293b] border border-gray-300 dark:border-[#334155] rounded px-3 py-2 text-sm text-gray-500 dark:text-gray-400 font-bold uppercase cursor-not-allowed opacity-80">
+                                    <option selected>{{ strtoupper($print->language_code ?? 'EN') }}</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400"><i class="ph ph-lock-key text-xs"></i></div>
+                            </div>
+                        </td>
+
+                        {{-- COLUNA QUALIDADE --}}
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <select name="items[{{ $uniqueId }}][condition]" class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm focus:outline-none focus:border-orange-500 text-gray-900 dark:text-white transition-colors">
+                                <option value="M" {{ ($stock->condition ?? '') == 'M' ? 'selected' : '' }}>M</option>
+                                <option value="NM" {{ ($stock->condition ?? 'NM') == 'NM' ? 'selected' : '' }}>NM</option>
+                                <option value="SP" {{ ($stock->condition ?? '') == 'SP' ? 'selected' : '' }}>SP</option>
+                                <option value="MP" {{ ($stock->condition ?? '') == 'MP' ? 'selected' : '' }}>MP</option>
+                                <option value="HP" {{ ($stock->condition ?? '') == 'HP' ? 'selected' : '' }}>HP</option>
+                                <option value="D" {{ ($stock->condition ?? '') == 'D' ? 'selected' : '' }}>D</option>
+                            </select>
+                        </td>
+
+                        {{-- COLUNA EXTRAS --}}
+                        <td class="px-6 py-4 whitespace-nowrap" 
+                            x-data="{ 
+                                open: false,
+                                selections: {{ json_encode($stock->extras ?? []) }},
+                                style: { left: '0px', top: 'auto', bottom: 'auto', width: 'auto', maxHeight: '250px' },
+                                
+                                toggle() {
+                                    if (this.open) return this.close();
+                                    this.position(); 
+                                    this.open = true;
+                                },
+                                close() {
+                                    this.open = false;
+                                },
+                                position() {
+                                    if (!$refs.button) return;
+                                    const rect = $refs.button.getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const spaceAbove = rect.top;
                                     
-                                    // O $stock já vem pronto do nosso array expandido, não precisa de ->first()
-                                @endphp
-                                    
-                                    <tr wire:key="row-{{ $print->id }}">
-                                        
-                                        {{-- COLUNA ESTOQUE --}}
-                                        <td class="px-6 py-4 whitespace-nowrap">       
-                                            <div x-data="{ qty: {{ $stock->quantity ?? 0 }} }" class="flex items-center space-x-2">
-                                                <button type="button" @click="qty > 0 ? qty-- : 0" class="text-gray-400 hover:text-orange-500 focus:outline-none">
-                                                    <i class="ph ph-minus-circle text-xl"></i>
-                                                </button>
+                                    this.style.width = Math.max(rect.width, 220) + 'px';
+                                    this.style.left = rect.left + 'px';
 
-                                                <input type="number" 
-                                                       name="items[{{ $print->id }}][qty]" 
-                                                       x-model.number="qty" 
-                                                       class="w-16 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-center text-gray-900 dark:text-white focus:outline-none focus:border-orange-500 transition-colors">
-                                                
-                                                <button type="button" @click="qty++" class="text-gray-400 hover:text-orange-500 focus:outline-none">
-                                                    <i class="ph ph-plus-circle text-xl"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                        
-                                        {{-- COLUNA PREÇO --}}
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="relative rounded-md shadow-sm">
-                                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-gray-500 sm:text-sm">R$</span>
-                                                <input type="number" 
-                                                       name="items[{{ $print->id }}][price]"
-                                                       value="{{ number_format($stock->price ?? 0, 2, '.', '') }}"
-                                                       step="0.01" 
-                                                       class="block w-24 rounded-md border-0 py-1.5 pl-8 pr-2 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm dark:bg-gray-700 dark:text-white dark:ring-gray-600" placeholder="0.00">
-                                            </div>
-                                        </td>
+                                    if (spaceBelow >= 200 || spaceBelow > spaceAbove) {
+                                        this.style.top = rect.bottom + 'px';
+                                        this.style.bottom = 'auto';
+                                        this.style.maxHeight = (spaceBelow - 20) + 'px';
+                                    } else {
+                                        this.style.top = 'auto';
+                                        this.style.bottom = (window.innerHeight - rect.top) + 'px';
+                                        this.style.maxHeight = (spaceAbove - 20) + 'px';
+                                    }
+                                }
+                            }"
+                            @scroll.window="close()" 
+                            @resize.window="close()"
+                        >
+                            @php
+                                try {
+                                    $options = \App\Enums\StockExtra::options();
+                                } catch (\Throwable $e) {
+                                    $options = ['foil' => 'Foil', 'etched' => 'Etched', 'promo' => 'Promo', 'textless' => 'Textless'];
+                                }
+                            @endphp
 
-                                        {{-- COLUNA IDIOMA --}}
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            {{-- AQUI ESTÁ O TRUQUE: Input hidden envia o idioma original da carta (pt, en, jp) --}}
-                                            <input type="hidden" name="items[{{ $print->id }}][language]" value="{{ $print->language_code ?? 'en' }}">
+                            <button x-ref="button" @click="toggle()" type="button" class="w-full flex items-center justify-between bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm text-gray-900 dark:text-white transition-colors hover:border-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                                <span class="truncate select-none">
+                                    <span x-show="selections.length > 0" class="text-blue-500 font-bold">
+                                        <span x-text="selections.length"></span> item(s)
+                                    </span>
+                                    <span x-show="selections.length === 0" class="opacity-80">Extras</span>
+                                </span>
+                                <svg class="w-3 h-3 text-gray-500 dark:text-gray-300 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
 
-                                            <div class="relative">
-                                                <select disabled class="appearance-none w-full bg-gray-100 dark:bg-[#1e293b] border border-gray-300 dark:border-[#334155] rounded px-3 py-2 text-sm text-gray-500 dark:text-gray-400 font-bold uppercase cursor-not-allowed opacity-80">
-                                                    <option selected>{{ strtoupper($print->language_code ?? 'EN') }}</option>
-                                                </select>
-                                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400"><i class="ph ph-lock-key text-xs"></i></div>
-                                            </div>
-                                        </td>
+                            <template x-teleport="body">
+                                <div x-show="open" @click.outside="close()" class="fixed z-[9999] bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded shadow-xl flex flex-col" :style="`left: ${style.left}; top: ${style.top}; bottom: ${style.bottom}; width: ${style.width}; max-height: ${style.maxHeight};`" style="display: none;">
+                                    <style>.hide-scroll::-webkit-scrollbar { display: none; } .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }</style>
+                                    <div class="overflow-y-auto p-1 hide-scroll">
+                                        @foreach($options as $value => $label)
+                                            <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer hover:bg-blue-600 hover:text-white group/item transition-colors">
+                                                <input type="checkbox" value="{{ $value }}" x-model="selections" name="items[{{ $uniqueId }}][extras][]" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 shrink-0">
+                                                <span class="text-sm font-medium select-none text-gray-700 dark:text-gray-200 group-hover:text-white whitespace-nowrap">{{ $label }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </template>
+                        </td>
 
-                                        {{-- COLUNA QUALIDADE --}}
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <select name="items[{{ $uniqueId }}][condition]" class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm focus:outline-none focus:border-orange-500 text-gray-900 dark:text-white transition-colors">
-                                                <option value="M" {{ ($stock->condition ?? '') == 'M' ? 'selected' : '' }}>M</option>
-                                                <option value="NM" {{ ($stock->condition ?? 'NM') == 'NM' ? 'selected' : '' }}>NM</option>
-                                                <option value="SP" {{ ($stock->condition ?? '') == 'SP' ? 'selected' : '' }}>SP</option>
-                                                <option value="MP" {{ ($stock->condition ?? '') == 'MP' ? 'selected' : '' }}>MP</option>
-                                                <option value="HP" {{ ($stock->condition ?? '') == 'HP' ? 'selected' : '' }}>HP</option>
-                                                <option value="D" {{ ($stock->condition ?? '') == 'D' ? 'selected' : '' }}>D</option>
-                                            </select>
-                                        </td>
+                        {{-- COLUNA CARD INFO --}}
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center gap-3 {{ $textColor }}">
+                                <div class="relative w-6 h-6 flex items-center justify-center shrink-0">
+                                    <x-set-symbol :path="''" :code="$print->set->code ?? ''" :rarity="$rarity" size="w-6 h-6" />
+                                </div>
+                                <div class="flex items-baseline gap-2">
+                                    <span class="text-blue-400 font-base tracking-tight text-[15px] cursor-help hover:brightness-125 transition-all" @mouseenter="showCard('{{ asset($print->image_path) }}', $event)" @mouseleave="hideCard()" @mousemove="moveCard($event)">
+                                        {{ $print->printed_name ?? $print->concept->name }}
+                                    </span>
+                                    <span class="text-[11px] text-black dark:text-white font-normal ml-1.5">({{ $print->set->code }} #{{ $print->collector_number }})</span>
+                                </div>
+                            </div>
+                        </td>
 
-                                        {{-- COLUNA EXTRAS --}}
-{{-- COLUNA EXTRAS (LARGURA CONFORTÁVEL + SCROLL HIDDEN) --}}
-<td class="px-6 py-4 whitespace-nowrap" 
-    x-data="{ 
-        open: false,
-        selections: {{ json_encode($stock->extras ?? []) }},
-        style: { left: '0px', top: 'auto', bottom: 'auto', width: 'auto', maxHeight: '250px' },
-        
-        toggle() {
-            if (this.open) return this.close();
-            this.position(); 
-            this.open = true;
-        },
-        close() {
-            this.open = false;
-        },
-        position() {
-            if (!$refs.button) return;
-
-            const rect = $refs.button.getBoundingClientRect();
-            const spaceBelow = window.innerHeight - rect.bottom;
-            const spaceAbove = rect.top;
-            
-            // --- AQUI ESTÁ A MUDANÇA: LARGURA MÍNIMA DE 220px ---
-            // Math.max garante que nunca fique menor que 220px, mas pode crescer se precisar
-            this.style.width = Math.max(rect.width, 220) + 'px';
-            
-            this.style.left = rect.left + 'px';
-
-            if (spaceBelow >= 200 || spaceBelow > spaceAbove) {
-                this.style.top = rect.bottom + 'px';
-                this.style.bottom = 'auto';
-                this.style.maxHeight = (spaceBelow - 20) + 'px';
-            } else {
-                this.style.top = 'auto';
-                this.style.bottom = (window.innerHeight - rect.top) + 'px';
-                this.style.maxHeight = (spaceAbove - 20) + 'px';
-            }
-        }
-    }"
-    @scroll.window="close()" 
-    @resize.window="close()"
->
-    @php
-        try {
-            $options = \App\Enums\StockExtra::options();
-        } catch (\Throwable $e) {
-            $options = ['foil' => 'Foil', 'etched' => 'Etched', 'promo' => 'Promo', 'textless' => 'Textless'];
-        }
-    @endphp
-
-    {{-- BOTÃO GATILHO --}}
-    <button 
-        x-ref="button"
-        @click="toggle()"
-        type="button"
-        class="w-full flex items-center justify-between bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm text-gray-900 dark:text-white transition-colors hover:border-blue-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-    >
-        <span class="truncate select-none">
-            <span x-show="selections.length > 0" class="text-blue-500 font-bold">
-                <span x-text="selections.length"></span> item(s)
-            </span>
-            <span x-show="selections.length === 0" class="opacity-80">Extras</span>
-        </span>
-        <svg class="w-3 h-3 text-gray-500 dark:text-gray-300 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-    </button>
-
-    {{-- MENU FLUTUANTE --}}
-    <template x-teleport="body">
-        <div 
-            x-show="open"
-            @click.outside="close()"
-            class="fixed z-[9999] bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded shadow-xl flex flex-col"
-            :style="`left: ${style.left}; top: ${style.top}; bottom: ${style.bottom}; width: ${style.width}; max-height: ${style.maxHeight};`"
-            style="display: none;" 
-        >
-            {{-- Hack CSS Inline para esconder scrollbar --}}
-            <style>
-                .hide-scroll::-webkit-scrollbar { display: none; }
-                .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-            </style>
-            
-            <div class="overflow-y-auto p-1 hide-scroll">
-                @foreach($options as $value => $label)
-                    <label class="flex items-center gap-2 px-3 py-2.5 rounded cursor-pointer hover:bg-blue-600 hover:text-white group/item transition-colors">
-                        <input type="checkbox" 
-                               value="{{ $value }}" 
-                               x-model="selections"
-                               name="items[{{ $print->id }}][extras][]"
-                               class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 shrink-0">
-                        {{-- Aumentei um pouco o texto base também --}}
-                        <span class="text-sm font-medium select-none text-gray-700 dark:text-gray-200 group-hover:text-white whitespace-nowrap">{{ $label }}</span>
-                    </label>
-                @endforeach
-            </div>
-        </div>
-    </template>
-</td>
-
-                                        {{-- COLUNA CARD INFO --}}
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex items-center gap-3 {{ $textColor }}">
-                                                <div class="relative w-6 h-6 flex items-center justify-center shrink-0">
-                                                    <x-set-symbol :path="''" :code="$print->set->code ?? ''" :rarity="$rarity" size="w-6 h-6" />
-                                                </div>
-                                                <div class="flex items-baseline gap-2">
-                                                    <span class="text-blue-400 font-base tracking-tight text-[15px] cursor-help hover:brightness-125 transition-all"
-                                                          @mouseenter="showCard('{{ asset($print->image_path) }}', $event)"
-                                                          @mouseleave="hideCard()"
-                                                          @mousemove="moveCard($event)">
-                                                        {{ $print->printed_name ?? $print->concept->name }}
-                                                    </span>
-                                                    <span class="text-[11px] text-black dark:text-white font-normal ml-1.5">({{ $print->set->code }} #{{ $print->collector_number }})</span>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        {{-- AÇÕES (BOTÕES) --}}
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <div class="flex items-center justify-end gap-3">
-                                                <button type="button" @click="openModal({{ $print->id }}, 'comment')" class="text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors" title="Observações">
-                                                    <i class="ph ph-chat-text text-xl"></i>
-                                                </button>
-                                                <button type="button" @click="openModal({{ $print->id }}, 'photo')" class="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Upload Foto">
-                                                    <i class="ph ph-camera-plus text-xl"></i>
-                                                </button>
-                                                <button class="transition-colors group relative flex items-center justify-center w-6 h-6" 
-                                                        x-data="{ active: false }" @click="active = !active" title="Monitorar">
-                                                    <i class="ph ph-heart text-xl text-gray-400 group-hover:text-red-500 dark:text-gray-400" x-show="!active"></i>
-                                                    <i class="ph-fill ph-heart text-xl text-red-500" x-show="active" style="display: none;"></i>
-                                                </button>
-                                                <div class="relative ml-1">
-                                                    <button class="text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors flex items-center">
-                                                        <i class="ph ph-dots-three-vertical text-xl"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="7" class="px-6 py-10 text-center text-gray-500 dark:text-gray-500">
-                                            <div class="flex flex-col items-center justify-center">
-                                                <i class="ph ph-ghost text-4xl mb-2 text-gray-300 dark:text-gray-600"></i>
-                                                <span>Nenhum card encontrado com estes filtros.</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </form>
+                        {{-- AÇÕES (BOTÕES) --}}
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex items-center justify-end gap-3">
+                                <button type="button" @click="openModal({{ $print->id }}, 'comment')" class="text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors" title="Observações"><i class="ph ph-chat-text text-xl"></i></button>
+                                <button type="button" @click="openModal({{ $print->id }}, 'photo')" class="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Upload Foto"><i class="ph ph-camera-plus text-xl"></i></button>
+                                <button class="transition-colors group relative flex items-center justify-center w-6 h-6" x-data="{ active: false }" @click="active = !active" title="Monitorar">
+                                    <i class="ph ph-heart text-xl text-gray-400 group-hover:text-red-500 dark:text-gray-400" x-show="!active"></i>
+                                    <i class="ph-fill ph-heart text-xl text-red-500" x-show="active" style="display: none;"></i>
+                                </button>
+                                <div class="relative ml-1">
+                                    <button class="text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors flex items-center"><i class="ph ph-dots-three-vertical text-xl"></i></button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="px-6 py-10 text-center text-gray-500 dark:text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="ph ph-ghost text-4xl mb-2 text-gray-300 dark:text-gray-600"></i>
+                                <span>Nenhum card encontrado com estes filtros.</span>
+                            </div>
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</form>
 
                 {{-- Paginação --}}
                 <div class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -545,6 +528,8 @@
                 <div x-show="aba === 'exportar'" x-cloak>
                     @livewire('store.dashboard.stock.inventory-export')
                 </div>
+                <div x-show="aba === 'produtos'" x-cloak>
+                    @livewire('store.dashboard.stock.product-inventory', ['gameSlug' => $gameSlug])
             </div>
         </main>
     </div>
@@ -604,36 +589,7 @@
 
 @push('scripts')
 <script>
-    // Função para capturar o formulário e enviar via Livewire
-    function submitInventoryForm() {
-        const form = document.getElementById('inventoryForm');
-        const formData = new FormData(form);
-        const data = {};
-
-        // Converter FormData em Objeto Estruturado (items[1][qty])
-        for (let [key, value] of formData.entries()) {
-            const match = key.match(/items\[(\d+)\]\[(.*?)\](\[\])?/);
-            if (match) {
-                const id = match[1];
-                const field = match[2];
-                const isArray = match[3];
-
-                if (!data.items) data.items = {};
-                if (!data.items[id]) data.items[id] = {};
-
-                if (isArray) {
-                    if (!data.items[id][field]) data.items[id][field] = [];
-                    data.items[id][field].push(value);
-                } else {
-                    data.items[id][field] = value;
-                }
-            }
-        }
-
-        // Chamar o método do componente PHP
-        @this.saveForm(data);
-    }
-
+    
     document.addEventListener('alpine:init', () => {
         Alpine.data('cardPreview', () => ({
             show: false,
