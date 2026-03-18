@@ -223,6 +223,23 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.0.10`  
+**Data:** 17/03/2026   
+**Descrição da Versão:** - Lançamento da `Central de Promoções`, módulo final da gestão de estoque focado na configuração e aplicação de descontos e campanhas promocionais para a loja.
+
+### Funcionalidades (UX/UI & Melhorias):
+- **Motor de Desconto em Lote:** Nova barra de ferramentas superior com integração nativa via Alpine.js (`$dispatch` e eventos de janela). Permite a aplicação instantânea de um percentual de desconto e um período de validade (Início/Fim) para todos os itens renderizados na view, agilizando o fluxo de criação de campanhas.
+- **Cálculo de Preço Reativo (Tempo Real):** Implementação de cálculos em tempo real diretamente na tabela de listagem. A interface processa e exibe o "Preço Final" dinamicamente, inserindo *strike-through* (riscado) no valor original de forma automática assim que o input de desconto é preenchido.
+- **Layout Fluido e Truncamento Inteligente:** Aprimoramento na responsividade das tabelas de dados para lidar com nomenclaturas longas (ex: nomes de TCG). A coluna de descrição agora utiliza propriedades combinadas de flexbox e elipse (`w-full max-w-0` com `truncate`), adaptando-se perfeitamente à largura disponível na tela com base no estado (aberto/fechado) da Sidebar, eliminando a quebra de layout.
+
+### Páginas Adicionadas:
+
+**Central de Promoções (Gestão de Descontos):**
+- **Integração Unificada de Inventário:** Nova interface dedicada à precificação promocional. O sistema reúne, em uma única visualização padronizada, cartas avulsas (Singles) e produtos oficiais (Selados/Acessórios), diferenciando-os visualmente por meio de símbolos vetoriais de edição ou miniaturas fotográficas de alta qualidade.
+- **Tooltips de Previsão (`StockPreview`):** Implementação do motor de visualização flutuante na nova página, proporcionando aos lojistas a exibição em alta resolução da arte da carta ou da foto do produto (com as respectivas variações de moldura e design) ao simplesmente passar o mouse sobre o item na tabela.
+
+---
+
 ## 📈 Próxima Versão Planejada
 
 **Próxima versão:** `alpha v0.1.0`  

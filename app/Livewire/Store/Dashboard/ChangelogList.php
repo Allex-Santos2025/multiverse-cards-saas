@@ -18,14 +18,24 @@ class ChangelogList extends Component
     }
 
     public function render()
-    {
-        // Aqui NÃO filtramos por loja. Pegamos tudo que é global.
-        $updates = Changelog::where('is_published', true)
-            ->orderBy('published_at', 'desc')
-            ->paginate(10);
+{
+    $user = auth('store_user')->user();
+    $dataCadastro = $user->created_at;
 
-        return view('livewire.store.dashboard.changelog-list', [
-            'updates' => $updates
-        ]);
-    }
+    // DIAGNÓSTICO: Isso vai parar o código e mostrar as datas na tela.
+    // Verifique se a 'Data da Loja' é realmente MAIOR que a 'Data do Log'.
+    // dd([
+    //    'Data da Loja' => $dataCadastro->format('Y-m-d H:i:s'),
+    //    'Data do Primeiro Log no Banco' => Changelog::first()->published_at->format('Y-m-d H:i:s')
+    // ]);
+
+    $updates = Changelog::where('is_published', true)
+        ->where('published_at', '>=', $dataCadastro)
+        ->orderBy('published_at', 'desc')
+        ->paginate(10);
+
+    return view('livewire.store.dashboard.changelog-list', [
+        'updates' => $updates
+    ]);
+}
 }

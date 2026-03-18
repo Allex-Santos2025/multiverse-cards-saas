@@ -128,12 +128,12 @@
         <span class="group-title px-4 text-[8px] font-black text-gray-500 dark:text-zinc-600 uppercase tracking-widest block mb-2">Gestão</span>
         <ul class="space-y-1 px-2">
             <li>
-                <a href="#" @click.prevent="activeTab = 'discounts'"
-                   class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase"
-                   :class="activeTab === 'discounts' ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white'">
+                <button type="button" @click="activeTab = 'discounts'; $dispatch('mudar-aba', 'descontos')" 
+                    class="nav-link flex items-center px-3 py-2 rounded transition-all font-bold text-[10px] uppercase"
+                    :class="activeTab === 'discounts' ? 'bg-orange-100 dark:bg-orange-600/10 text-orange-600 dark:text-orange-500 font-black' : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-white'">
                     <i class="ph ph-tag nav-icon text-lg mr-3"></i> 
                     <span class="nav-label">Descontos</span>
-                </a>
+                </button>
             </li>
         </ul>
     </div>
@@ -254,6 +254,12 @@
                                     const form = document.getElementById('cardsInventoryForm');
                                     const fd = new FormData(form);
                                     const data = { items: {} };
+                                    
+                                    // RESGATA OS CHECKBOXES TELEPORTADOS PRO BODY E COLOCA DE VOLTA NO FORMDATA
+                                    document.querySelectorAll('input[type=\'checkbox\'][name*=\'[extras][]\']:checked').forEach(cb => {
+                                        fd.append(cb.name, cb.value);
+                                    });
+
                                     for (let [k, v] of fd.entries()) {
                                         const match = k.match(/items\[([^\]]+)\]\[([^\]]+)\](\[\])?/);
                                         if (match) {
@@ -262,6 +268,7 @@
                                             const isArray = match[3];
 
                                             if (!data.items[id]) data.items[id] = {};
+                                            
                                             if (isArray) {
                                                 if (!data.items[id][field]) data.items[id][field] = [];
                                                 data.items[id][field].push(v);
@@ -401,7 +408,7 @@
                         <td class="px-6 py-4 whitespace-nowrap" 
                             x-data="{ 
                                 open: false,
-                                selections: {{ json_encode($stock->extras ?? []) }},
+                                selections: {!! str_replace('"', "'", json_encode($stock->extras ?? [])) !!},
                                 style: { left: '0px', top: 'auto', bottom: 'auto', width: 'auto', maxHeight: '250px' },
                                 
                                 toggle() {
@@ -530,6 +537,10 @@
                 </div>
                 <div x-show="aba === 'produtos'" x-cloak>
                     @livewire('store.dashboard.stock.product-inventory', ['gameSlug' => $gameSlug])
+                </div>
+                <div x-show="aba === 'descontos'" x-cloak>
+                    @livewire('store.dashboard.stock.stock-discount-manager', ['gameSlug' => $gameSlug])
+                </div>
             </div>
         </main>
     </div>

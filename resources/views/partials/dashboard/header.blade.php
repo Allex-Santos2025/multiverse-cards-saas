@@ -6,16 +6,24 @@
     $latestUpdates = collect();
     $slug = 'admin';
 
-    
     if ($user) {
         $store = $user->current_store ?? $user->store; 
         $storeName = $store->name ?? 'Minha Loja';
         $slug = $store->url_slug ?? 'admin';
 
-        // Novidades
-        $latestUpdates = \App\Models\Changelog::where('is_published', true)->orderBy('published_at', 'desc')->take(5)->get();
-        $unreadCount = \App\Models\Changelog::where('is_published', true)
-            ->whereDoesntHave('reads', function($q) use ($user) { $q->where('store_user_id', $user->id); })
+        // Novidades - Agora usando o filtro de data da loja
+        $latestUpdates = \App\Models\Changelog::paraLojaAtual()
+            ->where('is_published', true)
+            ->orderBy('published_at', 'desc')
+            ->take(5)
+            ->get();
+            
+        // Contagem - Também usando o filtro
+        $unreadCount = \App\Models\Changelog::paraLojaAtual()
+            ->where('is_published', true)
+            ->whereDoesntHave('reads', function($q) use ($user) { 
+                $q->where('store_user_id', $user->id); 
+            })
             ->count();
     }
 

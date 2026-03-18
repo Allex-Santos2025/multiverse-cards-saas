@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes; // <--- Importante para a lixeira
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Catalog\CatalogPrint;
 
@@ -25,6 +26,11 @@ class StockItem extends Model
         'extras',       // JSON: { "foil": true }
         'comments',     // Texto livre
         'real_photos',  // JSON: ["path/to/img1.jpg"]
+
+        'discount_percent',
+        'discount_start',
+        'discount_end',
+        'is_promotion',
     ];
 
     /**
@@ -59,10 +65,21 @@ class StockItem extends Model
     {
         return $this->belongsTo(CatalogProduct::class);
     }
-    /**
-     * Acessor: Atalho para pegar o Conceito (Nome Abstrato) através do Print.
-     * Uso: $stockItem->concept->name
-     */
+    protected function finalPrice(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                // Se a flag de promoção estiver ativa E o desconto for maior que 0
+                if ($this->is_promotion && $this->discount_percent > 0) {
+                    $desconto = $this->price * ($this->discount_percent / 100);
+                    return round($this->price - $desconto, 2);
+                }
+                
+                // Se não, retorna o preço cheio intacto
+                return $this->price;
+            }
+        );
+    }
     public function getConceptAttribute()
     {
         return $this->catalogPrint->concept ?? null;

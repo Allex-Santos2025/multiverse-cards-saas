@@ -31,4 +31,13 @@ class Changelog extends Model
     {
         return $this->hasMany(ChangelogUserRead::class);
     }
+    public function scopeParaLojaAtual($query)
+    {
+        $user = auth('store_user')->user();
+        if ($user) {
+            // Agora compara data, hora, minuto e segundo (rigoroso)
+            return $query->where('published_at', '>=', $user->created_at);
+        }
+        return $query;
+    }
 }
