@@ -240,13 +240,20 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
-## 📈 Próxima Versão Planejada
+**Versão:** `alpha v0.1.0`  
+**Data:** 20/03/2026  
+**Descrição da Versão:** - Lançamento do `Marco Zero (Storefront)`. Implementação da arquitetura base pública do e-commerce (SaaS), introduzindo o motor de temas dinâmicos e a primeira página da loja conectada em tempo real ao estoque do lojista.
 
-**Próxima versão:** `alpha v0.1.0`  
-**Objetivo:**  
-- Implementar o layout público inicial: `storefront.blade.php`  
-- Iniciar a transição visual para o design moderno  
-- Criar a base do novo marketplace público  
+### Funcionalidades (UX/UI & Melhorias):
+- **Motor de Temas Dinâmicos (SaaS):** Criação de um sistema inteligente de variáveis CSS (`styles.blade.php`) injetado no layout principal. Permite a customização da identidade visual da loja (Cores Primária, Secundária, Destaque, Fundo do Header e Barra de Contatos) de forma isolada para cada tenant.
+- **Cálculo de Contraste Automático:** Implementação de um helper PHP nativo que avalia a luminosidade das cores escolhidas pelo lojista (método YIQ) e define dinamicamente se os textos e ícones sobrepostos devem ser brancos ou escuros, garantindo acessibilidade.
+- **Refatoração de Partials:** Componentes globais `Header` e `Footer` completamente reescritos. Foram removidas as cores estáticas do Tailwind, adotando classes utilitárias reativas às variáveis do tema para suportar qualquer paleta escolhida pelo lojista.
+
+### Páginas Adicionadas:
+
+**Storefront - Vitrine Principal (Home):**
+- **Prateleiras Vivas (Livewire):** Nova interface (`Store\Home`) conectada ao banco de dados. A prateleira "Últimas Adições" renderiza as cartas reais do estoque, aplicando automaticamente *badges* de desconto promocional e etiquetas de tratamento (ex: Foil).
+- **Estrutura Comercial e Empty State:** Construção do esqueleto visual contendo Hero Banner, Sidebar com "Ofertas do Dia", prateleiras por TCG, bloco de avaliações e captura de Newsletter. Inclui um *Empty State* (Estado Vazio) profissional na prateleira principal para lojas recém-criadas que ainda não possuem produtos cadastrados.
 
 ---
 

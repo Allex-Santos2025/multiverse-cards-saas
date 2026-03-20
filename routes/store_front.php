@@ -2,7 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
-use App\Livewire\Store\LoginLojista; 
+use App\Livewire\Store\LoginLojista;
+use App\Livewire\Store\Template\Home; // <-- IMPORTAMOS A CLASSE AQUI
 
 /*
 |--------------------------------------------------------------------------
@@ -37,8 +38,6 @@ Route::get('/aguarde', function ($slug) {
     return $store ? view('livewire.store.placeholder', ['store' => $store]) : redirect('/');
 })->name('store.wait');
 
-// Rota final: /loja/{slug}/ (A Home da Loja "Coming Soon")
-// O web.php manda para cá quando digita /loja/spellbox
-Route::get('/', function () {
-    return view('livewire.store.template.coming-soon');
-})->name('store.view');
+// Rota final: /loja/{slug}/ (A Home da Loja)
+// Agora o Laravel passa a bola direto para o componente Livewire
+Route::get('/', Home::class)->name('store.view');
