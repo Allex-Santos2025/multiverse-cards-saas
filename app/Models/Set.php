@@ -24,6 +24,8 @@ class Set extends Model
         'api_id',
         'code',
         'name', 
+        'name_pt',       // Adicionado: Nome em Português
+        'translations',  // Adicionado: JSON com todos os idiomas
         'released_at',
         'set_type',
         'card_count',
@@ -39,8 +41,9 @@ class Set extends Model
         'is_fanmade' => 'boolean',
         'digital' => 'boolean',
         'foil_only' => 'boolean',
-        'released_at' => 'date', // Garante que é tratado como um objeto de data
+        'released_at' => 'date', 
         'card_count' => 'integer',
+        'translations' => 'array', // Adicionado: Cast automático do JSON para Array
     ];
 
     /**
@@ -58,5 +61,20 @@ class Set extends Model
     {
         // NOTA: Assumindo que o Card Model existe
         return $this->hasMany(Card::class);
+    }
+    /**
+     * Relacionamento com o Estoque "Através" dos Prints
+     * O Laravel vai pular a ponte: Set -> CatalogPrint -> StockItem
+     */
+    public function stockItems()
+    {
+        return $this->hasManyThrough(
+            \App\Models\StockItem::class,
+            \App\Models\Catalog\CatalogPrint::class,
+            'set_id',            // Coluna na tabela catalog_prints que aponta para o set
+            'catalog_print_id',  // Coluna na tabela stock_items que aponta para o print
+            'id',                // ID local da tabela sets
+            'id'                 // ID local da tabela catalog_prints
+        );
     }
 }

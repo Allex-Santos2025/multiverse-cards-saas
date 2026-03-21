@@ -257,6 +257,28 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.1.1`  
+**Data:** 21/03/2026  
+**Descrição da Versão:** - Implementação do **Gerenciador Dinâmico de Categorias (TCG)**. Introdução do painel administrativo para controle da arquitetura de navegação da loja, permitindo que cada lojista personalize nomes, visibilidade e a hierarquia de produtos (Singles, Selados e Acessórios) de forma isolada e multitenant.
+
+### Funcionalidades (UX/UI & Melhorias):
+- **Gestão de Categorias por Jogo (Dashboard):** Criação da interface administrativa (`DashboardStoreMenus`) para ativação e configuração de Card Games. O sistema permite renomear abas padrão e alternar a visibilidade de categorias específicas, salvando as preferências no banco de dados por `store_id`.
+- **Motor de Menu Inteligente (Stock-Driven):** O menu frontal agora é gerado automaticamente com base no estoque real. Implementação de filtros complexos que ocultam coleções vazias e organizam os sets por ordem cronológica de lançamento (`released_at`), garantindo que o cliente veja apenas o que está disponível para compra.
+- **Isolamento de Dados (Multitenancy):** Blindagem da camada de dados no Livewire. Todas as operações de leitura e escrita de categorias utilizam o `current_store_id` do usuário autenticado, impedindo vazamento de configurações entre diferentes lojas da plataforma.
+- **Botão de Atualizações de Estoque (WhatsApp Ready):** Adição de um campo dedicado para o "Menu do Robô" (`name_updates`). Este recurso permite ao lojista configurar o nome e a ativação da página que servirá de destino para os disparos automáticos de novidades no WhatsApp, com suporte total a variáveis de contraste visual.
+
+### Páginas Adicionadas / Atualizadas:
+
+**Dashboard - Configurações de Menus:**
+- **Interface de Gestão de TCGs:** Tela com sistema de modais para ativação de novos jogos. Inclui validação contra duplicidade de menus e suporte a múltiplos estados (*Ativo/Oculto*) para cada categoria de produto (Cartas Avulsas, Selados, Acessórios e Sets).
+- **Persistência em Tempo Real:** Integração completa entre o formulário do Dashboard e o banco de dados via Livewire, garantindo que qualquer alteração de nome ou visibilidade reflita instantaneamente na vitrine pública.
+
+**Storefront - Menu de Navegação Global:**
+- **Refatoração do Dropdown de Jogos:** O menu superior foi convertido de estático para 100% dinâmico. Agora ele renderiza a hierarquia completa: Categoria Principal > Título de Lançamentos > Lista de Sets Recentes > Links de Apoio.
+- **Blindagem de Contraste no Header:** Aplicação de `style` inline em componentes críticos (botão de atualizações) para forçar o respeito às variáveis de contraste (`cor-texto-btn-1`), evitando falhas de legibilidade independentemente da cor do tema.
+
+---
+
 ## 🧩 Estrutura de Versionamento
 
 O projeto usa um modelo adaptado do Semantic Versioning:

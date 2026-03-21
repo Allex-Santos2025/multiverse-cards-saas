@@ -64,6 +64,13 @@ class Store extends Model
         return $this->belongsTo(Subscription::class);
     }
 
+    public function gameMenus()
+    {
+        return $this->hasMany(StoreGameMenu::class, 'store_id')
+                    ->where('is_active', true)
+                    ->with(['game']) // <--- APENAS 'game' AQUI
+                    ->orderBy('position');
+    }
     // O relacionamento 'users()' que você tinha provavelmente se refere a 'owner_user_id'
     // Se 'users' se refere a outros tipos de usuários ou a uma relação muitos-para-muitos,
     // precisaremos de mais contexto. Por enquanto, o 'owner()' é o mais direto.

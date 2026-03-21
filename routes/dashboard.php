@@ -79,4 +79,6 @@ Route::name('store.dashboard.')->group(function () {
         return view('livewire.store.dashboard.changelog-detail', compact('changelog', 'slug'));
     })->name('novidades.show');
 
+    Route::get('/categorias', \App\Livewire\Store\Dashboard\DashboardStoreMenus::class)->name('categorias');
+
 });
