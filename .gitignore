@@ -24,6 +24,8 @@ Homestead.yaml
 Thumbs.db
 /public/card_images
 /public/product_images/
+/public/store_images/*
+!/public/store_images/.gitkeep
 /vendor
 .env
 # Database dumps
