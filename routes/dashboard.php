@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Livewire\Store\Dashboard\Stock\ManageInventory; 
+use App\Livewire\Store\Dashboard\Layout\VisualIdentity; // Importando o nosso novo componente
 
 /*
 |--------------------------------------------------------------------------
@@ -50,6 +51,11 @@ Route::name('store.dashboard.')->group(function () {
         });
     });
 
+    // --- LAYOUT E APARÊNCIA ---
+    Route::prefix('layout')->name('layout.')->group(function () {
+        Route::get('/identidade-visual', VisualIdentity::class)->name('visual-identity');
+    });
+
     // --- LOGS ---
     Route::get('/logs', function ($slug) {
         return view('livewire.store.dashboard.logs', ['slug' => $slug]);
@@ -79,6 +85,7 @@ Route::name('store.dashboard.')->group(function () {
         return view('livewire.store.dashboard.changelog-detail', compact('changelog', 'slug'));
     })->name('novidades.show');
 
+    // --- CATEGORIAS ---
     Route::get('/categorias', \App\Livewire\Store\Dashboard\DashboardStoreMenus::class)->name('categorias');
 
 });

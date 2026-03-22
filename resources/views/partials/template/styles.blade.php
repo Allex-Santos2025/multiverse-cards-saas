@@ -1,9 +1,8 @@
 @php
-    // Função de utilidade para garantir contraste (Texto Branco ou Escuro)
     if (!function_exists('getContrastColor')) {
         function getContrastColor($hex) {
             $hex = str_replace('#', '', $hex);
-            if(strlen($hex) != 6) return '#1f2937'; // Fallback para texto escuro
+            if(strlen($hex) != 6) return '#1f2937'; 
             $r = hexdec(substr($hex, 0, 2));
             $g = hexdec(substr($hex, 2, 2));
             $b = hexdec(substr($hex, 4, 2));
@@ -12,67 +11,111 @@
         }
     }
 
-    // DEFINIÇÃO DOS FALLBACKS (O SEU MARCO ZERO COM OS TESTES ATUAIS)
-    $cor1 = $loja->color_primary ?? '#2563EB';           // Azul Versus
-    $cor2 = $loja->color_secondary ?? '#1E3A8A';         // Azul Escuro (Menus)
-    $cor3 = $loja->color_accent ?? '#F59E0B';            // Amarelo/Dourado (Destaques)
-    $corBgHeader = $loja->color_bg_header ?? '#ffffff';  // Vinho (Centro do Header)
-    
-    // NOVA VARIÁVEL INDEPENDENTE: Barra de Contatos
-    // Fallback: O mesmo azul da cor principal padrão
-    $corBgTopBar = $loja->color_bg_top_bar ?? '#2563EB'; 
+    $v = $loja->visual ?? (object)[];
 
-    // CÁLCULOS DE CONTRASTE AUTOMÁTICO
-    $textoNoHeader = getContrastColor($corBgHeader);
-    $textoNaCor1 = getContrastColor($cor1);
-    
-    // Novo contraste para a Barra de Contatos
+    // 1. CORES BASE
+    $cor1        = $v->color_primary   ?? '#2563EB'; 
+    $corBgTopBar = $v->color_topbar_bg ?? '#2563EB'; 
+    $corBgHeader = $v->color_header_bg ?? '#ffffff';
+    $corBgFooter = $v->color_footer_bg ?? '#0f172a';
+    $corBgLoja   = $v->global_bg_color ?? '#f9fafb';
+
+    // 2. COR DE DESTAQUE (CTA) - Usado no var(--cor-3)
+    $corCTA      = $v->color_cta ?? '#F59E0B';
+
+    // 3. CORES DO MENU (TOTALMENTE INDEPENDENTES DA COR 1)
+    $corMenuTxt  = $v->color_menu_text  ?? getContrastColor($corBgHeader);
+    $corMenuHvr  = $v->color_menu_hover ?? '#2563EB'; // Cor escolhida no painel só para o hover
+
+    // 4. CONTRASTES
+    $textoNaCor1   = getContrastColor($cor1);
     $textoNoTopBar = getContrastColor($corBgTopBar);
+    $textoNoFooter = getContrastColor($corBgFooter);
+    $textoNoHeader = getContrastColor($corBgHeader);
+    $textoNoCTA    = getContrastColor($corCTA);
+    
+    // A INTELIGÊNCIA DO HOVER DO MENU (Se o hover for escuro, letra branca)
+    $textoNoHoverMenu = getContrastColor($corMenuHvr); 
 @endphp
 
 <style>
     :root {
-        /* PALETA DE CORES PRIMÁRIAS */
+        /* VARIÁVEIS PRINCIPAIS */
         --cor-1: {{ $cor1 }};
-        --cor-2: {{ $cor2 }};
-        --cor-3: {{ $cor3 }};
+        --cor-2: {{ $corBgFooter }};
+        --cor-3: {{ $corCTA }};
         
-        /* FUNDOS E SUPERFÍCIES */
+        --cor-cta: {{ $corCTA }};
+        --cor-cta-txt: {{ $textoNoCTA }};
+
+        /* FUNDOS */
         --cor-bg-header: {{ $corBgHeader }};
-        --cor-bg-loja: {{ $loja->color_bg_loja ?? '#f9fafb' }}; /* Gelo/Cinza claro */
-        
-        /* NOVA VARIÁVEL DE FUNDO: Barra de Contatos */
+        --cor-bg-loja: {{ $corBgLoja }};
         --cor-bg-top-bar: {{ $corBgTopBar }};
 
-        /* TEXTOS DINÂMICOS (Baseados no Contraste calculado pelo PHP) */
+        /* TEXTOS DINÂMICOS */
         --cor-texto-header: {{ $textoNoHeader }};
         --cor-texto-btn-1: {{ $textoNaCor1 }};
-        
-        /* Novo texto dinâmico para a Barra de Contatos */
         --cor-texto-top-bar: {{ $textoNoTopBar }};
+        --cor-texto-footer: {{ $textoNoFooter }};
+        
+        /* MENU INDEPENDENTE E INTELIGENTE */
+        --menu-txt: {{ $corMenuTxt }};
+        --menu-hvr: {{ $corMenuHvr }};
+        --menu-hvr-txt: {{ $textoNoHoverMenu }};
     }
 
-    /* CLASSES UTILITÁRIAS PARA USO RÁPIDO NAS BLADES */
-    
-    /* Cor Principal (Botões, Destaques) - Força contraste no texto */
+    /* --- CLASSES UTILITÁRIAS --- */
     .bg-main-1 { background-color: var(--cor-1) !important; color: var(--cor-texto-btn-1) !important; }
     .text-main-1 { color: var(--cor-1) !important; }
     .border-main-1 { border-color: var(--cor-1) !important; }
-    
-    /* Centro do Header (Logo, Busca) - Força contraste no texto/ícones */
-    .bg-header-custom { background-color: var(--cor-bg-header) !important; color: var(--cor-texto-header) !important; }
-    
-    /* NOVA CLASSE: Barra de Contatos (Top Bar) - Força contraste no texto */
-    .bg-top-bar-custom { background-color: var(--cor-bg-top-bar) !important; color: var(--cor-texto-top-bar) !important; }
+    .hover-text-main-1:hover { color: var(--cor-1) !important; }
 
-    /* Outros utilitários necessários para a Home */
-    .text-accent-1 { color: var(--cor-3) !important; }
-    .bg-accent-1 { background-color: var(--cor-3) !important; color: #1f2937 !important; }
-    .bg-secondary-1 { background-color: var(--cor-2) !important; }
+    .group:hover .group-hover-bg-main-1 { 
+        background-color: var(--cor-1) !important; 
+        color: var(--cor-texto-btn-1) !important; 
+    }
     
-    /* Reset de inputs para não ficarem azuis padrão do Tailwind no focus */
-    input:focus, select:focus {
-        border-color: var(--cor-1) !important;
-        ring-color: var(--cor-1) !important;
+    /* Cabeçalhos e Topbar */
+    .bg-header-custom { background-color: var(--cor-bg-header) !important; color: var(--cor-texto-header) !important; }
+    .bg-top-bar-custom { background-color: var(--cor-bg-top-bar) !important; color: var(--cor-texto-top-bar) !important; }
+    
+    /* Newsletter / Rodapé */
+    .bg-secondary-1 { background-color: var(--cor-2) !important; color: var(--cor-texto-footer) !important; }
+    
+    /* BOTÕES CTA E DESTAQUES */
+    .bg-accent-1 { background-color: var(--cor-cta) !important; color: var(--cor-cta-txt) !important; }
+    .text-accent-1 { color: var(--cor-cta) !important; }
+
+    /* MENU PRINCIPAL E SUBMENU */
+    .menu-link-custom {
+        color: var(--menu-txt) !important;
+        background-color: transparent !important;
+        transition: all 0.2s ease-in-out;
+    }
+    .menu-link-custom:hover {
+        background-color: var(--menu-hvr) !important;
+        color: var(--menu-hvr-txt) !important;
+    }
+
+    .submenu-link-custom {
+        color: var(--menu-txt) !important;
+        transition: all 0.2s ease-in-out;
+    }
+    .submenu-link-custom:hover {
+        background-color: var(--menu-hvr) !important;
+        color: var(--menu-hvr-txt) !important;
+    }
+    /* BOTÃO DE ATUALIZAÇÕES DO SUBMENU */
+    .btn-updates-custom {
+        background-color: var(--menu-hvr) !important;
+        color: var(--menu-hvr-txt) !important;
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-updates-custom:hover {
+        /* O filtro de brightness(0.85) aplica essa "película" escura elegante */
+        /* Coloquei um leve opacity junto para funcionar bem tanto em cores claras quanto escuras */
+        filter: brightness(0.85);
+        opacity: 0.95;
     }
 </style>

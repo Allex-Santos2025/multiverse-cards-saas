@@ -71,6 +71,10 @@ class Store extends Model
                     ->with(['game']) // <--- APENAS 'game' AQUI
                     ->orderBy('position');
     }
+    public function visual()
+    {
+        return $this->hasOne(StoreVisual::class);
+    }
     // O relacionamento 'users()' que você tinha provavelmente se refere a 'owner_user_id'
     // Se 'users' se refere a outros tipos de usuários ou a uma relação muitos-para-muitos,
     // precisaremos de mais contexto. Por enquanto, o 'owner()' é o mais direto.

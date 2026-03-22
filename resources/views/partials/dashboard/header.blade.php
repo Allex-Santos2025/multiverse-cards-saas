@@ -30,13 +30,45 @@
     $initials = Str::upper(Str::substr($storeName, 0, 2));
 @endphp
 
-<div class="h-20 lg:h-20 px-4 lg:px-6 flex items-center justify-between gap-2 lg:gap-8">
-    {{-- LOGO / INICIAIS --}}
-    <div class="flex items-center gap-4 shrink-0">
-        <div class="w-10 h-10 bg-zinc-900 dark:bg-white rounded flex items-center justify-center">
-            <span class="text-white dark:text-zinc-900 font-bold text-xs">{{ $initials }}</span>
-        </div>
-        <h1 class="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">{{ $storeName }}</h1>
+{{-- 1. AUMENTO DO HEADER: Mudei para h-28 para dar mais altura real --}}
+<div class="h-24 px-4 lg:px-10 flex items-center justify-between gap-2 lg:gap-8 bg-white dark:bg-[#1e293b] border-b border-zinc-200 dark:border-white/5">
+    
+    {{-- LOGO / INICIAIS NO DASHBOARD --}}
+    @php
+        $userStore = auth('store_user')->user()->store;
+        $visual = $userStore->visual;
+    @endphp
+
+    <div class="flex items-center shrink-0">
+        @if($visual && $visual->use_logo_dashboard && $visual->logo_main)
+            {{-- 
+                EFEITO PRÁTICO:
+                - ml-16: Empurra a imagem significativamente para a direita.
+                - h-10: Define uma área de altura controlada.
+            --}}
+            <div class="h-10 flex items-center ml-16">
+                <img src="{{ asset('store_images/' . $userStore->url_slug . '/' . $visual->logo_main) }}" 
+                    alt="{{ $userStore->name }}" 
+                    {{-- 
+                        PALIATIVO PARA TEMA CLARO:
+                        - dark:invert-0: Garante que no tema escuro a logo branca NÃO mude.
+                        - grayscale: Transforma em tons de cinza (para remover cores, se houver).
+                        - brightness-0: Força toda a imagem a ficar preta (0% de brilho).
+                        - invert: Inverte as cores (opcional, se usar grayscale+brightness0 talvez nn precise, mas invert garante).
+                        
+                        O segredo é que o Tailwind aplica essas classes de filtro por padrão e o prefixo 'dark:' as remove no tema escuro.
+                    --}}
+                    class="h-16 w-auto object-contain shadow-sm invert dark:invert-0 transition-all duration-300">
+            </div>
+        @else
+            {{-- MANTIDO EXATAMENTE COMO VOCÊ TINHA --}}
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-zinc-900 dark:bg-white rounded flex items-center justify-center">
+                    <span class="text-white dark:text-zinc-900 font-bold text-xs">{{ $initials }}</span>
+                </div>
+                <h1 class="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">{{ $storeName }}</h1>
+            </div>
+        @endif
     </div>
 
     {{-- BUSCA --}}

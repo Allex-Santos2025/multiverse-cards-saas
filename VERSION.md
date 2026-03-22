@@ -279,6 +279,27 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.1.2`  
+**Data:** 21/03/2026  
+**Descrição da Versão:** - Início da implementação do **Motor de Customização de Layout e Identidade Visual**. Esta atualização estabelece a infraestrutura técnica (pipeline) que permite a transição definitiva de interfaces estáticas para uma vitrine dinâmica, onde as escolhas de design feitas no painel administrativo (Cores, Logos e Proporções) ditam a arquitetura visual da loja em tempo real.
+
+### Funcionalidades (Engenharia de Layout & UX):
+- **Pipeline de Ativos Dinâmicos (Multitenant):** Desenvolvimento da lógica de entrega de assets isolados. O sistema agora processa e renderiza imagens (Logos/Favicons) com base no contexto da loja ativa, garantindo que o upload no Dashboard reflita instantaneamente no Front-end, Dashboard e Footer.
+- **Engenharia de Header Premium:** Refatoração estrutural da cabeçalho para suportar a nova escala visual. Implementação de variáveis de respiro (`h-24`) e deslocamento (`ml-10`) que garantem que a identidade da loja tenha destaque sem comprometer a usabilidade da navegação.
+- **Motor de Adaptabilidade de Tema (Reactive Contrast):** Implementação de lógica de detecção de estado via CSS e Tailwind (`invert dark:invert-0`). O sistema agora ajusta a identidade visual monocromática automaticamente entre os modos Claro e Escuro, resolvendo problemas críticos de contraste e legibilidade sem necessidade de intervenção do usuário.
+- **Sincronização de Branding Global:** Centralização do objeto de visual da loja, garantindo consistência absoluta entre o ambiente de gestão (Dashboard) e o ambiente de venda (Storefront).
+
+### Páginas Adicionadas / Atualizadas:
+
+**Ambiente de Gestão (Dashboard):**
+- **Header Administrativo Reativo:** Atualização do topo do painel para exibir a marca proprietária com comportamento inteligente de troca de tema. O Header agora atua como um espelho da identidade configurada pelo lojista.
+
+**Ambiente de Vitrine (Storefront):**
+- **Bridge Visual (Header/Footer):** Integração total dos componentes de topo e rodapé com o banco de dados visual da loja. A vitrine agora é "alimentada" dinamicamente, abandonando placeholders e textos estáticos em favor da identidade visual real do lojista.
+- **Proteção de Layout (Object-Contain):** Implementação de travas de segurança em componentes de imagem para assegurar que logotipos de diferentes proporções sejam exibidos sem distorções ou cortes, mantendo a integridade do design.
+
+---
+
 ## 🧩 Estrutura de Versionamento
 
 O projeto usa um modelo adaptado do Semantic Versioning:

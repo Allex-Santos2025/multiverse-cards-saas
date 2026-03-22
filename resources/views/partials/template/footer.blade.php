@@ -3,17 +3,41 @@
         
         {{-- Coluna 1: Sobre a Loja --}}
         <div>
-            <h3 class="text-white text-xl font-bold mb-4 tracking-tighter uppercase">
-                @if($loja->logo_path)
-                    <img src="{{ asset('store_images/' . $loja->url_slug . '/' . $loja->logo_path) }}" alt="{{ $loja->name }}" class="h-10 w-auto object-contain brightness-0 invert">
+            <h3 class="mb-4 tracking-tighter uppercase">
+                {{-- 
+                    1. Verificamos o visual (usando a relação que criamos)
+                    2. Se não quiser usar a relação agora, mantenha seu $loja->logo_path, 
+                    mas adicione as travas de tamanho abaixo:
+                --}}
+                @if($loja->visual && $loja->visual->logo_main)
+                    <img src="{{ asset('store_images/' . $loja->url_slug . '/' . $loja->visual->logo_main) }}" 
+                        alt="{{ $loja->name }}" 
+                        {{-- 
+                            AJUSTES PRÁTICOS:
+                            - h-8: Reduzi um pouco (32px). No footer fica mais elegante.
+                            - max-w-[200px]: Se a logo for muito larga, ela trava aqui e não quebra o layout.
+                            - object-left: Garante que ela alinhe com o texto abaixo.
+                        --}}
+                        class="h-12 w-auto max-w-[200px] object-contain object-left brightness-0 invert opacity-80 hover:opacity-100 transition-opacity">
                 @else
-                    {{ $loja->name }} <span class="text-accent-1">TCG</span>
+                    {{-- Seu fallback original com a cor de destaque --}}
+                    <span class="text-white text-xl font-bold">
+                        {{ $loja->name }} <span class="text-accent-1">TCG</span>
+                    </span>
                 @endif
             </h3>
-            <p class="text-sm leading-relaxed mb-4 text-gray-300">A sua principal loja de Card Games. Encontre as melhores cartas, acessórios e participe dos nossos torneios semanais.</p>
+            
+            <p class="text-sm leading-relaxed mb-4 text-gray-300">
+                A sua principal loja de Card Games. Encontre as melhores cartas, acessórios e participe dos nossos torneios semanais.
+            </p>
+
             <div class="flex space-x-3">
-                <a href="#" class="bg-white/10 p-2 rounded-full hover:bg-accent-1 transition-colors"><i class="ph ph-instagram-logo"></i></a>
-                <a href="#" class="bg-white/10 p-2 rounded-full hover:bg-accent-1 transition-colors"><i class="ph ph-facebook-logo"></i></a>
+                <a href="#" class="bg-white/10 p-2 rounded-full hover:bg-accent-1 transition-colors">
+                    <i class="ph ph-instagram-logo"></i>
+                </a>
+                <a href="#" class="bg-white/10 p-2 rounded-full hover:bg-accent-1 transition-colors">
+                    <i class="ph ph-facebook-logo"></i>
+                </a>
             </div>
         </div>
 
