@@ -8,6 +8,22 @@
     {{-- 1. Estilos do Livewire --}}
     @livewireStyles
 
+    {{-- FAVICON DINÂMICO DA LOJA AQUI 👇 --}}
+    @php
+        $userStore = auth('store_user')->user()->store ?? null;
+        $visual = $userStore ? $userStore->visual : null;
+    @endphp
+
+    @if($visual && $visual->favicon)
+        <link rel="icon" type="image/x-icon" href="{{ asset('store_images/' . $userStore->url_slug . '/' . $visual->favicon) }}">
+    @else
+        <link rel="icon" type="image/x-icon" href="{{ asset('images/favicon-default.ico') }}">
+    @endif
+    {{-- FIM DO FAVICON 👆 --}}
+    
+    {{-- 1. Estilos do Livewire --}}
+    @livewireStyles
+
     {{-- 2. CSS Compilado --}}
     <link rel="stylesheet" href="{{ mix('css/app.css') }}">
     

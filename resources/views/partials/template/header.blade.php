@@ -20,13 +20,11 @@
             {{-- Logo --}}
             <div class="w-full lg:w-1/4 flex justify-center lg:justify-start">
                 <a href="{{ route('store.view', ['slug' => $loja->url_slug]) }}" class="flex items-center hover:opacity-90 transition-opacity">
-                    {{-- Verificamos se a loja tem o registro visual e se a logo_main está preenchida --}}
                     @if($loja->visual && $loja->visual->logo_main)
                         <img src="{{ asset('store_images/' . $loja->url_slug . '/' . $loja->visual->logo_main) }}" 
                             alt="{{ $loja->name }}" 
                             class="max-h-16">
                     @else
-                        {{-- Fallback original que você já tinha: apenas o nome da loja --}}
                         <span class="text-3xl font-black tracking-tighter uppercase" style="color: var(--cor-texto-header);">
                             {{ $loja->name }}
                         </span>
@@ -107,9 +105,15 @@
                                     </div>
                                 @endif
 
+                                {{-- AQUI ACONTECE A MÁGICA DA NOVA ROTA COM O ID DO JOGO 👇 --}}
                                 @if($menu->show_all_sets)
-                                    <li><a href="#" class="{{ $linkStyle }} border-t border-gray-50">{{ $menu->name_all_sets }} &rarr;</a></li>
+                                    <li>
+                                        <a href="{{ route('store.catalog.sets', ['slug' => $loja->url_slug, 'gameId' => $menu->game->id]) }}" class="{{ $linkStyle }} border-t border-gray-50">
+                                            {{ $menu->name_all_sets }} &rarr;
+                                        </a>
+                                    </li>
                                 @endif
+                                {{-- FIM DA ATUALIZAÇÃO 👆 --}}
 
                                 @if($menu->show_sealed)
                                     <li><a href="#" class="{{ $linkStyle }}">{{ $menu->name_sealed }}</a></li>
@@ -119,7 +123,6 @@
                                     <li><a href="#" class="{{ $linkStyle }}">{{ $menu->name_accessories }}</a></li>
                                 @endif
 
-                                {{-- 6. O MENU DE ATUALIZAÇÕES (WhatsApp/Robô) --}}
                                 <li class="px-3 mt-3 pb-2 pt-2 border-t border-gray-50">
                                     <a href="#" class="flex items-center justify-center gap-2 py-2.5 px-2 rounded-lg text-[10px] font-black transition-all shadow-md group/boot uppercase btn-updates-custom">
                                         <i class="ph ph-robot text-lg group-hover/boot:animate-bounce"></i>
@@ -131,7 +134,6 @@
                     @endforeach
                 @endif
 
-                {{-- Ofertas (MANTIDO EXATAMENTE COMO VOCÊ MANDOU) --}}
                 <li class="relative">
                     <a href="#" class="px-4 py-2 rounded-md transition-all duration-300 hover:scale-110 hover:bg-[var(--cor-3)] hover:text-gray-900 text-[var(--cor-3)] flex items-center gap-1 font-bold uppercase">
                         <i class="ph ph-tag-simple font-bold"></i> Ofertas

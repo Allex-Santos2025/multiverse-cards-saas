@@ -31,7 +31,7 @@
                             <a href="{{ route('store.dashboard.stock.index', ['slug' => auth('store_user')->user()->store->url_slug, 'game_slug' => 'magic']) }}" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Estoque</a>
                             <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Buylist</a>
                             <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Regras de Preço</a>
-                            <a href="{{ route('store.dashboard.layout.visual-identity', ['slug' => auth('store_user')->user()->store->url_slug]) }}" class="block px-6 py-2 text-xs font-semibold {{ request()->routeIs('store.dashboard.categorias') ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300' }}">
+                            <a href="{{ route('store.dashboard.categorias', ['slug' => auth('store_user')->user()->store->url_slug]) }}" class="block px-6 py-2 text-xs font-semibold {{ request()->routeIs('store.dashboard.categorias') ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300' }}">
                                 Categorias
                             </a>
                         @elseif($key === 'operacoes')

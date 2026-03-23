@@ -14,16 +14,14 @@ class LoginLojista extends Component
     public $email;
     public $password;
     public $store;
+    public $loja;
 
     public function mount($slug)
     {
         $this->slug = $slug;
+        $this->loja = \App\Models\Store::with('visual')->where('url_slug', $slug)->first();
 
-        $this->store = DB::table('stores')->where('url_slug', $slug)->first();
-
-        if (!$this->store) {
-            abort(404, 'Loja não encontrada.');
-        }
+        if (!$this->loja) { abort(404); }
     }
 
     public function autenticar()

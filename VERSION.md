@@ -300,6 +300,40 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.1.3`  
+**Data:** 22/03/2026  
+**Descrição da Versão:** - Implementação da **Interface de Navegação por Expansões (Sets)**. Esta atualização introduz a camada de descoberta de produtos organizada por coleções, permitindo que o usuário navegue pelo catálogo através de uma arquitetura visual focada em TCG (Trading Card Games).
+
+### Funcionalidades (Engenharia de Layout & UX):
+- **Barra de Navegação Contextual (Location Bar):** Desenvolvimento de um componente de trilha dinâmico que identifica a localização do usuário no ecossistema da loja. Implementação de lógica de breadcrumbs que se adapta ao contexto da coleção visualizada, melhorando o fluxo de navegação (User Flow).
+- **Arquitetura de Grid de Coleções:** Implementação de um sistema de grid responsivo projetado para exibir expansões e sets. O layout foi otimizado para suportar artes de coleções variadas, garantindo que a hierarquia visual priorize a identificação rápida das edições.
+- **Motor de Ingestão de Dados de Sets:** Integração dos componentes de vitrine com a estrutura de dados de expansões, garantindo que nomes, ícones e metadados das coleções sejam renderizados de forma performática e organizada.
+
+### Páginas Adicionadas / Atualizadas:
+
+**Ambiente de Vitrine (Storefront):**
+- **Página de Listagem de Expansões (Sets Index):** Criação da interface principal de coleções. A tela atua como o ponto de entrada para jogadores que buscam cards de edições específicas, utilizando a nova barra de localização como guia estrutural.
+- **Componentização de Card de Set:** Desenvolvimento do componente atômico para representação de cada expansão, com suporte a hover states e transições suaves, mantendo o padrão visual premium da plataforma.
+
+---
+
+**Versão:** `alpha v0.1.4`  
+**Data:** 22/03/2026  
+**Descrição da Versão:** - Evolução do **Módulo de Autenticação Camaleão (Intelligent Login)**. Esta atualização implementa uma lógica de "Identidade Híbrida" na tela de acesso, permitindo que o portal de entrada do lojista se adapte integralmente ao branding configurado ou utilize o fallback proprietário do Versus TCG em caso de ausência de dados visuais.
+
+### Funcionalidades (Engenharia de Layout & UX):
+- **Motor de Identidade Híbrida (White Label vs. Legacy):** Implementação de um interruptor lógico (`Conditional Rendering`) que detecta a presença de ativos da loja. O sistema alterna automaticamente entre o **Modo White Label** (Veste as cores e logo do lojista) e o **Modo Versus Original** (Layout Dark Premium), garantindo uma experiência profissional em qualquer cenário e evitando quebras estéticas em lojas sem identidade definida.
+- **Engenharia de Contraste Preditivo (getSafeTextColor):** Integração total do login com o motor de contraste. O sistema agora calcula a luminosidade dos campos de input (Cor Terciária) e do card (Cor do Header) em tempo real, ajustando automaticamente a cor de placeholders, ícones e textos para garantir legibilidade absoluta (WCAG Compliant) tanto em temas claros quanto escuros.
+- **Injeção Dinâmica de Favicon:** Desenvolvimento da lógica de sobrescrita de favicon via Blade Sections. A aba do navegador agora é atualizada dinamicamente com o ícone da loja ativa, fortalecendo a percepção de plataforma proprietária (Branded Experience), com fallback automático para o ícone oficial da Versus TCG.
+- **UX Security Layer:** Reintrodução e refinamento de elementos críticos de interface, incluindo o alternador de visibilidade de senha (Password Toggle) e o rodapé de segurança com ícone de proteção (Shield Check) e certificação visual de ambiente criptografado.
+
+### Páginas Adicionadas / Atualizadas:
+
+**Ambiente de Acesso (Auth):**
+- **Tela de Login 2.0 (Chameleon Core):** Refatoração completa da página de login. A interface agora utiliza o sistema de cores dinâmicas para fundo (`Cor Secundária`), card (`Header`) e botões (`CTA`), eliminando cores "hardcoded" e respeitando a sobriedade do design original.
+
+---
+
 ## 🧩 Estrutura de Versionamento
 
 O projeto usa um modelo adaptado do Semantic Versioning:

@@ -142,14 +142,13 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             
-                            {{-- Avatar MKP (AGORA É QUADRADO PERFEITO - w-14 h-14 = 56x56px) --}}
+                            {{-- Avatar MKP --}}
                             <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex flex-col justify-between gap-3">
                                 <div>
                                     <span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Avatar / Perfil (Quadrado)</span>
                                     <span class="text-[11px] text-slate-500 block">Padrão: JPG (55x55px). Usado no popover de detalhes da loja.</span>
                                 </div>
                                 <div class="flex items-center gap-4 mt-2">
-                                    {{-- Tirei o rounded-full e coloquei rounded (quadrado com borda leve) --}}
                                     <div class="w-14 h-14 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
                                         @if ($upload_avatar_marketplace)
                                             <img src="{{ $upload_avatar_marketplace->temporaryUrl() }}" class="w-full h-full object-cover">
@@ -167,14 +166,13 @@
                                 </div>
                             </div>
 
-                            {{-- Logo MKP (RETANGULAR - w-24 h-10 = aprox 100x40px) --}}
+                            {{-- Logo MKP --}}
                             <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex flex-col justify-between gap-3">
                                 <div>
                                     <span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Logo Retangular (Listagem)</span>
                                     <span class="text-[11px] text-slate-500 block">Padrão: JPG (101x30px). Usada na listagem de preços.</span>
                                 </div>
                                 <div class="flex items-center gap-4 mt-2">
-                                    {{-- Explicitamente retangular no CSS --}}
                                     <div class="w-24 h-10 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shrink-0">
                                         @if ($upload_logo_marketplace)
                                             <img src="{{ $upload_logo_marketplace->temporaryUrl() }}" class="max-w-full max-h-full object-contain p-1">
@@ -203,31 +201,59 @@
                         <p class="text-sm text-slate-500 mb-6">O sistema ajusta a cor dos textos automaticamente para garantir a melhor leitura sobre esses fundos.</p>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            
+                            {{-- Cor Primária --}}
                             <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center gap-3">
-                                <div><span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Cor Primária</span><span class="text-xs text-slate-500">Botões e destaques básicos</span></div>
+                                <div>
+                                    <span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Cor Primária</span>
+                                    <span class="text-xs text-slate-500">Botões e destaques básicos</span>
+                                </div>
                                 <input type="color" wire:model="color_primary" class="h-10 w-14 rounded cursor-pointer bg-transparent border-0 p-0 shadow-sm flex-shrink-0">
                             </div>
 
+                            {{-- NOVA: Cor Secundária --}}
+                            <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center gap-3">
+                                <div>
+                                    <span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Cor Secundária</span>
+                                    <span class="text-xs text-slate-500">Faixas (Breadcrumb) e destaques secundários</span>
+                                </div>
+                                <input type="color" wire:model="color_secondary" class="h-10 w-14 rounded cursor-pointer bg-transparent border-0 p-0 shadow-sm flex-shrink-0">
+                            </div>
+
+                            {{-- NOVA: Cor Terciária --}}
+                            <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center gap-3">
+                                <div>
+                                    <span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Cor Terciária</span>
+                                    <span class="text-xs text-slate-500">Linha do tempo, anos e elementos sutis</span>
+                                </div>
+                                <input type="color" wire:model="color_tertiary" class="h-10 w-14 rounded cursor-pointer bg-transparent border-0 p-0 shadow-sm flex-shrink-0">
+                            </div>
+
+                            {{-- Barra Contatos --}}
                             <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center gap-3">
                                 <div><span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Barra Contatos</span><span class="text-xs text-slate-500">Faixa superior</span></div>
                                 <input type="color" wire:model="color_topbar_bg" class="h-10 w-14 rounded cursor-pointer bg-transparent border-0 p-0 shadow-sm flex-shrink-0">
                             </div>
 
+                            {{-- Fundo Cabeçalho --}}
                             <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center gap-3">
                                 <div><span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Fundo Cabeçalho</span><span class="text-xs text-slate-500">Logo e menu principal</span></div>
                                 <input type="color" wire:model="color_header_bg" class="h-10 w-14 rounded cursor-pointer bg-transparent border-0 p-0 shadow-sm flex-shrink-0">
                             </div>
 
+                            {{-- Fundo do Site --}}
                             <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center gap-3">
                                 <div><span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Fundo do Site</span><span class="text-xs text-slate-500">Área dos produtos</span></div>
                                 <input type="color" wire:model="global_bg_color" class="h-10 w-14 rounded cursor-pointer bg-transparent border-0 p-0 shadow-sm flex-shrink-0">
                             </div>
 
+                            {{-- Fundo Rodapé --}}
                             <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center gap-3">
                                 <div><span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Fundo Rodapé</span><span class="text-xs text-slate-500">Final da página</span></div>
                                 <input type="color" wire:model="color_footer_bg" class="h-10 w-14 rounded cursor-pointer bg-transparent border-0 p-0 shadow-sm flex-shrink-0">
                             </div>
 
+                            {{-- CTA --}}
                             <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center gap-3">
                                 <div>
                                     <span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Cor dos Botões (CTA)</span>
@@ -236,6 +262,7 @@
                                 <input type="color" wire:model="color_cta" class="h-10 w-14 rounded cursor-pointer bg-transparent border-0 p-0 shadow-sm flex-shrink-0">
                             </div>
 
+                            {{-- Hover Menu --}}
                             <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center gap-3">
                                 <div>
                                     <span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Hover do Menu</span>
@@ -245,7 +272,7 @@
                             </div>
                         </div>
 
-                        {{-- Avançadas (MANTIDO INTACTO) --}}
+                        {{-- Avançadas --}}
                         <div class="mt-6">
                             <button type="button" @click="showAdvanced = !showAdvanced" class="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
                                 <i class="ph" :class="showAdvanced ? 'ph-caret-up' : 'ph-caret-down'"></i>

@@ -8,6 +8,19 @@
     <link rel="stylesheet" href="{{ mix('css/app.css') }}">
     <script src="{{ mix('js/app.js') }}" defer></script>
 
+    {{-- FAVICON DINÂMICO DA LOJA AQUI 👇 --}}
+    @php
+        $userStore = auth('store_user')->user()->store ?? null;
+        $visual = $userStore ? $userStore->visual : null;
+    @endphp
+
+    @if($visual && $visual->favicon)
+        <link rel="icon" type="image/x-icon" href="{{ asset('store_images/' . $userStore->url_slug . '/' . $visual->favicon) }}">
+    @else
+        <link rel="icon" type="image/x-icon" href="{{ asset('images/favicon-default.ico') }}">
+    @endif
+    {{-- FIM DO FAVICON 👆 --}}
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 

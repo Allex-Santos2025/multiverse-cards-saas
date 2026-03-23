@@ -1,86 +1,165 @@
-<main class="min-h-screen flex items-center justify-center relative px-4">
-    <div class="glow-bg"></div>
+{{-- 1. FAVICON: Movido para fora de tudo para garantir que o Layout o encontre --}}
+@section('favicon')
+    @if(isset($loja->visual) && $loja->visual->favicon)
+        <link rel="icon" type="image/x-icon" href="{{ asset('store_images/' . $loja->url_slug . '/' . $loja->visual->favicon) }}">
+    @else
+        {{-- Fallback garantido para o sistema Versus --}}
+        <link rel="icon" type="image/x-icon" href="{{ asset('assets/favicon.png') }}">
+    @endif
+@endsection
 
-    <div class="w-full max-w-md">
-        <div class="bg-[#111] border border-[#222] rounded-2xl p-8 pt-10 shadow-2xl relative overflow-hidden">
+<div> {{-- Root do Livewire --}}
 
-            <div class="flex justify-center mt-2 mb-6"> 
-                <div class="flex items-center gap-2.5 group cursor-default transform scale-90"> 
-                    <div class="relative w-9 h-9 flex items-center justify-center shrink-0">
-                        <div class="absolute inset-0 bg-gradient-to-br from-orange-500 to-yellow-500 transform -skew-x-12 rounded-sm shadow-lg shadow-orange-500/20"></div>
-                        <span class="relative z-10 font-black text-black text-lg tracking-tighter italic pr-0.5">VS</span>
+    @if(isset($loja))
+        @include('partials.template.styles', ['loja' => $loja])
+    @endif
+
+    @php
+        $v = $loja->visual;
+        $corSecundaria = $v->color_secondary ?? '#1f2937'; 
+        $corBgHeader   = $v->color_header_bg ?? '#111112';
+        $corTerciaria  = $v->color_tertiary  ?? '#e5e7eb';
+        
+        // Lógica de Contraste para o White Label
+        $textoNoCard  = getSafeTextColor($corSecundaria, $corBgHeader);
+        $textoNoInput = getSafeTextColor($corSecundaria, $corTerciaria);
+    @endphp
+
+    {{-- BLOCO 1: LOJA COM IDENTIDADE (WHITE LABEL) --}}
+    @if($v && $v->logo_main)
+        <main class="min-h-screen flex items-center justify-center relative px-4 transition-colors duration-500"
+              style="background-color: var(--cor-secundaria); color: var(--cor-texto-secundaria);">
+            
+            <div class="w-full max-w-md relative z-10">
+                <div class="rounded-3xl p-8 pt-10 shadow-2xl relative border"
+                     style="background-color: var(--cor-bg-header); border-color: rgba(255,255,255,0.05); color: {{ $textoNoCard }};">
+
+                    <div class="flex justify-center mb-8"> 
+                        <img src="{{ asset('store_images/' . $loja->url_slug . '/' . $v->logo_main) }}" alt="{{ $loja->name }}" class="max-h-16 object-contain">
                     </div>
 
-                    <div class="flex flex-col justify-center text-left">
-                        <h1 class="font-black text-xl text-white tracking-wide italic leading-none">
-                            VERSUS <span class="text-gray-600 text-base not-italic font-bold">TCG</span>
-                        </h1>
-                        <p class="text-[8px] text-zinc-500 font-medium tracking-[0.2em] uppercase mt-0.5 opacity-80">
-                            Um login. Infinitos Universos.
-                        </p>
+                    <div class="text-center mb-10">
+                        <h2 class="text-2xl font-black mb-2 tracking-tight text-inherit uppercase italic">PAINEL DO LOJISTA</h2>
+                        <p class="text-sm opacity-60 text-inherit font-medium uppercase tracking-widest">Gerencie sua loja, estoque e pedidos.</p>
                     </div>
-                </div>
-            </div>
 
-            <div class="text-center mb-10">
-                <h2 class="text-2xl font-bold text-white mb-2 tracking-tight">Painel do Lojista</h2>
-                <p class="text-gray-400 text-sm">Gerencie sua loja, estoque e pedidos.</p>
-            </div>
-            @error('login_error')
-                <div class="mb-6 p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <i class="ph ph-warning-circle text-orange-500 text-xl"></i>
-                    <div class="flex flex-col">
-                        <span class="text-orange-200 text-[10px] font-black uppercase tracking-wider">Falha na Autenticação</span>
-                        <span class="text-orange-400/80 text-[9px] font-medium">{{ $message }}</span>
-                    </div>
-                </div>
-            @enderror
-            <form wire:submit.prevent="autenticar" class="space-y-5 relative">
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">E-mail ou Usuário</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="ph ph-envelope text-gray-500"></i>
+                    <form wire:submit.prevent="autenticar" class="space-y-6">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-2 pl-1">E-MAIL OU USUÁRIO</label>
+                            <div class="relative">
+                                <i class="ph ph-envelope absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style="color: {{ $textoNoInput }};"></i>
+                                <input type="email" wire:model="email" class="w-full pl-10 pr-4 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
+                                       style="background-color: var(--cor-terciaria); color: {{ $textoNoInput }};" placeholder="ex: contato@sualoja.com">
+                            </div>
                         </div>
-                        <input type="email" wire:model="email" 
-                            class="input-dark w-full pl-10 pr-4 py-3 rounded-lg text-sm text-white placeholder-gray-600" 
-                            placeholder="ex: contato@sualoja.com" required>
-                    </div>
-                </div>
 
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">Senha</label>
-                        <a href="#" class="text-xs text-[#ff5500] hover:text-orange-400 transition-colors">Esqueceu?</a>
-                    </div>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="ph ph-lock text-gray-500"></i>
+                        <div>
+                            <div class="flex items-center justify-between mb-2 pl-1">
+                                <label class="block text-[10px] font-black uppercase tracking-[0.2em] opacity-50">SENHA</label>
+                                <a href="#" class="text-[9px] font-black uppercase" style="color: var(--cor-cta);">ESQUECEU?</a>
+                            </div>
+                            <div class="relative">
+                                <i class="ph ph-lock absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style="color: {{ $textoNoInput }};"></i>
+                                <input type="password" id="password_white" wire:model="password" class="w-full pl-10 pr-12 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
+                                       style="background-color: var(--cor-terciaria); color: {{ $textoNoInput }};" placeholder="••••••••">
+                                <button type="button" onclick="togglePassword('password_white')" class="absolute right-4 top-1/2 -translate-y-1/2 opacity-40">
+                                    <i class="ph ph-eye text-lg" style="color: {{ $textoNoInput }};"></i>
+                                </button>
+                            </div>
                         </div>
-                        <input type="password" id="password" wire:model="password" 
-                            class="input-dark w-full pl-10 pr-10 py-3 rounded-lg text-sm text-white placeholder-gray-600" 
-                            placeholder="••••••••" required>
-                        <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-white transition-colors focus:outline-none">
-                            <i id="eye-icon" class="ph ph-eye"></i>
+
+                        <button type="submit" class="w-full py-4 rounded-xl font-black text-xs tracking-[0.3em] shadow-lg mt-2 uppercase transition-all hover:scale-[1.01]"
+                                style="background-color: var(--cor-cta); color: var(--cor-cta-txt);">
+                            ACESSAR PAINEL
                         </button>
-                    </div>
-                </div>
+                    </form>
 
-                <button type="submit" class="btn-primary w-full py-4 rounded-lg text-white font-black text-sm tracking-wide shadow-lg shadow-orange-900/20 mt-2 uppercase">
-                    ACESSAR PAINEL
-                </button>
-            </form>
-
-            <div class="mt-10 pt-6 border-t border-white/[0.05] text-center">
-                <div class="flex flex-col items-center gap-2 group cursor-default">
-                    <div class="flex items-center gap-2 text-zinc-600 group-hover:text-orange-500/50 transition-colors duration-500">
-                        <i class="ph ph-shield-check text-lg"></i>
-                        <span class="text-[9px] font-black uppercase tracking-[0.3em]">Ambiente Criptografado</span>
+                    <div class="mt-10 pt-6 border-t border-white/[0.05] text-center opacity-30">
+                        <div class="flex items-center justify-center gap-2 mb-1">
+                            <i class="ph ph-shield-check text-lg"></i>
+                            <span class="text-[9px] font-black uppercase tracking-[0.4em]">AMBIENTE CRIPTOGRAFADO</span>
+                        </div>
+                        <p class="text-[8px] font-bold uppercase mt-1">Tecnologia Versus TCG &copy; 2026</p>
                     </div>
-                    <p class="text-[8px] text-zinc-700 font-bold uppercase tracking-[0.1em]">
-                        Tecnologia <span class="text-zinc-500">Versus TCG</span> &copy; 2026
-                    </p>
                 </div>
             </div>
-        </div> </div>
-</main>
+        </main>
+
+    {{-- BLOCO 2: LAYOUT ORIGINAL VERSUS TCG --}}
+    @else
+        <main class="min-h-screen flex items-center justify-center relative px-4 bg-[#0a0a0b]">
+            <div class="w-full max-w-md relative z-10">
+                <div class="bg-[#111112] border border-white/[0.03] rounded-3xl p-8 pt-10 shadow-2xl relative overflow-hidden">
+                    
+                    <div class="flex justify-center mb-8"> 
+                        <div class="flex items-center gap-2.5 transform scale-110"> 
+                            <div class="relative w-10 h-10 flex items-center justify-center shrink-0">
+                                <div class="absolute inset-0 bg-gradient-to-br from-orange-500 to-yellow-500 transform -skew-x-12 rounded-sm shadow-lg shadow-orange-500/20"></div>
+                                <span class="relative z-10 font-black text-black text-xl italic pr-0.5">VS</span>
+                            </div>
+                            <div class="flex flex-col justify-center text-left">
+                                <h1 class="font-black text-2xl text-white tracking-tighter italic leading-none uppercase">VERSUS <span class="text-zinc-600 not-italic">TCG</span></h1>
+                                <p class="text-[8px] text-zinc-500 font-medium tracking-[0.3em] uppercase mt-1">Um login. Infinitos Universos.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mb-10">
+                        <h2 class="text-2xl font-black text-white mb-2 tracking-tight uppercase italic">PAINEL DO LOJISTA</h2>
+                        <p class="text-sm text-zinc-500 font-medium uppercase tracking-widest">Gerencie sua loja, estoque e pedidos.</p>
+                    </div>
+
+                    <form wire:submit.prevent="autenticar" class="space-y-6">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2 pl-1">E-MAIL OU USUÁRIO</label>
+                            <input type="email" wire:model="email" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="ex: contato@sualoja.com">
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-2 pl-1">
+                                <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">SENHA</label>
+                                <a href="#" class="text-[9px] font-black text-orange-500 uppercase tracking-tighter">ESQUECEU?</a>
+                            </div>
+                            <div class="relative">
+                                <input type="password" id="password_versus" wire:model="password" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="••••••••">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-4 rounded-xl font-black text-xs tracking-[0.3em] uppercase shadow-lg shadow-orange-600/10 hover:scale-[1.02] transition-all">
+                            ACESSAR PAINEL
+                        </button>
+                    </form>
+
+                    <div class="mt-10 pt-6 border-t border-white/[0.03] text-center">
+                        <div class="flex items-center justify-center gap-2 opacity-20">
+                            <i class="ph ph-shield-check text-white text-lg"></i>
+                            <span class="text-[9px] text-white font-black uppercase tracking-[0.4em]">AMBIENTE CRIPTOGRAFADO</span>
+                        </div>
+                        <p class="text-[8px] text-zinc-700 font-bold uppercase tracking-[0.1em] mt-2 text-center">Tecnologia Versus TCG &copy; 2026</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    @endif
+
+    <script>
+        function togglePassword(id) {
+            const input = document.getElementById(id);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+    </script>
+
+    <style>
+        /* CONTRASTE NO LAYOUT WHITE LABEL (OLHO DE LEÃO) */
+        input::placeholder {
+            color: {{ $textoNoInput }} !important;
+            opacity: 0.8 !important;
+        }
+
+        /* CONTRASTE NO LAYOUT OFICIAL VERSUS */
+        .input-versus::placeholder {
+            color: #ffffff !important;
+            opacity: 0.5 !important;
+        }
+    </style>
+</div>

@@ -3,7 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Livewire\Store\LoginLojista;
-use App\Livewire\Store\Template\Home; // <-- IMPORTAMOS A CLASSE AQUI
+use App\Livewire\Store\Template\Home;
+// 👇 1. IMPORTAMOS A NOSSA NOVA CLASSE AQUI
+use App\Livewire\Store\Template\Catalog\SetList; 
 
 /*
 |--------------------------------------------------------------------------
@@ -39,5 +41,9 @@ Route::get('/aguarde', function ($slug) {
 })->name('store.wait');
 
 // Rota final: /loja/{slug}/ (A Home da Loja)
-// Agora o Laravel passa a bola direto para o componente Livewire
 Route::get('/', Home::class)->name('store.view');
+
+
+// 👇 2. NOSSA NOVA ROTA DE CATÁLOGO DE SETS
+// Rota final: /loja/{slug}/{gameSlug}/sets
+Route::get('/{gameId}/sets', SetList::class)->name('store.catalog.sets');

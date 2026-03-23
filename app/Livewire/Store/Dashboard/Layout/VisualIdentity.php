@@ -20,6 +20,8 @@ class VisualIdentity extends Component
 
     // --- PROPRIEDADES DE CORES ---
     public $color_primary;
+    public $color_secondary; // Nova cor
+    public $color_tertiary;  // Nova cor
     public $color_topbar_bg;
     public $color_header_bg;
     public $color_footer_bg;
@@ -54,6 +56,8 @@ class VisualIdentity extends Component
 
         // Alimenta Cores
         $this->color_primary   = $visual->color_primary;
+        $this->color_secondary = $visual->color_secondary ?? '#475569'; // Padrão Marco Zero (Chumbo)
+        $this->color_tertiary  = $visual->color_tertiary ?? '#94a3b8';  // Padrão Marco Zero (Cinza)
         $this->color_topbar_bg = $visual->color_topbar_bg;
         $this->color_header_bg = $visual->color_header_bg;
         $this->color_footer_bg = $visual->color_footer_bg;
@@ -84,7 +88,6 @@ class VisualIdentity extends Component
         DB::beginTransaction();
 
         try {
-            // Buscamos o registro atual ou criamos um novo
             $visual = StoreVisual::where('store_id', $this->userStoreId)->first();
             $loja = Store::find($this->userStoreId);
             
@@ -124,9 +127,8 @@ class VisualIdentity extends Component
                     $this->current_avatar_marketplace = $nameAvatar;
                 }
 
-                // 5. FAVICON (Garantindo que a extensão seja pega corretamente)
+                // 5. FAVICON
                 if ($this->upload_favicon) {
-                    // Pega a extensão real (importante para .ico)
                     $extension = $this->upload_favicon->getClientOriginalExtension() ?: $this->upload_favicon->extension();
                     $nameFav = 'favicon_' . time() . '.' . $extension;
                     
@@ -135,12 +137,14 @@ class VisualIdentity extends Component
                         $destinationPath . '/' . $nameFav
                     );
                     
-                    $visual->favicon = $nameFav; // Nome exato da sua coluna no DB
+                    $visual->favicon = $nameFav; 
                     $this->current_favicon = $nameFav;
                 }
 
                 // ATUALIZAÇÃO DAS CORES E BOOLEANS
                 $visual->color_primary      = $this->color_primary;
+                $visual->color_secondary    = $this->color_secondary; // Salvando nova cor
+                $visual->color_tertiary     = $this->color_tertiary;  // Salvando nova cor
                 $visual->color_topbar_bg    = $this->color_topbar_bg;
                 $visual->color_header_bg    = $this->color_header_bg;
                 $visual->color_footer_bg    = $this->color_footer_bg;
@@ -150,13 +154,11 @@ class VisualIdentity extends Component
                 $visual->color_menu_hover   = $this->color_menu_hover;
                 $visual->use_logo_dashboard = $this->use_logo_dashboard;
                 
-                // SALVAMENTO ÚNICO COM TODAS AS ALTERAÇÕES ACUMULADAS
                 $visual->save();
             }
 
             DB::commit();
 
-            // Limpa os campos de upload para o próximo uso
             $this->reset(['upload_logo_main', 'upload_logo_footer', 'upload_logo_marketplace', 'upload_avatar_marketplace', 'upload_favicon']);
 
             $this->dispatch('notify', type: 'success', message: 'Toda a identidade visual foi salva!');
@@ -176,13 +178,15 @@ class VisualIdentity extends Component
 
             $defaults = [
                 'color_primary'   => '#2563eb',
-                'color_topbar_bg' => '#1e293b',
+                'color_secondary' => '#475569', // Reset para padrão Marco Zero
+                'color_tertiary'  => '#94a3b8', // Reset para padrão Marco Zero
+                'color_topbar_bg' => '#2563eb',
                 'color_header_bg' => '#ffffff',
                 'color_footer_bg' => '#0f172a',
-                'global_bg_color' => '#ffffff', // Atualizado para bater com seu DB
-                'color_menu_text' => null, 
-                'color_cta'        => null, // Atualizado para bater com seu DB
-                'color_menu_hover' => null, // Atualizado para bater com seu DB
+                'global_bg_color' => '#ffffff', 
+                'color_menu_text' => '#1f2937', 
+                'color_cta'        => '#F59E0B', 
+                'color_menu_hover' => '#2563EB', 
             ];
 
             if ($visual) {
@@ -190,6 +194,8 @@ class VisualIdentity extends Component
             }
 
             $this->color_primary   = $defaults['color_primary'];
+            $this->color_secondary = $defaults['color_secondary'];
+            $this->color_tertiary  = $defaults['color_tertiary'];
             $this->color_topbar_bg = $defaults['color_topbar_bg'];
             $this->color_header_bg = $defaults['color_header_bg'];
             $this->color_footer_bg = $defaults['color_footer_bg'];

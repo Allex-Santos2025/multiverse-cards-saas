@@ -7,7 +7,7 @@
     <title>Versus TCG | Painel do Lojista</title>
 
     {{-- Favicon --}}
-    <link rel="icon" href="{{ asset('assets/favicon.png') }}" type="image/png">
+    @yield('favicon')
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
