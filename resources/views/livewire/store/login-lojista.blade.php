@@ -1,14 +1,13 @@
-{{-- 1. FAVICON: Movido para fora de tudo para garantir que o Layout o encontre --}}
+{{-- 1. FAVICON --}}
 @section('favicon')
     @if(isset($loja->visual) && $loja->visual->favicon)
         <link rel="icon" type="image/x-icon" href="{{ asset('store_images/' . $loja->url_slug . '/' . $loja->visual->favicon) }}">
     @else
-        {{-- Fallback garantido para o sistema Versus --}}
         <link rel="icon" type="image/x-icon" href="{{ asset('assets/favicon.png') }}">
     @endif
 @endsection
 
-<div> {{-- Root do Livewire --}}
+<div x-data="{ showPass: false, showNewPass: false, showConfirmPass: false }"> {{-- Root --}}
 
     @if(isset($loja))
         @include('partials.template.styles', ['loja' => $loja])
@@ -25,7 +24,7 @@
         $textoNoInput = getSafeTextColor($corSecundaria, $corTerciaria);
     @endphp
 
-    {{-- BLOCO 1: LOJA COM IDENTIDADE (WHITE LABEL) --}}
+    {{-- BLOCO 1: LOJA COM IDENTIDADE (WHITE LABEL / CAMALEÃO) --}}
     @if($v && $v->logo_main)
         <main class="min-h-screen flex items-center justify-center relative px-4 transition-colors duration-500"
               style="background-color: var(--cor-secundaria); color: var(--cor-texto-secundaria);">
@@ -39,10 +38,16 @@
                     </div>
 
                     <div class="text-center mb-10">
-                        <h2 class="text-2xl font-black mb-2 tracking-tight text-inherit uppercase italic">PAINEL DO LOJISTA</h2>
-                        <p class="text-sm opacity-60 text-inherit font-medium uppercase tracking-widest">Gerencie sua loja, estoque e pedidos.</p>
+                        <h2 class="text-2xl font-black mb-2 tracking-tight text-inherit uppercase italic">
+                            @if($mode === 'login') PAINEL DO LOJISTA @elseif($mode === 'forgot') RECUPERAR SENHA @else DEFINIR NOVA SENHA @endif
+                        </h2>
+                        <p class="text-sm opacity-60 text-inherit font-medium uppercase tracking-widest">
+                            @if($mode === 'login') Gerencie sua loja, estoque e pedidos. @elseif($mode === 'forgot') Enviaremos as instruções por e-mail. @else Escolha uma senha forte e segura. @endif
+                        </p>
                     </div>
 
+                    {{-- FORMULÁRIO 1: LOGIN --}}
+                    @if($mode === 'login')
                     <form wire:submit.prevent="autenticar" class="space-y-6">
                         <div>
                             <label class="block text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-2 pl-1">E-MAIL OU USUÁRIO</label>
@@ -56,14 +61,14 @@
                         <div>
                             <div class="flex items-center justify-between mb-2 pl-1">
                                 <label class="block text-[10px] font-black uppercase tracking-[0.2em] opacity-50">SENHA</label>
-                                <a href="#" class="text-[9px] font-black uppercase" style="color: var(--cor-cta);">ESQUECEU?</a>
+                                <button type="button" wire:click="$set('mode', 'forgot')" class="text-[9px] font-black uppercase hover:opacity-75 transition-opacity" style="color: var(--cor-cta);">ESQUECEU?</button>
                             </div>
                             <div class="relative">
                                 <i class="ph ph-lock absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style="color: {{ $textoNoInput }};"></i>
-                                <input type="password" id="password_white" wire:model="password" class="w-full pl-10 pr-12 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
+                                <input :type="showPass ? 'text' : 'password'" wire:model="password" class="w-full pl-10 pr-12 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
                                        style="background-color: var(--cor-terciaria); color: {{ $textoNoInput }};" placeholder="••••••••">
-                                <button type="button" onclick="togglePassword('password_white')" class="absolute right-4 top-1/2 -translate-y-1/2 opacity-40">
-                                    <i class="ph ph-eye text-lg" style="color: {{ $textoNoInput }};"></i>
+                                <button type="button" @click="showPass = !showPass" class="absolute right-4 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity">
+                                    <i class="ph text-lg" :class="showPass ? 'ph-eye-slash' : 'ph-eye'" style="color: {{ $textoNoInput }};"></i>
                                 </button>
                             </div>
                         </div>
@@ -73,6 +78,67 @@
                             ACESSAR PAINEL
                         </button>
                     </form>
+                    @endif
+
+                    {{-- FORMULÁRIO 2: RECUPERAÇÃO --}}
+                    @if($mode === 'forgot')
+                    <form wire:submit.prevent="enviarRecuperacao" class="space-y-6">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-2 pl-1">SEU E-MAIL CADASTRADO</label>
+                            <div class="relative">
+                                <i class="ph ph-envelope absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style="color: {{ $textoNoInput }};"></i>
+                                <input type="email" wire:model.live="recoverEmail" wire:key="rec-white" class="w-full pl-10 pr-4 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
+                                       style="background-color: var(--cor-terciaria); color: {{ $textoNoInput }};" placeholder="ex: contato@sualoja.com">
+                            </div>
+                            @error('recoverEmail') <span class="text-red-500 text-xs mt-1 block font-bold">{{ $message }}</span> @enderror
+                            @if(session()->has('recoverSuccess')) <span class="text-green-500 text-xs mt-2 block font-bold">{{ session('recoverSuccess') }}</span> @endif
+                        </div>
+
+                        <button type="submit" class="w-full py-4 rounded-xl font-black text-xs tracking-[0.3em] shadow-lg mt-2 uppercase transition-all hover:scale-[1.01]"
+                                style="background-color: var(--cor-cta); color: var(--cor-cta-txt);">
+                            ENVIAR LINK DE ACESSO
+                        </button>
+
+                        <div class="text-center pt-2">
+                            <button type="button" wire:click="$set('mode', 'login')" class="text-[9px] font-black uppercase tracking-[0.2em] opacity-50 hover:opacity-100 transition-opacity">
+                                &larr; VOLTAR PARA O LOGIN
+                            </button>
+                        </div>
+                    </form>
+                    @endif
+
+                    {{-- FORMULÁRIO 3: NOVA SENHA (RESET) --}}
+                    @if($mode === 'reset')
+                    <form wire:submit.prevent="redefinirSenha" class="space-y-6">
+                        <input type="hidden" wire:model="token">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-2 pl-1">NOVA SENHA</label>
+                            <div class="relative">
+                                <input :type="showNewPass ? 'text' : 'password'" wire:model="new_password" class="w-full px-4 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
+                                       style="background-color: var(--cor-terciaria); color: {{ $textoNoInput }};" placeholder="Pelo menos 8 caracteres">
+                                <button type="button" @click="showNewPass = !showNewPass" class="absolute right-4 top-1/2 -translate-y-1/2 opacity-40">
+                                    <i class="ph text-lg" :class="showNewPass ? 'ph-eye-slash' : 'ph-eye'" style="color: {{ $textoNoInput }};"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-2 pl-1">CONFIRMAR NOVA SENHA</label>
+                            <div class="relative">
+                                <input :type="showConfirmPass ? 'text' : 'password'" wire:model="new_password_confirmation" class="w-full px-4 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
+                                       style="background-color: var(--cor-terciaria); color: {{ $textoNoInput }};" placeholder="Repita a nova senha">
+                                <button type="button" @click="showConfirmPass = !showConfirmPass" class="absolute right-4 top-1/2 -translate-y-1/2 opacity-40">
+                                    <i class="ph text-lg" :class="showConfirmPass ? 'ph-eye-slash' : 'ph-eye'" style="color: {{ $textoNoInput }};"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full py-4 rounded-xl font-black text-xs tracking-[0.3em] shadow-lg mt-2 uppercase transition-all hover:scale-[1.01]"
+                                style="background-color: var(--cor-cta); color: var(--cor-cta-txt);">
+                            ATUALIZAR SENHA
+                        </button>
+                    </form>
+                    @endif
 
                     <div class="mt-10 pt-6 border-t border-white/[0.05] text-center opacity-30">
                         <div class="flex items-center justify-center gap-2 mb-1">
@@ -85,7 +151,7 @@
             </div>
         </main>
 
-    {{-- BLOCO 2: LAYOUT ORIGINAL VERSUS TCG --}}
+    {{-- BLOCO 2: LAYOUT ORIGINAL VERSUS TCG (DARK) --}}
     @else
         <main class="min-h-screen flex items-center justify-center relative px-4 bg-[#0a0a0b]">
             <div class="w-full max-w-md relative z-10">
@@ -105,10 +171,16 @@
                     </div>
 
                     <div class="text-center mb-10">
-                        <h2 class="text-2xl font-black text-white mb-2 tracking-tight uppercase italic">PAINEL DO LOJISTA</h2>
-                        <p class="text-sm text-zinc-500 font-medium uppercase tracking-widest">Gerencie sua loja, estoque e pedidos.</p>
+                        <h2 class="text-2xl font-black text-white mb-2 tracking-tight uppercase italic">
+                            @if($mode === 'login') PAINEL DO LOJISTA @elseif($mode === 'forgot') RECUPERAR SENHA @else DEFINIR NOVA SENHA @endif
+                        </h2>
+                        <p class="text-sm text-zinc-500 font-medium uppercase tracking-widest">
+                            @if($mode === 'login') Gerencie sua loja, estoque e pedidos. @elseif($mode === 'forgot') Enviaremos as instruções por e-mail. @else Escolha uma senha forte e segura. @endif
+                        </p>
                     </div>
 
+                    {{-- FORMULÁRIO 1: LOGIN --}}
+                    @if($mode === 'login')
                     <form wire:submit.prevent="autenticar" class="space-y-6">
                         <div>
                             <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2 pl-1">E-MAIL OU USUÁRIO</label>
@@ -118,10 +190,13 @@
                         <div>
                             <div class="flex items-center justify-between mb-2 pl-1">
                                 <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">SENHA</label>
-                                <a href="#" class="text-[9px] font-black text-orange-500 uppercase tracking-tighter">ESQUECEU?</a>
+                                <button type="button" wire:click="$set('mode', 'forgot')" class="text-[9px] font-black text-orange-500 uppercase tracking-tighter hover:text-orange-400">ESQUECEU?</button>
                             </div>
                             <div class="relative">
-                                <input type="password" id="password_versus" wire:model="password" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="••••••••">
+                                <input :type="showPass ? 'text' : 'password'" wire:model="password" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 pr-12 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="••••••••">
+                                <button type="button" @click="showPass = !showPass" class="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors">
+                                    <i class="ph text-lg" :class="showPass ? 'ph-eye-slash' : 'ph-eye'"></i>
+                                </button>
                             </div>
                         </div>
 
@@ -129,6 +204,60 @@
                             ACESSAR PAINEL
                         </button>
                     </form>
+                    @endif
+
+                    {{-- FORMULÁRIO 2: RECUPERAÇÃO --}}
+                    @if($mode === 'forgot')
+                    <form wire:submit.prevent="enviarRecuperacao" class="space-y-6">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2 pl-1">SEU E-MAIL CADASTRADO</label>
+                            <input type="email" wire:model.live="recoverEmail" wire:key="rec-versus" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="ex: contato@sualoja.com">
+                            
+                            @error('recoverEmail') <span class="text-red-500 text-xs mt-1 block font-bold">{{ $message }}</span> @enderror
+                            @if(session()->has('recoverSuccess')) <span class="text-green-500 text-xs mt-2 block font-bold">{{ session('recoverSuccess') }}</span> @endif
+                        </div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-4 rounded-xl font-black text-xs tracking-[0.3em] uppercase shadow-lg shadow-orange-600/10 hover:scale-[1.02] transition-all">
+                            ENVIAR LINK DE ACESSO
+                        </button>
+
+                        <div class="text-center pt-2">
+                            <button type="button" wire:click="$set('mode', 'login')" class="text-[9px] text-zinc-500 font-black uppercase tracking-[0.2em] hover:text-white transition-colors">
+                                &larr; VOLTAR PARA O LOGIN
+                            </button>
+                        </div>
+                    </form>
+                    @endif
+
+                    {{-- FORMULÁRIO 3: NOVA SENHA (RESET) --}}
+                    @if($mode === 'reset')
+                    <form wire:submit.prevent="redefinirSenha" class="space-y-6">
+                        <input type="hidden" wire:model="token">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2 pl-1">NOVA SENHA</label>
+                            <div class="relative">
+                                <input :type="showNewPass ? 'text' : 'password'" wire:model="new_password" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 pr-12 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="Pelo menos 8 caracteres">
+                                <button type="button" @click="showNewPass = !showNewPass" class="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors">
+                                    <i class="ph text-lg" :class="showNewPass ? 'ph-eye-slash' : 'ph-eye'"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2 pl-1">CONFIRMAR NOVA SENHA</label>
+                            <div class="relative">
+                                <input :type="showConfirmPass ? 'text' : 'password'" wire:model="new_password_confirmation" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 pr-12 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="Repita a nova senha">
+                                <button type="button" @click="showConfirmPass = !showConfirmPass" class="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors">
+                                    <i class="ph text-lg" :class="showConfirmPass ? 'ph-eye-slash' : 'ph-eye'"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-4 rounded-xl font-black text-xs tracking-[0.3em] uppercase shadow-lg shadow-orange-600/10 hover:scale-[1.02] transition-all">
+                            SALVAR NOVA SENHA
+                        </button>
+                    </form>
+                    @endif
 
                     <div class="mt-10 pt-6 border-t border-white/[0.03] text-center">
                         <div class="flex items-center justify-center gap-2 opacity-20">
@@ -141,13 +270,6 @@
             </div>
         </main>
     @endif
-
-    <script>
-        function togglePassword(id) {
-            const input = document.getElementById(id);
-            input.type = input.type === 'password' ? 'text' : 'password';
-        }
-    </script>
 
     <style>
         /* CONTRASTE NO LAYOUT WHITE LABEL (OLHO DE LEÃO) */

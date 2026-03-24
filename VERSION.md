@@ -334,6 +334,25 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.1.5`  
+**Data:** 24/03/2026  
+**Descrição da Versão:** Implementação do **Módulo de Recuperação de Ativos (Secure Recovery Flow)** e refatoração da arquitetura de estados da tela de autenticação. Esta atualização introduz a lógica de redefinição de senha por tokens criptográficos, integrada ao motor camaleão.
+
+### Funcionalidades (Engenharia de Estados & Segurança):
+
+* **Arquitetura de Estados Tripartida (Login/Forgot/Reset):** Evolução do componente de entrada para suportar três modos operacionais distintos em uma única interface. A alternância de telas (Login -> Recuperação -> Nova Senha) agora é gerida por um sistema híbrido de `Livewire @entangle` e `Alpine.js`, permitindo transições instantâneas sem refresh de página e mantendo o estado de "Identidade Híbrida".
+* **Infraestrutura de Segurança via Tokens (DB-Backed Security):** Implementação da camada de persistência para recuperação de contas. Criação da tabela `password_reset_tokens` e integração com o sistema de notificações do Laravel, garantindo que o ciclo de vida do reset de senha seja seguro, rastreável e expire automaticamente após o uso.
+* **Fluxo de Recuperação Imersivo (Branded Recovery):** Otimização do UX onde o link de recuperação (e-mail) transporta o `slug` da loja. Isso permite que, ao clicar no link, o lojista "aterrize" em uma tela de nova senha que já carrega automaticamente sua identidade visual (White Label) ou o layout Versus Dark, eliminando a quebra de imersão durante o processo de recuperação.
+* **Refatoração de Elementos de Interação (Button Logic Fix):** Correção estrutural de elementos de navegação interna. Substituição de tags de âncora por botões de ação (`type="button"`) para evitar conflitos de rota no navegador e garantir a execução fiel dos scripts de troca de estado do Alpine.js.
+
+### Páginas Adicionadas / Atualizadas:
+
+**Ambiente de Acesso (Auth):**
+* **Componente LoginLojista 2.1:** Atualização do cérebro da autenticação para processar validações de e-mail, geração de chaves de segurança e persistência de novas credenciais (Bcrypt hashing) com suporte a feedback em tempo real para o usuário.
+* **Roteamento Inteligente (Dynamic Slug Routes):** Adição da rota de reset de senha dentro do escopo de lojas, permitindo a identificação dinâmica do lojista via URL sem comprometer a segurança dos dados.
+
+---
+
 ## 🧩 Estrutura de Versionamento
 
 O projeto usa um modelo adaptado do Semantic Versioning:

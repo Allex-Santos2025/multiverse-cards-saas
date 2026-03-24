@@ -57,15 +57,46 @@
             </div>
 
             <div style="display: flex; align-items: center; background: #121214; border-radius: 0.75rem; padding: 0.8rem 1rem; border: 1px solid #3b82f644; margin-bottom: 1.5rem;">
-                <span style="color: #52525b; font-size: 0.85rem; font-weight: 700;">vs.com/</span>
+                <span style="color: #52525b; font-size: 0.85rem; font-weight: 700;">versustcg.com.br/loja/</span>
                 <input type="text" wire:model="storeSlug" placeholder="minha-loja" style="background: none; border: none; color: #fff; outline: none; margin-left: 0.25rem; width: 100%;">
+            </div>
+
+            <div style="text-align: right; margin-bottom: 1.5rem;">
+                <button type="button" @click="state = 'recover'" style="background: none; border: none; color: #a1a1aa; font-size: 0.7rem; font-weight: 700; cursor: pointer; text-transform: uppercase; transition: color 0.2s;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#a1a1aa'">
+                    Esqueceu sua loja?
+                </button>
             </div>
 
             <button type="button" wire:click="redirectToStore" style="width: 100%; background: #3b82f6; color: #fff; font-weight: 900; padding: 1rem; border-radius: 0.75rem; border: none; cursor: pointer; text-transform: uppercase; font-size: 0.8rem;">
                 IR PARA MEU PAINEL
             </button>
         </div>
+        {{-- 2. A TELA DE RECUPERAÇÃO NOVA AQUI --}}
+        <div x-show="state === 'recover'" style="text-align: center;">
+            <button @click="state = 'store'" style="background: none; border: none; color: #52525b; font-weight: 700; cursor: pointer; font-size: 0.75rem; margin-bottom: 1.5rem;">← VOLTAR</button>
+            
+            <div style="margin-bottom: 2rem;">
+                <h2 style="font-size: 1.5rem; font-weight: 800; color: #ffffff; text-transform: uppercase; font-style: italic;">Recuperar Loja</h2>
+                <p style="color: #a1a1aa; font-size: 0.85rem;">Digite o e-mail do seu cadastro lojista.</p>
+            </div>
 
+            <div style="margin-bottom: 1.5rem; text-align: left;">
+                <input type="email" wire:model="recoverEmail" placeholder="Seu e-mail de cadastro" style="width: 100%; background: #121214; border: 1px solid #27272a; color: #fff; padding: 0.8rem 1rem; border-radius: 0.75rem; outline: none;">
+                
+                {{-- Mensagens de Validação e Erro --}}
+                @error('recoverEmail') <span style="color: #ef4444; font-size: 0.7rem; margin-top: 4px; display: block;">{{ $message }}</span> @enderror
+                @if (session()->has('recoverError'))
+                    <span style="color: #ef4444; font-size: 0.75rem; margin-top: 8px; display: block; font-weight: 600;">{{ session('recoverError') }}</span>
+                @endif
+                @if (session()->has('recoverSuccess'))
+                    <span style="color: #10b981; font-size: 0.75rem; margin-top: 8px; display: block; font-weight: 600;">{{ session('recoverSuccess') }}</span>
+                @endif
+            </div>
+
+            <button type="button" wire:click="recoverStoreSlug" style="width: 100%; background: #3b82f6; color: #fff; font-weight: 900; padding: 1rem; border-radius: 0.75rem; border: none; cursor: pointer; text-transform: uppercase; font-size: 0.8rem;">
+                ENVIAR LINK DE ACESSO
+            </button>
+        </div>
         <style>
             @keyframes fadeInVs {
                 from { opacity: 0; transform: translate(-50%, -48%) scale(0.95); }

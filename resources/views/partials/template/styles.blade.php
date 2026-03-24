@@ -54,7 +54,7 @@
 
     // 3. CORES DO MENU
     $corMenuTxtOriginal = $v->color_menu_text ?? '#1f2937'; // Cinza Chumbo como padrão
-    $corMenuTxt = getSafeTextColor($corMenuTxtOriginal, $corBgHeader); // O Anjo da Guarda em ação!
+    $corMenuTxt = getSafeTextColor($corMenuTxtOriginal, '#ffffff');
     $corMenuHvr  = $v->color_menu_hover ?? '#2563EB';
 
     // 4. CONTRASTES PADRÃO (Preto/Branco automáticos)

@@ -17,6 +17,9 @@ use App\Livewire\Store\Template\Catalog\SetList;
 // Rota final: /loja/{slug}/login
 Route::get('/login', LoginLojista::class)->name('loja.login');
 
+// Rota para o formulário de nova senha
+Route::get('/nova-senha/{token}', LoginLojista::class)->name('loja.reset-password');
+
 // Rota final: /loja/{slug}/logout
 Route::post('/logout', function () {
     $user = auth('store_user')->user();
