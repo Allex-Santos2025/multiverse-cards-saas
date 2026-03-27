@@ -53,8 +53,11 @@
                             <label class="block text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-2 pl-1">E-MAIL OU USUÁRIO</label>
                             <div class="relative">
                                 <i class="ph ph-envelope absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style="color: {{ $textoNoInput }};"></i>
-                                <input type="email" wire:model="email" class="w-full pl-10 pr-4 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
-                                       style="background-color: var(--cor-terciaria); color: {{ $textoNoInput }};" placeholder="ex: contato@sualoja.com">
+                                <input type="email" wire:model="email" readonly onfocus="this.removeAttribute('readonly');" class="w-full pl-10 pr-4 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
+                                style="background-color: var(--cor-terciaria); color: {{ $textoNoInput }};" placeholder="ex: contato@sualoja.com">
+                                @error('email') 
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                                @enderror
                             </div>
                         </div>
 
@@ -65,8 +68,11 @@
                             </div>
                             <div class="relative">
                                 <i class="ph ph-lock absolute left-3 top-1/2 -translate-y-1/2 opacity-50" style="color: {{ $textoNoInput }};"></i>
-                                <input :type="showPass ? 'text' : 'password'" wire:model="password" class="w-full pl-10 pr-12 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
-                                       style="background-color: var(--cor-terciaria); color: {{ $textoNoInput }};" placeholder="••••••••">
+                                <input :type="showPass ? 'text' : 'password'" wire:model="password" readonly onfocus="this.removeAttribute('readonly');" class="w-full pl-10 pr-12 py-4 rounded-xl text-sm border-none outline-none shadow-inner" 
+                                style="background-color: var(--cor-terciaria); color: {{ $textoNoInput }};" placeholder="••••••••">
+                                @error('password') 
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                                @enderror
                                 <button type="button" @click="showPass = !showPass" class="absolute right-4 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity">
                                     <i class="ph text-lg" :class="showPass ? 'ph-eye-slash' : 'ph-eye'" style="color: {{ $textoNoInput }};"></i>
                                 </button>
@@ -184,7 +190,10 @@
                     <form wire:submit.prevent="autenticar" class="space-y-6">
                         <div>
                             <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2 pl-1">E-MAIL OU USUÁRIO</label>
-                            <input type="email" wire:model="email" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="ex: contato@sualoja.com">
+                            <input type="email" wire:model="email" readonly onfocus="this.removeAttribute('readonly');" wire:model="email" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="ex: contato@sualoja.com">
+                            @error('email') 
+                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                            @enderror
                         </div>
 
                         <div>
@@ -193,7 +202,10 @@
                                 <button type="button" wire:click="$set('mode', 'forgot')" class="text-[9px] font-black text-orange-500 uppercase tracking-tighter hover:text-orange-400">ESQUECEU?</button>
                             </div>
                             <div class="relative">
-                                <input :type="showPass ? 'text' : 'password'" wire:model="password" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 pr-12 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="••••••••">
+                                <input :type="showPass ? 'text' : 'password'" wire:model="password" readonly onfocus="this.removeAttribute('readonly');" class="input-versus w-full bg-[#18181b] text-white px-4 py-4 pr-12 rounded-xl border border-white/[0.05] outline-none focus:border-orange-500/50 transition-all text-sm" placeholder="••••••••">
+                                @error('password') 
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                                @enderror
                                 <button type="button" @click="showPass = !showPass" class="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors">
                                     <i class="ph text-lg" :class="showPass ? 'ph-eye-slash' : 'ph-eye'"></i>
                                 </button>

@@ -353,6 +353,25 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.1.6`  
+**Data:** 26/03/2026  
+**Descrição da Versão:** Implementação da **Página de Listagem de Cards por Edição (Set Page)** e otimização da arquitetura de consultas ao banco de dados. Esta atualização introduz o motor de filtragem híbrida (Cor/Tipo) e a tecnologia de Tabela Virtual para performance em larga escala no catálogo.
+
+### Funcionalidades (Engenharia de Dados & Performance):
+
+* **Arquitetura de Consulta via Tabela Virtual (Derived Table Join):** Substituição de subqueries correlacionadas por uma lógica de `leftJoinSub`. O motor agora processa o cálculo de estoque total, menor preço ativo, detecção de itens *foil* e descontos em uma única operação de memória, reduzindo a carga de processamento de O(n) para O(1) por página.
+* **Motor de Filtragem Híbrida (Mana & Type Logic):** Implementação de um sistema de busca inteligente que distingue cores nativas (W, U, B, R, G), cartas Multicolores e Incolores Reais. A lógica foi expandida para tratar "Artefatos" e "Terrenos" como filtros de tipo, garantindo que terrenos básicos não poluam a busca por cartas incolores.
+* **Sistema de Identidade de Print (Unique Collector ID):** Refatoração da lógica de agrupamento para operar via `catalog_print_id` em vez de `concept_id`. Isso garante que variantes de arte, terrenos básicos com diferentes ilustrações e números de colecionador distintos sejam exibidos como produtos individuais, respeitando a integridade da coleção.
+* **Persistência de Estado e Ordenação Dinâmica:** Implementação de resets de página automáticos ao alternar filtros (`updated` hook) e sistema de ordenação tripla: por Número da Coleção (Cast Unsigned), Ordem Alfabética e Menor/Maior Preço (considerando nulos para itens sem estoque).
+
+### Páginas Adicionadas / Atualizadas:
+
+**Catálogo da Loja (Template):**
+* **Componente SetPage 1.0:** Lançamento do controlador Livewire responsável pela gestão do grid de cartas, integrando o motor de busca unificado à tabela de estoque específica do lojista.
+* **Interface de Filtros Reativa (UI/UX):** Atualização da View com suporte a filtros "em lote". O usuário agora pode configurar múltiplos parâmetros (Cor + Raridade + Estoque) e disparar a atualização via gatilho oficial (Botão Filtrar), otimizando a navegação e a estética da barra de ferramentas.
+
+---
+
 ## 🧩 Estrutura de Versionamento
 
 O projeto usa um modelo adaptado do Semantic Versioning:

@@ -83,74 +83,62 @@ class ManageInventory extends Component
     // --- AGORA VAI FUNCIONAR POIS O MODEL FOI IMPORTADO ---
     public function saveForm($formData)
     {
-        // Verifica se a tela mandou os dados
         if (!isset($formData['items']) || empty($formData['items'])) return;
 
         DB::beginTransaction();
         try {
             foreach ($formData['items'] as $uniqueId => $data) {
-                
                 $isExistingStock = str_starts_with($uniqueId, 's');
                 $realId = substr($uniqueId, 1);
 
-                $priceRaw = $data['price'] ?? 0;
-                $price = (float) str_replace(',', '.', $priceRaw); 
+                $price = (float) str_replace(',', '.', $data['price'] ?? 0); 
                 $qty = (int) ($data['qty'] ?? 0);
                 $cond = $data['condition'] ?? 'NM';
                 $language = $data['language'] ?? 'en'; 
                 $extras = $data['extras'] ?? [];
 
-                // 🛡️ REGRA DE OURO: Preço zero não entra no estoque e não altera estoque existente.
-                // Isso ignora instantaneamente as 49 cartas da tela que você não mexeu.
-                if ($price <= 0) {
-                    continue; 
-                }
-
                 if ($isExistingStock) {
-                    // SE JÁ EXISTE: Puxamos do banco primeiro
+                    // INTENÇÃO: ATUALIZAR (O lojista mexeu numa linha que veio do banco)
                     $stockItem = \App\Models\StockItem::where('id', $realId)
-                                    ->where('store_id', $this->userStoreId)
-                                    ->first();
+                        ->where('store_id', $this->userStoreId)
+                        ->first();
 
                     if ($stockItem) {
-                        $stockItem->quantity = $qty;
-                        $stockItem->price = $price;
-                        $stockItem->condition = $cond;
-                        $stockItem->extras = $extras;
-                        $stockItem->language = $language;
-
-                        // 🎯 MÁGICA DO LARAVEL: isDirty() verifica se alguma das variáveis acima é diferente do banco.
-                        // Se você não mudou nada na tela, ele NÃO faz query no banco. Zero lentidão.
-                        if ($stockItem->isDirty()) {
-                            $stockItem->save();
-                        }
-                    }
-                } else {
-                    // SE É UMA CARTA NOVA:
-                    // Como passou pelo "Escudo do Preço > 0", sabemos que você digitou um preço intencionalmente.
-                    // Pode salvar tranquilamente, mesmo que o estoque seja zero (ex: você criando pré-venda).
-                    \App\Models\StockItem::updateOrCreate(
-                        [
-                            'store_id'           => $this->userStoreId,
-                            'catalog_print_id'   => $realId,
-                            'catalog_product_id' => null,
-                        ],
-                        [
+                        $stockItem->fill([
                             'quantity'  => $qty,
                             'price'     => $price,
                             'condition' => $cond,
                             'extras'    => $extras,
                             'language'  => $language,
-                            'updated_at'=> now()
-                        ]
-                    );
+                        ]);
+
+                        if ($stockItem->isDirty()) {
+                            $stockItem->save();
+                        }
+                    }
+                } else {
+                    // INTENÇÃO: CRIAR (O lojista mexeu na linha limpa do catálogo)
+                    // Só criamos se ele realmente digitou algo (preço ou quantidade > 0)
+                    if ($price > 0 || $qty > 0) {
+                        \App\Models\StockItem::create([
+                            'store_id'           => $this->userStoreId,
+                            'catalog_print_id'   => $realId,
+                            'catalog_product_id' => null,
+                            'quantity'           => $qty,
+                            'price'              => $price,
+                            'condition'          => $cond,
+                            'extras'             => $extras,
+                            'language'           => $language,
+                            'updated_at'         => now(),
+                        ]);
+                    }
                 }
             }
             DB::commit();
-            $this->dispatch('notify', type: 'success', message: 'Estoque salvo com sucesso!');
+            $this->dispatch('notify', type: 'success', message: 'Estoque processado com sucesso!');
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->dispatch('notify', type: 'error', message: 'Erro crítico: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Erro: ' . $e->getMessage());
         }
     }
 
@@ -242,12 +230,25 @@ class ManageInventory extends Component
         $expandedItems = collect();
 
         foreach ($catalogItems as $print) {
-            if ($print->stockItems->isEmpty()) {
-                $expandedItems->push(['print' => $print, 'stock' => null, 'unique_row_id' => 'p' . $print->id]);
-            } else {
+            // 1. Mostra o que já está no estoque (Linhas 's')
+            if (!$print->stockItems->isEmpty()) {
                 foreach ($print->stockItems as $stock) {
-                    $expandedItems->push(['print' => $print, 'stock' => $stock, 'unique_row_id' => 's' . $stock->id]);
+                    $expandedItems->push([
+                        'print' => $print, 
+                        'stock' => $stock, 
+                        'unique_row_id' => 's' . $stock->id
+                    ]);
                 }
+            }
+
+            // 2. REGRA DE OURO: Só mostra a linha de "Novo Cadastro" (Linha 'p') 
+            // se o lojista NÃO estiver filtrando pela "Minha Loja".
+            if ($this->searchType !== 'minhaLoja') {
+                $expandedItems->push([
+                    'print' => $print, 
+                    'stock' => null, 
+                    'unique_row_id' => 'p' . $print->id
+                ]);
             }
         }
 

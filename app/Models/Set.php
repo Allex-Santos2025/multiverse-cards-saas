@@ -38,6 +38,7 @@ class Set extends Model
      * @var array
      */
     protected $casts = [
+        'translations' => 'array',
         'is_fanmade' => 'boolean',
         'digital' => 'boolean',
         'foil_only' => 'boolean',
@@ -76,5 +77,12 @@ class Set extends Model
             'id',                // ID local da tabela sets
             'id'                 // ID local da tabela catalog_prints
         );
+    }
+    
+    public function getNomeLocalizadoAttribute()
+    {
+        // Se name_pt não for nulo e não for uma string vazia, ele usa o pt.
+        // Se for vazio, ele devolve o name original.
+        return !empty($this->name_pt) ? $this->name_pt : $this->name;
     }
 }

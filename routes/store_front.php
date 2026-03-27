@@ -4,8 +4,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Livewire\Store\LoginLojista;
 use App\Livewire\Store\Template\Home;
-// 👇 1. IMPORTAMOS A NOSSA NOVA CLASSE AQUI
 use App\Livewire\Store\Template\Catalog\SetList; 
+use App\Livewire\Store\Template\Catalog\SetPage;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,6 +47,10 @@ Route::get('/aguarde', function ($slug) {
 Route::get('/', Home::class)->name('store.view');
 
 
-// 👇 2. NOSSA NOVA ROTA DE CATÁLOGO DE SETS
-// Rota final: /loja/{slug}/{gameSlug}/sets
-Route::get('/{gameId}/sets', SetList::class)->name('store.catalog.sets');
+// 👇 2. NOSSA NOVA ROTA DE CATÁLOGO DE SETS (100% Padronizadas com Slug)
+
+// Lista todas as edições de um jogo (Ex: /loja/olhodeleao/magic/sets)
+Route::get('/{gameSlug}/sets', SetList::class)->name('store.catalog.sets');
+
+// Página de uma edição específica (Ex: /loja/olhodeleao/magic/sets/om2)
+Route::get('/{gameSlug}/sets/{setCode}', SetPage::class)->name('store.catalog.set');

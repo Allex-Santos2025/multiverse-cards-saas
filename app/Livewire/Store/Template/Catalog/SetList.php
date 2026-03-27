@@ -3,42 +3,48 @@
 namespace App\Livewire\Store\Template\Catalog;
 
 use Livewire\Component;
-use App\Models\Set;
-use App\Models\Game;
+use Livewire\WithPagination;
 use App\Models\Store;
+use App\Models\Game;
+use App\Models\Set;
 
 class SetList extends Component
 {
+    use WithPagination;
+
+    // Variáveis da Rota
+    public $slug;
+    public $gameSlug;
+
+    // Variáveis pré-carregadas no mount
+    public $loja;
+    public $game;
     public $gameId;
-    public $lojaSlug; // Atualizado para o padrão
-    public $sortOrder = 'release_desc'; 
-    public $activeLetter = null; 
-    public $ptBrEnabled = false; 
 
-    public function mount($slug, $gameId)
-    {
-        $this->lojaSlug = $slug;
-        $this->gameId = $gameId;
-    }
+    // Variáveis de Filtro e Ordenação
+    public $sortOrder = 'release_desc';
+    public $activeLetter = null;
 
-    public function filterByLetter($letter)
+    public function mount($slug, $gameSlug)
     {
-        if ($this->activeLetter === $letter) {
-            $this->activeLetter = null;
-        } else {
-            $this->activeLetter = $letter;
-        }
+        // 1. Guarda a loja (com o visual pro Header não quebrar)
+        $this->slug = $slug;
+        $this->loja = Store::with('visual')->where('url_slug', $slug)->firstOrFail();
+
+        // 2. Guarda o Jogo pela URL (slug) e já salva o objeto e o ID
+        $this->gameSlug = $gameSlug;
+        $this->game = Game::where('url_slug', $gameSlug)->firstOrFail();
+        $this->gameId = $this->game->id;
     }
 
     public function render()
     {
-        // Padrão: tudo usando $loja
-        $loja = Store::where('url_slug', $this->lojaSlug)->firstOrFail();
-        $game = Game::findOrFail($this->gameId);
+        // Removemos as consultas redundantes. 
+        // Usamos $this->loja e $this->gameId que já foram carregados no mount().
 
-        $query = Set::where('game_id', $game->id)
-            ->whereHas('stockItems', function ($q) use ($loja) {
-                $q->where('store_id', $loja->id);
+        $query = Set::where('game_id', $this->gameId)
+            ->whereHas('stockItems', function ($q) {
+                $q->where('store_id', $this->loja->id);
             });
 
         switch ($this->sortOrder) {
@@ -83,13 +89,13 @@ class SetList extends Component
             });
         }
 
-        // Retornando apenas o padrão do sistema
+        // Retornando com todas as variáveis que a sua Blade original precisa
         return view('livewire.store.template.catalog.set-list', [
-            'loja' => $loja,
-            'game' => $game,
+            'loja' => $this->loja,
+            'game' => $this->game,
             'groupedSets' => $groupedSets,
             'viewMode' => $viewMode,
             'alphabet' => range('A', 'Z')
-        ])->layout('layouts.template', ['loja' => $loja]); 
+        ])->layout('layouts.template', ['loja' => $this->loja]); 
     }
 }

@@ -11,7 +11,7 @@
     </div>
 
     {{-- A MÁGICA: Fundo da Loja + Herança do Texto Principal (com o Salva-Vidas) --}}
-    <main class="flex-grow py-8 min-h-screen transition-colors duration-300" style="background-color: var(--cor-bg-loja); color: var(--cor-texto-principal);">
+    <main class="flex-grow pt-8 pb-0 min-h-screen transition-colors duration-300" style="background-color: var(--cor-bg-loja); color: var(--cor-texto-principal);">
         <div class="max-w-7xl mx-auto px-4">
             
             {{-- Cabeçalho e Filtros --}}
@@ -59,7 +59,7 @@
                                     @foreach($setsInLetter as $set)
                                         <li>
                                             {{-- Herdando a Cor do Main --}}
-                                            <a href="#" class="flex items-center gap-4 text-sm font-bold transition-all group/link hover:text-[var(--cor-cta)] text-inherit">
+                                            <a href="{{ route('store.catalog.set', ['slug' => $loja->url_slug, 'gameSlug' => $game->url_slug, 'setCode' => $set->code]) }}" class="flex items-center gap-4 text-sm font-bold transition-all group/link hover:text-[var(--cor-cta)] text-inherit">
                                                 <div class="relative w-8 h-8 flex items-center justify-center shrink-0 transition-transform group-hover/link:scale-125">
                                                     <x-set-symbol :path="''" :code="$set->code ?? ''" rarity="common" size="w-8 h-8" />
                                                 </div>
@@ -104,12 +104,12 @@
                                                 @foreach($setsInYear as $set)
                                                     <li>
                                                         {{-- Herdando o texto principal --}}
-                                                        <a href="#" class="flex items-center gap-4 text-sm font-bold transition-all group/link hover:text-[var(--cor-cta)] text-inherit">
+                                                        <a href="{{ route('store.catalog.set', ['slug' => $loja->url_slug, 'gameSlug' => $game->url_slug, 'setCode' => $set->code]) }}" class="flex items-center gap-4 text-sm font-bold transition-all group/link hover:text-[var(--cor-cta)] text-inherit">
                                                             <div class="relative w-8 h-8 flex items-center justify-center shrink-0 transition-transform group-hover/link:scale-125">
                                                                 <x-set-symbol :path="''" :code="$set->code ?? ''" rarity="common" size="w-8 h-8" />
                                                             </div>
                                                             <div class="flex flex-col">
-                                                                <span class="truncate leading-tight">{{ $set->name }}</span>
+                                                                <span class="truncate leading-tight">{{ $set->nome_localizado ?? $set->name }}</span>
                                                                 <span class="text-[10px] opacity-60 font-mono uppercase tracking-widest">{{ $set->code }}</span>
                                                             </div>
                                                         </a>
@@ -125,12 +125,12 @@
                                                 @foreach($setsInYear as $set)
                                                     <li>
                                                         {{-- Herdando o texto principal --}}
-                                                        <a href="#" class="flex items-center gap-4 text-sm font-bold transition-all group/link hover:text-[var(--cor-cta)] text-inherit">
+                                                        <a href="{{ route('store.catalog.set', ['slug' => $loja->url_slug, 'gameSlug' => $game->url_slug, 'setCode' => $set->code]) }}" class="flex items-center gap-4 text-sm font-bold transition-all group/link hover:text-[var(--cor-cta)] text-inherit">
                                                             <div class="relative w-8 h-8 flex items-center justify-center shrink-0 transition-transform group-hover/link:scale-125">
                                                                 <x-set-symbol :path="''" :code="$set->code ?? ''" rarity="common" size="w-8 h-8" />
                                                             </div>
                                                             <div class="flex flex-col">
-                                                                <span class="truncate leading-tight">{{ $set->name }}</span>
+                                                                <span class="truncate leading-tight">{{ $set->nome_localizado ?? $set->name }}</span>
                                                                 <span class="text-[10px] opacity-60 font-mono uppercase tracking-widest">{{ $set->code }}</span>
                                                             </div>
                                                         </a>

@@ -97,23 +97,22 @@
                                     <div class="py-1">
                                         @foreach($menu->recent_sets as $set)
                                             <li>
-                                                <a href="#" class="{{ $subItemStyle }}">
-                                                    <i class="ph ph-caret-right mr-1.5 text-[10px] opacity-50"></i> {{ $set->name }}
+                                                {{-- LIGAÇÃO FEITA AQUI 👇 --}}
+                                                <a href="{{ route('store.catalog.set', ['slug' => $loja->url_slug, 'gameSlug' => $menu->game->url_slug, 'setCode' => $set->code]) }}" class="{{ $subItemStyle }}">
+                                                    <i class="ph ph-caret-right mr-1.5 text-[10px] opacity-50"></i> {{ $set->nome_localizado }}
                                                 </a>
                                             </li>
                                         @endforeach
                                     </div>
                                 @endif
 
-                                {{-- AQUI ACONTECE A MÁGICA DA NOVA ROTA COM O ID DO JOGO 👇 --}}
                                 @if($menu->show_all_sets)
                                     <li>
-                                        <a href="{{ route('store.catalog.sets', ['slug' => $loja->url_slug, 'gameId' => $menu->game->id]) }}" class="{{ $linkStyle }} border-t border-gray-50">
+                                        <a href="{{ route('store.catalog.sets', ['slug' => $loja->url_slug, 'gameSlug' => $menu->game->url_slug]) }}" class="{{ $linkStyle }} border-t border-gray-50">
                                             {{ $menu->name_all_sets }} &rarr;
                                         </a>
                                     </li>
                                 @endif
-                                {{-- FIM DA ATUALIZAÇÃO 👆 --}}
 
                                 @if($menu->show_sealed)
                                     <li><a href="#" class="{{ $linkStyle }}">{{ $menu->name_sealed }}</a></li>

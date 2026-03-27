@@ -97,46 +97,83 @@ class SetResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // ***** CORREÇÃO: Colunas corretas para a lista de SETS *****
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Nome do Set')
-                    ->searchable()
-                    ->sortable(),
-                
-                Tables\Columns\TextColumn::make('code')
-                    ->label('Código')
-                    ->searchable()
-                    ->sortable(),
-                
-                Tables\Columns\TextColumn::make('game.name')
-                    ->label('Jogo')
-                    ->badge()
-                    ->searchable(),
-                
-                Tables\Columns\TextColumn::make('released_at')
-                    ->label('Lançamento')
-                    ->date('d/m/Y')
-                    ->sortable(),
-                
-                Tables\Columns\IconColumn::make('is_fanmade')
-                    ->label('Fanmade')
-                    ->boolean(),
-            ])
+            Tables\Columns\ImageColumn::make('icon_svg_uri')
+                ->label('Ícone')
+                ->extraImgAttributes(['style' => 'filter: invert(1);'])
+                ->size(30),
+
+            Tables\Columns\TextColumn::make('code')
+                ->label('Sigla')
+                ->searchable(),
+
+            // NOME ORIGINAL (Somente leitura, a âncora visual)
+            Tables\Columns\TextColumn::make('name')
+                ->label('Nome Original')
+                ->searchable()
+                ->description(fn ($record): string => $record->set_type ?? ''),
+
+            // O NOME PT-BR PRINCIPAL (O que vai ser usado na busca do lojista)
+            Tables\Columns\TextInputColumn::make('name_pt')
+                ->label('Nome PT-BR (Busca)')
+                ->searchable()
+                ->sortable(),
+
+            // --- INÍCIO DO CATÁLOGO JSON ---
+            
+            Tables\Columns\TextInputColumn::make('translations.en')
+                ->label('EN (Inglês)'),
+
+            Tables\Columns\TextInputColumn::make('translations.pt')
+                ->label('PT (Português)'),
+
+            Tables\Columns\TextInputColumn::make('translations.es')
+                ->label('ES (Espanhol)'),
+
+            Tables\Columns\TextInputColumn::make('translations.fr')
+                ->label('FR (Francês)'),
+
+            Tables\Columns\TextInputColumn::make('translations.de')
+                ->label('DE (Alemão)'),
+
+            Tables\Columns\TextInputColumn::make('translations.it')
+                ->label('IT (Italiano)'),
+
+            Tables\Columns\TextInputColumn::make('translations.ja')
+                ->label('JA (Japonês)'),
+
+            Tables\Columns\TextInputColumn::make('translations.ko')
+                ->label('KO (Coreano)'),
+
+            Tables\Columns\TextInputColumn::make('translations.ru')
+                ->label('RU (Russo)'),
+
+            Tables\Columns\TextInputColumn::make('translations.zhs')
+                ->label('ZHS (Chinês Simp.)'),
+
+            Tables\Columns\TextInputColumn::make('translations.zht')
+                ->label('ZHT (Chinês Trad.)'),
+        ])
             ->filters([
-                Tables\Filters\SelectFilter::make('game_id')
-                    ->relationship('game', 'name')
-                    ->label('Filtrar por Jogo'),
+                Tables\Filters\TernaryFilter::make('status_traducao')
+                    ->label('Status PT-BR')
+                    ->placeholder('Todos os Sets')
+                    ->trueLabel('✔️ Traduzidos (PT-BR)')
+                    ->falseLabel('❌ Faltando PT-BR')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereNotNull('name_pt')->where('name_pt', '!=', ''),
+                        false: fn (Builder $query) => $query->where(function (Builder $query) {
+                            $query->whereNull('name_pt')->orWhere('name_pt', '');
+                        }),
+                    ),
             ])
             ->actions([
                 EditAction::make(),
             ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->defaultSort('released_at', 'desc')
+            ->striped()
+            ->deferLoading(); // Dica extra: Adiciona isso se a tabela ficar lenta para carregar com muitos dados.
     }
     
     public static function getRelations(): array
