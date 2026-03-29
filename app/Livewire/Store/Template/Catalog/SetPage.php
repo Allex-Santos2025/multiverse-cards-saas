@@ -124,10 +124,10 @@ class SetPage extends Component
             $printIds = $queryIds->pluck('catalog_prints.id');
 
             // ==========================================
-            // 2. A TABELA VIRTUAL DE ESTOQUE (Performance Absoluta)
+            // 2. A TABELA VIRTUAL DE ESTOQUE (Ajustada para enxergar todas as línguas)
             // ==========================================
             $estoqueSubquery = \App\Models\StockItem::select(
-                'stock_items.catalog_print_id', // CORREÇÃO AQUI: Agrupando pela carta física, não pelo conceito
+                'cp.concept_id', // MUDANÇA: Agrupamos pelo conceito para captar todas as linguagens
                 \DB::raw('SUM(stock_items.quantity) as total_estoque'),
                 \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
                 \DB::raw('MIN(stock_items.price) as ultimo_preco'),
@@ -137,10 +137,10 @@ class SetPage extends Component
             ->join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
             ->where('stock_items.store_id', $this->loja->id)
             ->where('cp.set_id', $this->set->id)
-            ->groupBy('stock_items.catalog_print_id'); // CORREÇÃO AQUI: Agrupando pela carta física
+            ->groupBy('cp.concept_id'); // MUDANÇA: O estoque agora é somado por "identidade" da carta
 
             // ==========================================
-            // 3. A QUERY MESTRA
+            // 3. A QUERY MESTRA (Ligação por concept_id)
             // ==========================================
             $query = \App\Models\Catalog\CatalogPrint::select(
                     'catalog_prints.*',
@@ -154,8 +154,8 @@ class SetPage extends Component
                 ->with(['concept'])
                 ->whereIn('catalog_prints.id', $printIds)
                 ->leftJoinSub($estoqueSubquery, 'estoque', function ($join) {
-                    // CORREÇÃO AQUI: Ligando diretamente pelo Print ID
-                    $join->on('catalog_prints.id', '=', 'estoque.catalog_print_id');
+                    // MUDANÇA: Ligamos o print (EN) ao estoque total via concept_id
+                    $join->on('catalog_prints.concept_id', '=', 'estoque.concept_id');
                 });
 
             // ==========================================

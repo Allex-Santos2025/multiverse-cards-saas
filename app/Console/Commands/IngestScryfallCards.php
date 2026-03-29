@@ -46,7 +46,8 @@ class IngestScryfallCards extends Command
             $scryfallApi = new ScryfallApi(
                 (string)$this->game->api_url,
                 (int)($this->game->rate_limit_ms ?? 100),
-                (int)$this->game->id
+                (int)$this->game->id,
+                (string)($this->game->url_slug ?? 'magic')
             );
         } catch (\Throwable $e) {
             $this->error("Erro ao iniciar API: " . $e->getMessage());

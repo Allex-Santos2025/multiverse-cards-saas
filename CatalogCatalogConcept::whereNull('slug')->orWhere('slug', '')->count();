@@ -1,0 +1,108 @@
+[90m= [39m[
+    [
+      "[34mid[39m" => [35m88[39m,
+      "[34mname[39m" => "[32mFog[39m",
+      "[34mslug[39m" => "[32mfog-27e9[39m",
+    ],
+    [
+      "[34mid[39m" => [35m2417[39m,
+      "[34mname[39m" => "[32mFog Elemental[39m",
+      "[34mslug[39m" => "[32mfog-elemental-b304[39m",
+    ],
+    [
+      "[34mid[39m" => [35m3400[39m,
+      "[34mname[39m" => "[32mFog Bank[39m",
+      "[34mslug[39m" => "[32mfog-bank-3a2b[39m",
+    ],
+    [
+      "[34mid[39m" => [35m3635[39m,
+      "[34mname[39m" => "[32mFog of Gnats[39m",
+      "[34mslug[39m" => "[32mfog-of-gnats-41f5[39m",
+    ],
+    [
+      "[34mid[39m" => [35m3782[39m,
+      "[34mname[39m" => "[32mHeavy Fog[39m",
+      "[34mslug[39m" => "[32mheavy-fog-a200[39m",
+    ],
+    [
+      "[34mid[39m" => [35m4420[39m,
+      "[34mname[39m" => "[32mFog Patch[39m",
+      "[34mslug[39m" => "[32mfog-patch-eb8f[39m",
+    ],
+    [
+      "[34mid[39m" => [35m5761[39m,
+      "[34mname[39m" => "[32mAven Fogbringer[39m",
+      "[34mslug[39m" => "[32maven-fogbringer-3fb3[39m",
+    ],
+    [
+      "[34mid[39m" => [35m8349[39m,
+      "[34mname[39m" => "[32mLeery Fogbeast[39m",
+      "[34mslug[39m" => "[32mleery-fogbeast-174d[39m",
+    ],
+    [
+      "[34mid[39m" => [35m9777[39m,
+      "[34mname[39m" => "[32mOld Fogey[39m",
+      "[34mslug[39m" => "[32mold-fogey-9fc8[39m",
+    ],
+    [
+      "[34mid[39m" => [35m12959[39m,
+      "[34mname[39m" => "[32mThe Eon Fog[39m",
+      "[34mslug[39m" => "[32mthe-eon-fog-a04d[39m",
+    ],
+    [
+      "[34mid[39m" => [35m18111[39m,
+      "[34mname[39m" => "[32mFogwalker[39m",
+      "[34mslug[39m" => "[32mfogwalker-c597[39m",
+    ],
+    [
+      "[34mid[39m" => [35m19469[39m,
+      "[34mname[39m" => "[32mBlinding Fog[39m",
+      "[34mslug[39m" => "[32mblinding-fog-5055[39m",
+    ],
+    [
+      "[34mid[39m" => [35m27669[39m,
+      "[34mname[39m" => "[32mFog of War[39m",
+      "[34mslug[39m" => "[32mfog-of-war-103c[39m",
+    ],
+    [
+      "[34mid[39m" => [35m29550[39m,
+      "[34mname[39m" => "[32mFog on the Barrow-Downs[39m",
+      "[34mslug[39m" => "[32mfog-on-the-barrow-downs-66be[39m",
+    ],
+    [
+      "[34mid[39m" => [35m29721[39m,
+      "[34mname[39m" => "[32mFog on the Barrow-Downs // Fog on the Barrow-Downs[39m",
+      "[34mslug[39m" => "[32mfog-on-the-barrow-downs-fog-on-the-barrow-downs-7b62[39m",
+    ],
+    [
+      "[34mid[39m" => [35m35761[39m,
+      "[34mname[39m" => "[32mFoggy Swamp Visions[39m",
+      "[34mslug[39m" => "[32mfoggy-swamp-visions-16af[39m",
+    ],
+    [
+      "[34mid[39m" => [35m36028[39m,
+      "[34mname[39m" => "[32mFoggy Bottom Swamp[39m",
+      "[34mslug[39m" => "[32mfoggy-bottom-swamp-b56b[39m",
+    ],
+    [
+      "[34mid[39m" => [35m36029[39m,
+      "[34mname[39m" => "[32mFoggy Swamp Hunters[39m",
+      "[34mslug[39m" => "[32mfoggy-swamp-hunters-1941[39m",
+    ],
+    [
+      "[34mid[39m" => [35m36030[39m,
+      "[34mname[39m" => "[32mFoggy Swamp Spirit Keeper[39m",
+      "[34mslug[39m" => "[32mfoggy-swamp-spirit-keeper-faec[39m",
+    ],
+    [
+      "[34mid[39m" => [35m36031[39m,
+      "[34mname[39m" => "[32mFoggy Swamp Vinebender[39m",
+      "[34mslug[39m" => "[32mfoggy-swamp-vinebender-82fe[39m",
+    ],
+    [
+      "[34mid[39m" => [35m38611[39m,
+      "[34mname[39m" => "[32mFog Crystal[39m",
+      "[34mslug[39m" => "[32mfog-crystal[39m",
+    ],
+  ]
+

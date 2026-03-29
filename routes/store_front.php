@@ -6,6 +6,8 @@ use App\Livewire\Store\LoginLojista;
 use App\Livewire\Store\Template\Home;
 use App\Livewire\Store\Template\Catalog\SetList; 
 use App\Livewire\Store\Template\Catalog\SetPage;
+use App\Livewire\Store\Template\Catalog\ProductPage;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -54,3 +56,8 @@ Route::get('/{gameSlug}/sets', SetList::class)->name('store.catalog.sets');
 
 // Página de uma edição específica (Ex: /loja/olhodeleao/magic/sets/om2)
 Route::get('/{gameSlug}/sets/{setCode}', SetPage::class)->name('store.catalog.set');
+
+// Página do Produto (Carta Específica)
+// Ex: /loja/olhodeleao/pokemon/card/oddish
+// O {printId?} é opcional. Se vier, já abre a tela com a edição/idioma específicos selecionados.
+Route::get('/{gameSlug}/card/{conceptSlug}', ProductPage::class)->name('store.catalog.product');

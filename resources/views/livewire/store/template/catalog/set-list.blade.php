@@ -61,7 +61,7 @@
                                             {{-- Herdando a Cor do Main --}}
                                             <a href="{{ route('store.catalog.set', ['slug' => $loja->url_slug, 'gameSlug' => $game->url_slug, 'setCode' => $set->code]) }}" class="flex items-center gap-4 text-sm font-bold transition-all group/link hover:text-[var(--cor-cta)] text-inherit">
                                                 <div class="relative w-8 h-8 flex items-center justify-center shrink-0 transition-transform group-hover/link:scale-125">
-                                                    <x-set-symbol :path="''" :code="$set->code ?? ''" rarity="common" size="w-8 h-8" />
+                                                    <x-store.augmented-set-symbol :set="$set" />
                                                 </div>
                                                 <div class="flex flex-col">
                                                     <span class="truncate leading-tight">{{ $set->name }}</span>
@@ -106,7 +106,7 @@
                                                         {{-- Herdando o texto principal --}}
                                                         <a href="{{ route('store.catalog.set', ['slug' => $loja->url_slug, 'gameSlug' => $game->url_slug, 'setCode' => $set->code]) }}" class="flex items-center gap-4 text-sm font-bold transition-all group/link hover:text-[var(--cor-cta)] text-inherit">
                                                             <div class="relative w-8 h-8 flex items-center justify-center shrink-0 transition-transform group-hover/link:scale-125">
-                                                                <x-set-symbol :path="''" :code="$set->code ?? ''" rarity="common" size="w-8 h-8" />
+                                                                <x-store.augmented-set-symbol :set="$set" />
                                                             </div>
                                                             <div class="flex flex-col">
                                                                 <span class="truncate leading-tight">{{ $set->nome_localizado ?? $set->name }}</span>
@@ -127,7 +127,7 @@
                                                         {{-- Herdando o texto principal --}}
                                                         <a href="{{ route('store.catalog.set', ['slug' => $loja->url_slug, 'gameSlug' => $game->url_slug, 'setCode' => $set->code]) }}" class="flex items-center gap-4 text-sm font-bold transition-all group/link hover:text-[var(--cor-cta)] text-inherit">
                                                             <div class="relative w-8 h-8 flex items-center justify-center shrink-0 transition-transform group-hover/link:scale-125">
-                                                                <x-set-symbol :path="''" :code="$set->code ?? ''" rarity="common" size="w-8 h-8" />
+                                                                <x-store.augmented-set-symbol :set="$set" />
                                                             </div>
                                                             <div class="flex flex-col">
                                                                 <span class="truncate leading-tight">{{ $set->nome_localizado ?? $set->name }}</span>

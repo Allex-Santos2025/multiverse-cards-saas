@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+@import "keyrune/css/keyrune.css";
 /* =========================================
    VARIÁVEIS GLOBAIS (REALMENTE GLOBAIS)
    ========================================= */

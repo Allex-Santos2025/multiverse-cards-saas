@@ -55,10 +55,9 @@ class IngestPokemonCards extends Command
         $setsQuery = Set::where('game_id', $this->game->id)->orderBy('id', 'asc');
 
         if ($setId = $this->option('set-id')) {
-            $setsQuery->where(function($q) use ($setId) {
-                $q->where('mtg_scryfall_id', $setId)->orWhere('code', $setId);
-            });
+            $setsQuery->where('code', $setId);
             $this->info("Modo Set Único: Processando filtro [{$setId}].");
+        
         } else {
             $lastSetId = $this->getCheckpoint();
             if ($lastSetId && !$this->option('force')) {
@@ -124,7 +123,8 @@ class IngestPokemonCards extends Command
         do {
             usleep(200000); 
 
-            $url = "https://api.pokemontcg.io/v2/cards?q=set.id:{$apiSetCode}&page={$page}&pageSize={$pageSize}";
+            $safeName = urlencode('"' . $set->name . '"');
+            $url = "https://api.pokemontcg.io/v2/cards?q=(set.id:{$apiSetCode} OR set.ptcgoCode:{$apiSetCode} OR set.name:{$safeName})&page={$page}&pageSize={$pageSize}";
             
             // Log para debug manual se necessário
             // Log::info("Requesting: $url");
@@ -293,7 +293,6 @@ class IngestPokemonCards extends Command
                         'game_id' => $this->game->id,
                         'name' => $conceptName,
                         'slug' => Str::slug($conceptName),
-                        'search_names' => [$conceptName],
                         'specific_type' => PkConcept::class,
                         'specific_id' => $pkConcept->id,
                     ]);
@@ -338,6 +337,13 @@ class IngestPokemonCards extends Command
                         'image_path' => $localPath, 
                         'specific_type' => PkPrint::class,
                         'specific_id' => $pkPrint->id,
+                        
+                        // CAMPOS OBRIGATÓRIOS DA NOVA ESTRUTURA V5:
+                        'printed_name' => $data['name'],
+                        'language_code' => 'en',
+                        'collector_number' => (string) $data['number'],
+                        'rarity' => $data['rarity'] ?? 'common',
+                        'type_line' => $data['supertype'] ?? null,
                     ]);
 
                 } else {
@@ -356,6 +362,8 @@ class IngestPokemonCards extends Command
                 return true;
 
             } catch (\Exception $e) {
+                // Ao invés de calar o erro, agora ele grita no log!
+                Log::channel('single')->error("Erro fatal ao salvar Pokemon Card {$data['id']}: " . $e->getMessage());
                 return false;
             }
         });

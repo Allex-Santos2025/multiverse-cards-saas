@@ -6,3 +6,5 @@ mix.js('resources/js/app.js', 'public/js')
        require('autoprefixer'),
    ])
    .version(); 
+mix.copy('node_modules/keyrune/fonts', 'public/fonts')
+   .copy('node_modules/keyrune/css/keyrune.min.css', 'public/css');

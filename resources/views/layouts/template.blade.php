@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $loja->name ?? 'Minha Loja TCG' }} - Powered by Versus</title>
-
+    {{-- Fontes de Ícones do Magic (Temporário via CDN para teste) --}}
+    <link rel="stylesheet" href="{{ asset('css/keyrune.css') }}">
+<link rel="stylesheet" href="{{ asset('css/mana.css') }}">
     <link rel="stylesheet" href="{{ mix('css/app.css') }}">
     <script src="{{ mix('js/app.js') }}" defer></script>
 

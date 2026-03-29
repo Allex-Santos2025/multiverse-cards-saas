@@ -1,12 +1,14 @@
 <div>
     {{-- BREADCRUMB (Fundo: Secundária | Texto: Contraste da Secundária) --}}
-    <div class="w-full text-xs py-2.5" style="background-color: var(--cor-secundaria); color: var(--cor-texto-secundaria);">
-        <div class="max-w-7xl mx-auto px-4 flex items-center gap-2 font-medium">
-            <a href="/loja/{{ $loja->url_slug }}" class="hover:opacity-100 opacity-80 transition-opacity">Home</a>
-            <span class="opacity-50">&gt;</span>
-            <a href="/loja/{{ $loja->url_slug }}/{{ $gameSlug }}/sets" class="hover:opacity-100 opacity-80 transition-opacity">{{ ucfirst($gameSlug) }} - Edições</a>
-            <span class="opacity-50">&gt;</span>
-            <span class="opacity-100">{{ $set->nome_localizado }}</span>
+    <div class="py-2" style="background-color: var(--cor-secundaria); color: var(--cor-texto-secundaria);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav class="text-xs font-bold flex gap-2 items-center">
+                <a href="{{ route('store.view', ['slug' => $loja->url_slug]) }}" class="hover:underline opacity-90">Home</a>
+                <span class="opacity-50">></span>
+                <a href="{{ route('store.catalog.sets', ['slug' => $loja->url_slug, 'gameSlug' => $gameSlug]) }}" class="hover:underline opacity-90">{{ ucfirst($gameSlug) }} - Edições</a>
+                <span class="opacity-50">></span>
+                <span>{{ $set->nome_localizado }}</span>
+            </nav>
         </div>
     </div>
 
@@ -105,12 +107,15 @@
         </div>
 
         {{-- GRID DE CARTAS --}}
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 lg:gap-6 pt-4 pb-12">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-4 lg:gap-6 pt-4 pb-12">
             @forelse($cartas as $carta)
 
                 {{-- ESTADO 1: Morfídeo (Sem estoque, sem preço) --}}
                 @if($carta->total_estoque === 0 && !$carta->ultimo_preco)
-                    <div x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
+                    <a href="{{ route('store.catalog.product', [
+                            'slug' => $loja->url_slug,'gameSlug' => $gameSlug, 
+                            'conceptSlug' => Str::slug($carta->name) 
+                        ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
                          class="flex flex-col rounded-xl border transition-all duration-300 relative opacity-60 grayscale-[80%] hover:grayscale-[50%] bg-black/5 dark:bg-white/5 border-gray-200/50 dark:border-slate-700/50 cursor-default"
                          :class="hover ? 'z-[50] shadow-md' : 'z-10'">
                         <div class="relative p-3 pb-0 overflow-visible">
@@ -126,11 +131,14 @@
                                 <span class="text-xs font-bold opacity-40" style="color: var(--cor-texto-principal);">R$ --</span>
                             </div>
                         </div>
-                    </div>
+                    </a>
 
                 {{-- ESTADO 2: Com Estoque --}}
                 @elseif($carta->total_estoque > 0)
-                    <a href="#" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
+                    <a href="{{ route('store.catalog.product', [
+                            'slug' => $loja->url_slug,'gameSlug' => $gameSlug, 
+                            'conceptSlug' => Str::slug($carta->name) 
+                        ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
                          class="flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border transition-all duration-300 relative cursor-pointer"
                          :class="hover ? 'z-[150] shadow-2xl' : 'z-10 border-gray-200 dark:border-slate-700'"
                          :style="hover ? 'border-color: var(--cor-cta);' : 'border-color: var(--cor-3, #e5e7eb);'">
@@ -169,7 +177,10 @@
 
                 {{-- ESTADO 3: Esgotado com preço --}}
                 @elseif($carta->total_estoque === 0 && $carta->ultimo_preco > 0)
-                    <div x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
+                    <a href="{{ route('store.catalog.product', [
+                            'slug' => $loja->url_slug,'gameSlug' => $gameSlug, 
+                            'conceptSlug' => Str::slug($carta->name) 
+                        ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
                          class="flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 transition-all duration-300 relative opacity-70 grayscale-[30%] hover:grayscale-0"
                          :class="hover ? 'z-[100] shadow-xl border-gray-400 dark:border-gray-500' : 'z-10'">
                         <div class="absolute inset-x-0 top-1/3 flex justify-center z-[60] transition-opacity duration-300" :class="hover ? 'opacity-0' : 'opacity-100'">
@@ -198,7 +209,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 @endif
             @empty
                 @for ($i = 0; $i < 5; $i++)

@@ -1,87 +1,75 @@
-@props([
-    'path' => null, 
-    'code' => null, 
-    'rarity' => 'common', 
-    'size' => 'w-6 h-6',
-    'set' => null
-])
+@props(['set'])
 
 @php
-    $actualCode = strtoupper($code ?? ($set->code ?? ''));
-    $safeCode = strtolower($actualCode);
-    $rarityLower = strtolower($rarity ?? 'common');
+    $code = strtoupper($set->code);
+    $safeCode = strtolower($code);
+    $rarityLower = strtolower($set->rarity ?? 'common');
 
-    // 1. Lógica Automática de Badges (Tokens/Promos)
+    // 1. Lógica de Badges (TK, P)
     $hasBadge = false;
     $badgeText = '';
     $badgeColors = 'bg-white text-gray-900 border-gray-100';
 
-    if (str_starts_with($actualCode, 'T')) { 
-        $hasBadge = true; $badgeText = 'TK'; 
-        if (str_starts_with($actualCode, 'TT')) $actualCode = substr($actualCode, 1);
-    } elseif (str_starts_with($actualCode, 'P')) { 
-        $hasBadge = true; $badgeText = 'P'; $badgeColors = 'bg-white text-purple-900 border-gray-100'; 
+    if ($set->game_id == 1) {
+        if ($set->set_type == 'token' || str_starts_with($code, 'T')) { 
+            $hasBadge = true; $badgeText = 'TK'; 
+            if (str_starts_with($code, 'TT')) $code = substr($code, 1);
+        }
+        elseif ($set->set_type == 'promo' || str_starts_with($code, 'P')) { 
+            $hasBadge = true; $badgeText = 'P'; $badgeColors = 'bg-white text-purple-900 border-gray-100'; 
+        }
     }
 
-    // 2. Escala Dinâmica da Badge (Lê o tamanho do pai para não engolir o ícone)
-    $isSmall = str_contains($size, 'w-6') || str_contains($size, 'w-5') || str_contains($size, 'w-4');
-    $badgeScaleClasses = $isSmall 
-        ? '-top-1 -right-1 text-[7px] px-0.5 min-w-[12px] h-[12px] border' // Versão Tabela (Pequena)
-        : '-top-1.5 -right-1.5 text-[9px] px-1 min-w-[15px] h-[15px] border-2'; // Versão Vitrine (Grande)
+    // 2. A Tartaruga é Intocável (Whitelist)
+    $isTMT = in_array($code, ['TMT', 'TTMT']);
 
-    // 3. A Tartaruga é Intocável
-    $isTMT = in_array($actualCode, ['TMT', 'TTMT']);
-
-    // 4. Engine de SVG Nativos
+    // 3. Engine de SVG Nativos (Baseado no seu código)
     $svgContent = null;
-    if (!$isTMT && $safeCode) {
-        $fetchCode = $safeCode;
-        if (strlen($fetchCode) > 3 && (str_starts_with($fetchCode, 't') || str_starts_with($fetchCode, 'p'))) {
-            $fetchCode = substr($fetchCode, 1);
-        }
-
-        $localPath = public_path("card_images/magic/{$fetchCode}/{$fetchCode}.svg");
+    if (!$isTMT) {
+        $localPath = public_path("card_images/magic/{$safeCode}/{$safeCode}.svg");
         
         if (file_exists($localPath)) {
             $rawContent = file_get_contents($localPath);
+            // Limpeza XML para não quebrar Livewire
             $cleanContent = preg_replace('/<\?xml.*?\?>/s', '', $rawContent);
             $cleanContent = preg_replace('/<!DOCTYPE.*?>/s', '', $cleanContent);
             $svgContent = preg_replace('/id=["\'].*?["\']/', '', $cleanContent);
         }
     }
 
-    // 5. Whitelist de Inversão
+    // 4. Whitelist de Inversão (Onde o Comum não é Preto, é Branco com linha Preta)
     $invertedSets = ['DOM', 'ALL', 'AL', 'ISD'];
-    $isInverted = in_array($actualCode, $invertedSets);
+    $isInverted = in_array($code, $invertedSets);
 
-    // 6. Paleta de Cores Oficial
+    // 5. Paleta de Cores Refinada (Oficial Keyrune)
     $rarityColor = match($rarityLower) {
         'uncommon' => '#6C848C',
         'rare'     => '#C5B38A',
         'mythic', 'special', 'bonus' => '#BF4427',
-        default    => '#1A1718',
+        default    => '#1A1718', // Usado para a TMT
     };
 
     $fillColor = match($rarityLower) {
         'uncommon' => '#6C848C',
         'rare'     => '#C5B38A',
         'mythic', 'special', 'bonus' => '#BF4427',
-        default    => $isInverted ? '#FFFFFF' : '#1A1718',
+        default    => $isInverted ? '#FFFFFF' : '#1A1718', // Inverte o preenchimento se for Alisios/Dominária
     };
 
     $strokeColor = match($rarityLower) {
         'uncommon', 'rare', 'mythic', 'special', 'bonus' => '#000000',
-        default    => $isInverted ? '#1A1718' : '#FFFFFF',
+        default    => $isInverted ? '#1A1718' : '#FFFFFF', // Inverte o contorno se for Alisios/Dominária
     };
 
     $strokeWidth = $rarityLower == 'common' ? '1.5px' : '2.5px';
 @endphp
 
-<div class="relative inline-flex items-center justify-center group shrink-0 {{ $size }}">
+<div class="relative inline-flex items-center justify-center group w-9 h-9 shrink-0">
     <div class="w-full h-full flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
         
         @if($isTMT)
-            <svg viewBox="0 0 500 500" class="w-full h-full drop-shadow-sm" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2; stroke:black; stroke-width:5px;">
+            {{-- BLOCO 1: TARTARUGA (CÓDIGO COMPLETO, SEM ABREVIAÇÕES) --}}
+            <svg viewBox="0 0 500 500" class="w-7 h-7 drop-shadow-sm" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2; stroke:black; stroke-width:5px;">
                 <g transform="matrix(1.01318,0,0,1.01318,0,-0.79)">
                     <path d="M153.389,133.509C245.936,201.593 340.381,202.848 436.84,133.216C363.632,36.063 229.877,35.191 153.389,133.509Z" fill="#FFFFFF"/>
                     <path d="M111.429,275.086C143.872,292.673 180.049,300.613 220.004,298.795L205.215,316.87C266.174,279.215 326.181,279.642 385.262,317.105L370.004,298.795C407.798,299.726 444.174,293.326 478.213,274.851C516.183,345.363 482.965,406.029 383.384,413.584C402.77,402.558 416.581,386.19 420.942,360.767C369.572,455.091 219.038,456.883 170.004,360.062C171.604,382.131 182.957,400.357 205.215,414.288C114.251,408.295 68.961,348.172 111.429,275.086Z" fill="#FFFFFF"/>
@@ -91,28 +79,38 @@
             </svg>
 
         @elseif($svgContent)
+            {{-- BLOCO 2: ENGINE NATIVA DA VERSUS TCG (O Pulo do Gato para Dominária/Resto) --}}
             <style>
-                .render-{{ $safeCode }}-{{ $rarityLower }} svg { overflow: visible; width: 100%; height: 100%; }
+                .render-{{ $safeCode }}-{{ $rarityLower }} svg { 
+                    overflow: visible; width: 100%; height: 100%; 
+                }
                 .render-{{ $safeCode }}-{{ $rarityLower }} svg path { 
-                    stroke-linejoin: round; stroke-linecap: round; paint-order: stroke fill;
-                    vector-effect: non-scaling-stroke; fill: {{ $fillColor }} !important; 
-                    stroke: {{ $strokeColor }} !important; stroke-width: {{ $strokeWidth }}; 
+                    stroke-linejoin: round; 
+                    stroke-linecap: round; 
+                    paint-order: stroke fill;
+                    vector-effect: non-scaling-stroke; 
+                    fill: {{ $fillColor }} !important; 
+                    stroke: {{ $strokeColor }} !important; 
+                    stroke-width: {{ $strokeWidth }}; 
                 }
             </style>
-            <div class="render-{{ $safeCode }}-{{ $rarityLower }} w-full h-full flex items-center justify-center drop-shadow-sm" title="{{ ucfirst($rarityLower) }}">
+
+            <div class="render-{{ $safeCode }}-{{ $rarityLower }} w-7 h-7 flex items-center justify-center drop-shadow-sm" title="{{ ucfirst($rarityLower) }}">
                 {!! $svgContent !!}
             </div>
 
         @else
-            <span class="w-full h-full text-[9px] font-bold border border-gray-400 px-1 rounded uppercase opacity-60 flex items-center justify-center text-gray-500">
-                {{ $actualCode ? strtoupper(substr($actualCode, 0, 3)) : '?' }}
+            {{-- BLOCO 3: FALLBACK (Se a imagem faltar na sua pasta local) --}}
+            <span class="text-[9px] font-bold border border-gray-400 px-1 rounded uppercase opacity-60 flex items-center justify-center text-gray-500 w-7 h-7">
+                {{ $code ? strtoupper(substr($code, 0, 3)) : '?' }}
             </span>
         @endif
 
     </div>
     
+    {{-- Badge TK/P --}}
     @if($hasBadge)
-        <span class="absolute flex items-center justify-center font-black rounded-full shadow-md z-10 leading-none {{ $badgeColors }} {{ $badgeScaleClasses }}">
+        <span class="absolute -top-1.5 -right-1.5 flex items-center justify-center {{ $badgeColors }} text-[9px] font-black px-1 min-w-[15px] h-[15px] rounded-full shadow-md border-2 z-10 leading-none">
             {{ $badgeText }}
         </span>
     @endif

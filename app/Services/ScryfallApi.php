@@ -268,4 +268,10 @@ class ScryfallApi
 
         return $data;
     }
+
+    public function getBulkDataInfo(string $type = 'default_cards'): ?array
+    {
+        // Usa o seu método makeRequest para garantir headers e rate limit
+        return $this->makeRequest("/bulk-data/{$type}");
+    }
 }

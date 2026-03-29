@@ -372,6 +372,25 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.1.7`  
+**Data:** 29/03/2026  
+**Descrição da Versão:** Implementação da **Página de Detalhes do Produto (Product/Card Page)** com renderização dinâmica multi-edição. Esta atualização introduz uma arquitetura de segregação de dados (Conceito vs. Físico) e um motor reativo de estado focado na integridade da UI perante dados incompletos de APIs externas.
+
+### Funcionalidades (Engenharia de Dados & Performance):
+
+* **Arquitetura de Segregação de Entidades (Concept vs. Print):** Refatoração da lógica de injeção de dados no DOM, isolando estritamente a "Mecânica do Jogo" (Custo de Mana, Cores, Poder/Resistência carregados do `CatalogConcept`) dos "Atributos Físicos da Edição" (Texto Traduzido, Flavor Text, Artista e Tipo Localizado carregados diretamente da tabela `mtg_prints`). Isso impede o atropelamento de variáveis e garante precisão técnica absoluta.
+* **Motor de Fallback Multilíngue (Safe Navigation):** Implementação de um sistema de segurança no carregamento de traduções. O sistema detecta dados ausentes (como `printed_text` ou `flavor_text` registrados como `null` ou vazios pela API do Scryfall em coleções antigas) e executa um recuo automático (fallback) para o `oracle_text` original, prevenindo quebras de layout e buracos visuais na interface.
+* **Processador de Tags e Extras (JSON Parsing Engine):** Desenvolvimento de um parser lógico robusto para o array de `extras` do estoque. O motor normaliza a inconsistência de *casing* proveniente do banco de dados (aplicando `strtolower` seguido de `ucwords` e limpeza de *underscores*) e injeta estilização condicional semântica em tempo de renderização (Vermelho para *Foil*, Laranja para *Foil Etched*, Cinza para regulares), separados por vírgulas dinâmicas.
+* **Reatividade de Estado Otimizada (Livewire `mouseenter`):** Aprimoramento do método `updateStats` para carregar fragmentos de dados da tabela de *prints* sob demanda. A troca de imagens, recálculo de preço médio e injeção de textos localizados ocorrem na camada do componente sem engatilhar recarregamentos completos (`render()`), estabilizando a grid CSS.
+
+### Páginas Adicionadas / Atualizadas:
+
+**Catálogo da Loja (Template):**
+* **Componente ProductPage 1.0:** Lançamento do controlador Livewire responsável pela página de carta individual, integrando visualização de produto, cotação de mercado (Mínimo, Médio e Máximo) e tabela de ofertas da loja.
+* **Interface de Ofertas e Tooltips (UI/UX):** Construção da tabela de estoque multi-estado, operando com variação de opacidade visual para itens "Esgotados" e "Nunca Cadastrados". Implementação de tooltips interativos para leitura de Idiomas e Condição, e inserção de controles administrativos dinâmicos acessíveis apenas para o lojista autenticado. Limpeza estratégica do quadro técnico (remoção de campos redundantes) para otimização da carga cognitiva do usuário.
+
+---
+
 ## 🧩 Estrutura de Versionamento
 
 O projeto usa um modelo adaptado do Semantic Versioning:
