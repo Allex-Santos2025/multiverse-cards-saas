@@ -19,7 +19,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">
             
             {{-- Coluna Esquerda: O "CORPO" DA CARTA (Tornada mais compacta) --}}
-            <div class="lg:col-span-4 flex flex-col gap-4 sticky top-20 self-start z-10">
+            <div class="lg:col-span-4 flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start z-10">
                 
                 {{-- 1. Imagem Base da Carta --}}
                 <div class="bg-white border border-gray-200 rounded-xl p-3 flex justify-center items-center shadow-sm relative">
@@ -187,7 +187,7 @@
                                     <img src="{{ asset('assets/LOGO btn.png') }}" 
                                         alt="Versus" 
                                         class="absolute inset-0 w-full h-full object-contain p-1.5 opacity-90 group-hover:opacity-100 transition-opacity" 
-                                        onerror="this.src='{{ asset('assets/fallback-logo.png') }}';">                                   
+                                        onerror="this.src='{{ asset('assets/fallback-logo.png') }}';">                                  
                                 </button>
 
                                 {{-- Botão 2: Documento + Lápis (Cadastro Individual) --}}
@@ -246,8 +246,8 @@
         @if($stock && $stock->quantity > 0)
             {{-- ========================================================== --}}
             {{-- ESTADO 1: DISPONÍVEL --}}
-            <tr class="transition cursor-pointer {{ $activePrintId == $print->id ? 'bg-blue-50' : 'hover:bg-gray-50' }}"
-                wire:mouseenter="updateStats({{ $print->id }})">
+            <tr class="transition cursor-pointer {{ $activePrintId == $item['print_id'] && $activeStockId == $item['stock_id'] ? 'bg-blue-50' : 'hover:bg-gray-50' }}"
+                wire:mouseenter="updateStats({{ $item['print_id'] }}, '{{ $item['stock_id'] ?? '' }}')">
                 
                 {{-- 1. Símbolo (Com Tooltip Corrigido) --}}
                 <td class="px-4 py-4 text-center">
@@ -364,18 +364,16 @@
                 </td>
 
                 {{-- 2. Idioma --}}
+                {{-- 2. Idioma (Bandeira) - ESGOTADO --}}
                 <td class="px-2 py-4 text-center opacity-70">
-                    @php $lang = strtolower($stock->language ?? 'en'); @endphp
                     <div class="relative group flex justify-center cursor-help">
-                        {{-- Imagem da Bandeira --}}
-                        <img src="{{ asset('assets/flags/' . strtolower($lang) . '.svg') }}" 
-                            alt="{{ strtoupper($lang) }}" 
+                        <img src="{{ asset('assets/flags/' . $lang . '.svg') }}" 
                             class="w-6 h-auto mx-auto shadow-sm rounded-sm border border-gray-100 grayscale" 
                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
                         
                         <span class="text-[10px] font-bold uppercase hidden text-gray-400">{{ $lang }}</span>
 
-                        {{-- Tooltip do Idioma --}}
+                        {{-- Tooltip Padronizado Branco --}}
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-white text-gray-800 text-[10px] font-bold px-2 py-1.5 rounded shadow-md border border-gray-200 z-[100] w-max text-center leading-tight">
                             {{ $fullLang }}
                         </div>
@@ -507,5 +505,95 @@
 
             </div>
         </div>
+
+        {{-- ================================================================= --}}
+        {{-- SEÇÃO NOVA: Cards Associados (Mesma Coleção e Em Estoque)         --}}
+        {{-- ================================================================= --}}
+        @if(isset($cardsAssociados) && $cardsAssociados->isNotEmpty())
+            <div class="lg:col-span-12 mt-12 border-t border-gray-200 pt-8 mb-12">
+                <h3 class="text-lg font-black text-gray-800 uppercase tracking-wider mb-6" style="color: var(--cor-secundaria);">
+                    Cards Associados
+                </h3>
+
+                {{-- GRID DE CARTAS ASSOCIADAS --}}
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-4 lg:gap-6 pt-2 pb-12 relative z-10">
+                    @foreach($cardsAssociados as $carta)
+
+                        {{-- 1. O Contêiner Pai: Gerencia o Z-index da carta para sobrepor o grid no hover --}}
+                        <div class="relative w-full h-full transition-all duration-300"
+                             x-data="{ hover: false, xOrigin: 'center' }"
+                             @mouseenter="
+                                 let rect = $el.getBoundingClientRect();
+                                 let tela = window.innerWidth;
+                                 if (rect.left < tela * 0.25) { xOrigin = 'left'; }
+                                 else if (rect.right > tela * 0.75) { xOrigin = 'right'; }
+                                 else { xOrigin = 'center'; }
+                                 hover = true;
+                             "
+                             @mouseleave="hover = false"
+                             :class="hover ? 'z-[999]' : 'z-10'">
+
+                            {{-- 2. A Âncora Fixa: Cria o layout no grid e é o link clicável. NUNCA muda de tamanho. --}}
+                            <a href="{{ route('store.catalog.product', ['slug' => $loja->url_slug, 'gameSlug' => $gameSlug ?? 'mtg', 'conceptSlug' => Str::slug($carta->name)]) }}"
+                               class="flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 h-full relative"
+                               :class="hover ? 'border-transparent bg-transparent dark:bg-transparent shadow-none' : ''">
+
+                                {{-- Espaço exato da Meia-Carta para segurar a altura e não quebrar o layout --}}
+                                <div class="w-full aspect-[2.5/1.8] shrink-0"></div>
+
+                                {{-- Textos e Preços (Ficam invisíveis no hover) --}}
+                                <div class="p-3 flex flex-col flex-grow justify-between gap-3 transition-opacity duration-300 relative z-20"
+                                     :class="hover ? 'opacity-0' : 'opacity-100'">
+                                    <div>
+                                        <h3 class="text-sm font-bold leading-tight line-clamp-2" style="color: var(--cor-texto-principal);" title="{{ $carta->nome_localizado }}">{{ $carta->nome_localizado }}</h3>
+                                        <p class="text-[9px] uppercase font-semibold mt-1 opacity-70 truncate" style="color: var(--cor-texto-principal);">{{ $carta->name ?? '---' }}</p>
+                                    </div>
+                                    <div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-slate-700">
+                                        <span class="text-[10px] font-bold opacity-60" style="color: var(--cor-texto-principal);">{{ $carta->total_estoque }} un.</span>
+                                        <span class="text-sm font-black tracking-tight" style="color: var(--cor-1);">R$ {{ number_format($carta->preco_final, 2, ',', '.') }}</span>
+                                    </div>
+                                </div>
+                            </a>
+
+                            {{-- 3. A Imagem Flutuante Absoluta: Fica por cima da âncora e faz toda a animação --}}
+                            <div class="absolute top-0 left-0 w-full pointer-events-none flex flex-col z-50">
+
+                                {{-- Badges (Somem no hover) --}}
+                                <div class="absolute top-2 left-0 z-[60] flex flex-col gap-1 transition-opacity duration-300" :class="hover ? 'opacity-0' : 'opacity-100'">
+                                    @if($carta->desconto > 0)
+                                        <span class="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-r shadow-md uppercase tracking-tighter">-{{ number_format($carta->desconto, 0) }}%</span>
+                                    @endif
+                                    @if($carta->is_foil)
+                                        <span class="bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 text-[9px] font-black px-2 py-0.5 rounded shadow-sm">FOIL</span>
+                                    @endif
+                                </div>
+
+                                {{-- A Imagem: Transita de Meia-Carta (2.5/1.8) para Carta Inteira (2.5/3.5) e ganha Zoom (1.7) --}}
+                                <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}"
+                                     class="w-full object-cover object-top transition-all duration-300 transform-gpu will-change-transform bg-gray-100 dark:bg-gray-800 shadow-sm"
+                                     :class="hover ? 'aspect-[2.5/3.5] scale-[1.7] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-black/10' : 'aspect-[2.5/1.8] scale-100 rounded-t-xl'"
+                                     :style="'transform-origin: ' + xOrigin + ' top;'"
+                                     onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
+                            </div>
+
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Link "Ver mais..." --}}
+                @if(isset($totalAssociados) && $totalAssociados > 10)
+                    <div class="mt-2 flex justify-end">
+                        <a href="{{ route('store.catalog.sets', ['slug' => $loja->url_slug, 'gameSlug' => $gameSlug ?? 'mtg', 'setCode' => $printAtivo->set->code ?? '']) }}" 
+                           class="text-sm font-bold hover:underline opacity-80 hover:opacity-100 transition-opacity flex items-center gap-1" 
+                           style="color: var(--cor-secundaria);">
+                            Ver mais cartas desta coleção
+                            <i class="ph ph-arrow-right"></i>
+                        </a>
+                    </div>
+                @endif
+            </div>
+        @endif
+        {{-- FIM DA SEÇÃO NOVA --}}
+
     </div>
 </div>

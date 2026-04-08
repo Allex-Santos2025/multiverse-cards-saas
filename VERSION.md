@@ -391,6 +391,24 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.1.8`  
+**Data:** 08/04/2026  
+**Descrição da Versão:** Aprimoramento da **Página de Detalhes do Produto (Product/Card Page)** com foco em precificação isolada por tratamento (Foil/Normal), reestruturação do algoritmo de ordenação de ofertas e nova arquitetura visual flutuante para o grid de cartas associadas.
+
+### Funcionalidades (Engenharia de Dados & Performance):
+
+* **Motor de Precificação Isolada (Detetive de Tratamento & Fallback):** Refatoração profunda no método `updateStats` para segregar ecossistemas de preços (Normal vs. Premium). O sistema agora executa um *parsing* robusto e higienização das strings de `extras` para identificar itens *Foil* e *Etched*, isolando o cálculo de Maior/Menor preço da loja. No quadro de mercado, busca de forma dinâmica a chave exata da API (`usd_foil`, `usd_etched`, `usd`) baseada no tratamento. Implementado um *Fallback Interno* matemático que utiliza a média do próprio estoque da loja caso o *ingest* de dados externos retorne nulo ou zero, garantindo integridade visual e funcional.
+* **Algoritmo de Ordenação Hierárquica:** Reescrita da lógica de construção da lista (`mount`) aplicando uma nova balança de pesos operacionais: 1º Disponibilidade (Em Estoque > Esgotado > Fantasma), 2º Preço Decrescente (forçando tratamento premium ao topo absoluto da edição), 3º Lançamento (mais recentes) e 4º Volume. Implementada conversão forçada de *string* para *float* direto no encapsulamento dos dados para assegurar precisão na avaliação matemática dos preços.
+* **Restauração do Ciclo de Vida Histórico (Sistema de 3 Estágios):** Correção da regressão que causava a oclusão de edições sem estoque. A arquitetura agora mapeia os *prints* em estoque da loja e faz uma varredura complementar injetando os *prints* não listados (`stock_id => null`), restaurando a exibição da linha do tempo completa da carta ("Avise-me") de forma coesa na tabela.
+* **Resolução de Conflito de Estado (Livewire Sync):** Solução do bug de "seleção fantasma" (onde o hover em um item engatilhava múltiplos itens da mesma estampa/idioma). Introdução do controle de estado duplo injetando o rastreio via `$activeStockId` em conjunto com o `$activePrintId`. O disparo do DOM (`wire:mouseenter`) agora trafega variáveis com tratamento seguro (blindagem com aspas simples contra retornos nulos), sincronizando a *row* exata na UI com os recálculos no backend.
+
+### Páginas Adicionadas / Atualizadas:
+
+**Catálogo da Loja (Template):**
+* **Componente ProductPage 1.1:** * **Grid de Cartas Associadas (Arquitetura Flutuante UI/CSS):** Reconstrução do motor de interação visual dos *cards* associados (Zoom/Hover). Desacoplamento da carta do fluxo do Grid através do padrão "Âncora Fixa e Imagem Flutuante". Uso de posicionamento absoluto (`absolute`), controle de empilhamento dinâmico (`z-[999]`) e transição fluida de proporção geométrica (`aspect-[2.5/1.8]` para `aspect-[2.5/3.5]`) combinada com escala (`scale-[1.7]`). O resultado é um efeito expansivo limpo (Estilo Netflix) sem causar *Layout Shifts* ou quebra de bordas na página.
+
+---
+
 ## 🧩 Estrutura de Versionamento
 
 O projeto usa um modelo adaptado do Semantic Versioning:
