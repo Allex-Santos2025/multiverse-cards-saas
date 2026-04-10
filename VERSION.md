@@ -409,6 +409,27 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.1.9`  
+**Data:** 10/04/2026  
+**Descrição da Versão:** Entrega e Lançamento oficial do módulo de **Catálogo Global de Cartas Avulsas (Singles Page)**. Implementação de arquitetura de alta escala para navegação em massa de registros, com sistema híbrido de visualização e otimização radical de performance via *Thin-Paginate*.
+
+### Funcionalidades (Engenharia de Dados & Nova Entrega):
+
+* **Nova Arquitetura de Listagem Global (Singles Delivery):** Implementação completa da página de cartas avulsas, capaz de gerenciar e exibir +540k registros sem degradação de performance. O módulo foi concebido para ser o motor principal do marketplace, permitindo a transição fluida entre o catálogo geral e o estoque específico da loja.
+* **Arquitetura de Busca em Duas Etapas (Thin-Paginate):** Desenvolvimento de um motor de recuperação de dados que isola a paginação (IDs) da carga pesada de modelos. Isso permite que o sistema "corra" sobre o índice do banco de dados, injetando detalhes (imagens, slugs, conceitos) apenas para os 30 itens visíveis na tela.
+* **Sistema Híbrido de Visualização (Concept vs. Print):** Entrega da inteligência de agrupamento dinâmico. Por padrão, o sistema entrega a visão por **Conceito** (36k registros), garantindo agilidade. O usuário tem a liberdade de "Desagrupar" para a visão de **Prints** individuais, acionando o motor de performance para processar o volume total de meio milhão de cartas.
+* **Contador Inteligente & Persistência de Estado (Cache v8):** Implementação de um sistema de contagem via Cache que rastreia as variações de filtros (cor, raridade, estoque) e o estado de agrupamento. Isso elimina a necessidade de requisições `COUNT(*)` pesadas e garante que a paginação seja 100% precisa, evitando o erro de páginas vazias.
+* **UX Controlada (Deferred Filtering):** Estruturação do fluxo de filtros para operação sob demanda. O sistema aguarda a configuração completa do usuário para disparar a consulta ao backend via botão "Filtrar", otimizando o tráfego de dados e dando controle total à jornada de busca (removendo a ansiedade do processamento em tempo real).
+
+### Páginas Adicionadas / Inauguradas:
+
+**Módulo de Catálogo Versus TCG:**
+* **Página de Singles (Inaugural):** Entrega da interface completa de listagem com suporte a rotas dinâmicas por jogo (`gameSlug`). 
+* **Integração de Menu Global:** Implementação do link oficial no Header dinâmico, conectando a nova página ao ecossistema de todas as lojas da plataforma.
+* **Componente de Grid Responsivo:** Interface otimizada com suporte a filtros condicionais que se adaptam ao modo de visualização escolhido (exibindo raridade e numeração apenas quando necessário).
+
+---
+
 ## 🧩 Estrutura de Versionamento
 
 O projeto usa um modelo adaptado do Semantic Versioning:
@@ -460,3 +481,5 @@ Tags do GitHub são opcionais nesta fase.
 
 **Última Atualização:** 21/12/2025  
 **Mantido por:** Alexandro & Inner AI Fusion 
+
+p3duhEVKfBpFWUXOlW7iGnPeLNSRHSEf668t3v/C+yI=

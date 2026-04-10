@@ -4,6 +4,7 @@ namespace App\Livewire\Store\Template\Catalog;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\Url;
 use App\Models\Store;
 use App\Models\Game;
 use App\Models\Catalog\CatalogPrint;
@@ -13,23 +14,28 @@ class SinglePage extends Component
 {
     use WithPagination;
 
-    // Variáveis da Rota
     public $slug;
     public $gameSlug;
-
-    // Variáveis da Página
     public $loja;
     public $game;
 
-    // Filtros da Tela
+    #[Url(except: 'name_asc', history: true)]
     public $sortOrder = 'name_asc'; 
+
+    #[Url(except: 'todas', history: true)]
     public $raridade = 'todas';
+
+    #[Url(except: 'todas', history: true)]
     public $cor = 'todas';
+
+    #[Url(except: 30, history: true)]
     public $perPage = 30;
+
+    #[Url(except: false, history: true)]
     public $com_estoque = false;
     
-    // O Toggle de Agrupamento Mágico
-    public $agrupar_conceito = true; 
+    #[Url(except: false, history: true)]
+    public $desagrupar = false;
 
     public function mount($slug, $gameSlug)
     {
@@ -47,13 +53,17 @@ class SinglePage extends Component
 
     public function render()
     {
-        if ($this->agrupar_conceito) {
+        // A INTELIGÊNCIA DE PERFORMANCE: Só cruza o estoque inteiro se for estritamente necessário.
+        $precisaCruzarEstoque = $this->com_estoque || in_array($this->sortOrder, ['price_asc', 'price_desc']);
+
+        // SE NÃO ESTÁ DESAGRUPADO (Ou seja, está no estado padrão de Concept)
+        if (!$this->desagrupar) {
             // ----------------------------------------------------------------
             // MODO AGRUPADO (POR CONCEITO)
             // ----------------------------------------------------------------
             $query = CatalogConcept::select('catalog_concepts.*')
                         ->where('catalog_concepts.game_id', $this->game->id)
-                        ->where('catalog_concepts.name', 'NOT LIKE', 'A-%');
+                        ->where('catalog_concepts.is_valid', true);
 
             if ($this->cor !== 'todas') {
                 $query->join('mtg_concepts as mc', 'catalog_concepts.specific_id', '=', 'mc.id');
@@ -78,33 +88,41 @@ class SinglePage extends Component
                 }
             }
 
-            // MÁGICA: Além de somar o estoque, pegamos o ID exato do print vencedor (menor preço)
-            $estoqueSubquery = \App\Models\StockItem::select(
-                'cp.concept_id',
-                \DB::raw('SUM(stock_items.quantity) as total_estoque'),
-                \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
-                \DB::raw('MIN(stock_items.price) as ultimo_preco'),
-                \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.extras END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_extras"),
-                \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.discount_percent END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_desconto"),
-                \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN cp.id END ORDER BY stock_items.price ASC SEPARATOR ','), ',', 1) as print_id_in_stock"),
-                \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(cp.id ORDER BY stock_items.price ASC SEPARATOR ','), ',', 1) as print_id_out_stock")
-            )
-            ->join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
-            ->where('stock_items.store_id', $this->loja->id)
-            ->groupBy('cp.concept_id');
-
-            $query->addSelect(
-                    \DB::raw('COALESCE(estoque.total_estoque, 0) as total_estoque'),
-                    'estoque.menor_preco',
-                    'estoque.ultimo_preco',
-                    'estoque.menor_preco_extras',
-                    'estoque.menor_preco_desconto',
-                    'estoque.print_id_in_stock',
-                    'estoque.print_id_out_stock'
+            if ($precisaCruzarEstoque) {
+                $estoqueSubquery = \App\Models\StockItem::select(
+                    'cp.concept_id',
+                    \DB::raw('SUM(stock_items.quantity) as total_estoque'),
+                    \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
+                    \DB::raw('MIN(stock_items.price) as ultimo_preco'),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.extras END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_extras"),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.discount_percent END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_desconto"),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN cp.id END ORDER BY stock_items.price ASC SEPARATOR ','), ',', 1) as print_id_in_stock"),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(cp.id ORDER BY stock_items.price ASC SEPARATOR ','), ',', 1) as print_id_out_stock")
                 )
-                ->leftJoinSub($estoqueSubquery, 'estoque', function ($join) {
-                    $join->on('catalog_concepts.id', '=', 'estoque.concept_id');
-                });
+                ->join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
+                ->where('stock_items.store_id', $this->loja->id)
+                ->groupBy('cp.concept_id');
+
+                $query->addSelect(
+                        \DB::raw('COALESCE(estoque.total_estoque, 0) as total_estoque'),
+                        'estoque.menor_preco',
+                        'estoque.ultimo_preco',
+                        'estoque.menor_preco_extras',
+                        'estoque.menor_preco_desconto',
+                        'estoque.print_id_in_stock',
+                        'estoque.print_id_out_stock'
+                    );
+
+                if ($this->com_estoque) {
+                    $query->joinSub($estoqueSubquery, 'estoque', function ($join) {
+                        $join->on('catalog_concepts.id', '=', 'estoque.concept_id');
+                    });
+                } else {
+                    $query->leftJoinSub($estoqueSubquery, 'estoque', function ($join) {
+                        $join->on('catalog_concepts.id', '=', 'estoque.concept_id');
+                    });
+                }
+            }
 
         } else {
             // ----------------------------------------------------------------
@@ -113,8 +131,7 @@ class SinglePage extends Component
             $query = CatalogPrint::select('catalog_prints.*')
                         ->join('catalog_concepts as cc', 'catalog_prints.concept_id', '=', 'cc.id')
                         ->where('cc.game_id', $this->game->id)
-                        ->where('catalog_prints.printed_name', 'NOT LIKE', 'A-%'); 
-                        // REMOVIDA A TRAVA DE LÍNGUA: Mostra todas as línguas como produtos separados!
+                        ->where('catalog_prints.is_valid', true);
 
             if ($this->cor !== 'todas') {
                 if ($this->cor === 'A') {
@@ -126,7 +143,7 @@ class SinglePage extends Component
 
                     if (in_array($this->cor, ['W', 'U', 'B', 'R', 'G'])) {
                         $query->where('mc.colors', 'LIKE', '%"' . $this->cor . '"%')
-                                 ->where('mc.colors', 'NOT LIKE', '%,%');
+                                     ->where('mc.colors', 'NOT LIKE', '%,%');
                     } elseif ($this->cor === 'M') {
                         $query->where('mc.colors', 'LIKE', '%,%');
                     } elseif ($this->cor === 'C') {
@@ -145,39 +162,46 @@ class SinglePage extends Component
                 $query->where('catalog_prints.rarity', $this->raridade); 
             }
 
-            $estoqueSubquery = \App\Models\StockItem::select(
-                'catalog_print_id',
-                \DB::raw('SUM(stock_items.quantity) as total_estoque'),
-                \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
-                \DB::raw('MIN(stock_items.price) as ultimo_preco'),
-                \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.extras END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_extras"),
-                \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.discount_percent END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_desconto")
-            )
-            ->where('store_id', $this->loja->id)
-            ->groupBy('catalog_print_id');
-
-            $query->addSelect(
-                    \DB::raw('COALESCE(estoque.total_estoque, 0) as total_estoque'),
-                    'estoque.menor_preco',
-                    'estoque.ultimo_preco',
-                    'estoque.menor_preco_extras',
-                    'estoque.menor_preco_desconto'
+            if ($precisaCruzarEstoque) {
+                $estoqueSubquery = \App\Models\StockItem::select(
+                    'catalog_print_id',
+                    \DB::raw('SUM(stock_items.quantity) as total_estoque'),
+                    \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
+                    \DB::raw('MIN(stock_items.price) as ultimo_preco'),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.extras END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_extras"),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.discount_percent END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_desconto")
                 )
-                ->with(['concept'])
-                ->leftJoinSub($estoqueSubquery, 'estoque', function ($join) {
-                    $join->on('catalog_prints.id', '=', 'estoque.catalog_print_id');
-                });
+                ->where('store_id', $this->loja->id)
+                ->groupBy('catalog_print_id');
+
+                $query->addSelect(
+                        \DB::raw('COALESCE(estoque.total_estoque, 0) as total_estoque'),
+                        'estoque.menor_preco',
+                        'estoque.ultimo_preco',
+                        'estoque.menor_preco_extras',
+                        'estoque.menor_preco_desconto'
+                    )
+                    ->with(['concept']);
+
+                if ($this->com_estoque) {
+                    $query->joinSub($estoqueSubquery, 'estoque', function ($join) {
+                        $join->on('catalog_prints.id', '=', 'estoque.catalog_print_id');
+                    });
+                } else {
+                    $query->leftJoinSub($estoqueSubquery, 'estoque', function ($join) {
+                        $join->on('catalog_prints.id', '=', 'estoque.catalog_print_id');
+                    });
+                }
+            } else {
+                $query->with(['concept']);
+            }
         }
 
         // ==========================================
         // FILTROS GERAIS E ORDENAÇÃO
         // ==========================================
-        if ($this->com_estoque) {
-            $query->where('estoque.total_estoque', '>', 0);
-        }
-
-        $tabela = $this->agrupar_conceito ? 'catalog_concepts' : 'catalog_prints';
-        $colunaNome = $this->agrupar_conceito ? 'name' : 'printed_name';
+        $tabela = !$this->desagrupar ? 'catalog_concepts' : 'catalog_prints';
+        $colunaNome = !$this->desagrupar ? 'name' : 'printed_name';
         
         switch ($this->sortOrder) {
             case 'price_asc':
@@ -190,12 +214,12 @@ class SinglePage extends Component
                 $query->orderBy("$tabela.$colunaNome", 'desc');
                 break;
             case 'number_desc':
-                if(!$this->agrupar_conceito) {
+                if($this->desagrupar) {
                     $query->orderByRaw('CAST(catalog_prints.collector_number AS UNSIGNED) DESC');
                 }
                 break;
             case 'number_asc':
-                if(!$this->agrupar_conceito) {
+                if($this->desagrupar) {
                     $query->orderByRaw('CAST(catalog_prints.collector_number AS UNSIGNED) ASC');
                 }
                 break;
@@ -205,22 +229,107 @@ class SinglePage extends Component
                 break;
         }
 
-        $cartas = $query->paginate($this->perPage)->onEachSide(0);
+        // ==========================================
+        // PAGINAÇÃO ULTRA RÁPIDA E CACHEADA (MOTOR v8)
+        // ==========================================
+        $cacheKey = "count_v8_{$this->game->id}_{$this->desagrupar}_{$this->cor}_{$this->raridade}_{$this->com_estoque}_{$this->loja->id}";
+        $totalReal = cache()->remember($cacheKey, now()->addHours(4), function () use ($query) {
+            return (clone $query)->count();
+        });
+
+        // THIN PAGINATE: Ativa APENAS se estiver Desagrupado e NÃO tiver cruzamento de estoque
+        if ($this->desagrupar && !$precisaCruzarEstoque) {
+            $query->select('catalog_prints.id');
+            $cartas = $query->paginate($this->perPage, ['*'], 'page', null, $totalReal)->onEachSide(0);
+            
+            $idsNaPagina = $cartas->pluck('id')->toArray();
+            
+            if (!empty($idsNaPagina)) {
+                $idsString = implode(',', $idsNaPagina);
+                $cartasCompletas = CatalogPrint::with(['concept'])
+                    ->select('catalog_prints.*')
+                    ->whereIn('catalog_prints.id', $idsNaPagina)
+                    ->orderByRaw("FIELD(catalog_prints.id, $idsString)")
+                    ->get();
+                
+                $cartas->setCollection($cartasCompletas);
+            }
+        } else {
+            $cartas = $query->paginate($this->perPage, ['*'], 'page', null, $totalReal)->onEachSide(0);
+        }
 
         // ==========================================
-        // MÁGICA DE CAPAS E TRADUÇÃO (SÓ PARA AS CARTAS DA TELA)
+        // HIDRATAÇÃO TARDIA DO ESTOQUE (LAZY LOADING)
+        // ==========================================
+        if (!$precisaCruzarEstoque && $cartas->count() > 0) {
+            $idsNaTela = $cartas->pluck('id')->toArray();
+
+            if (!$this->desagrupar) {
+                $estoquesRapidos = \App\Models\StockItem::select(
+                    'cp.concept_id',
+                    \DB::raw('SUM(stock_items.quantity) as total_estoque'),
+                    \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
+                    \DB::raw('MIN(stock_items.price) as ultimo_preco'),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.extras END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_extras"),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.discount_percent END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_desconto"),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN cp.id END ORDER BY stock_items.price ASC SEPARATOR ','), ',', 1) as print_id_in_stock"),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(cp.id ORDER BY stock_items.price ASC SEPARATOR ','), ',', 1) as print_id_out_stock")
+                )
+                ->join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
+                ->where('stock_items.store_id', $this->loja->id)
+                ->whereIn('cp.concept_id', $idsNaTela) 
+                ->groupBy('cp.concept_id')
+                ->get()
+                ->keyBy('concept_id');
+
+                foreach ($cartas as $carta) {
+                    $st = $estoquesRapidos->get($carta->id);
+                    $carta->total_estoque = $st->total_estoque ?? 0;
+                    $carta->menor_preco = $st->menor_preco ?? null;
+                    $carta->ultimo_preco = $st->ultimo_preco ?? null;
+                    $carta->menor_preco_extras = $st->menor_preco_extras ?? null;
+                    $carta->menor_preco_desconto = $st->menor_preco_desconto ?? null;
+                    $carta->print_id_in_stock = $st->print_id_in_stock ?? null;
+                    $carta->print_id_out_stock = $st->print_id_out_stock ?? null;
+                }
+            } else {
+                $estoquesRapidos = \App\Models\StockItem::select(
+                    'catalog_print_id',
+                    \DB::raw('SUM(stock_items.quantity) as total_estoque'),
+                    \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
+                    \DB::raw('MIN(stock_items.price) as ultimo_preco'),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.extras END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_extras"),
+                    \DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(CASE WHEN stock_items.quantity > 0 THEN stock_items.discount_percent END ORDER BY stock_items.price ASC SEPARATOR '|||'), '|||', 1) as menor_preco_desconto")
+                )
+                ->where('store_id', $this->loja->id)
+                ->whereIn('catalog_print_id', $idsNaTela)
+                ->groupBy('catalog_print_id')
+                ->get()
+                ->keyBy('catalog_print_id');
+
+                foreach ($cartas as $carta) {
+                    $st = $estoquesRapidos->get($carta->id);
+                    $carta->total_estoque = $st->total_estoque ?? 0;
+                    $carta->menor_preco = $st->menor_preco ?? null;
+                    $carta->ultimo_preco = $st->ultimo_preco ?? null;
+                    $carta->menor_preco_extras = $st->menor_preco_extras ?? null;
+                    $carta->menor_preco_desconto = $st->menor_preco_desconto ?? null;
+                }
+            }
+        }
+
+        // ==========================================
+        // MÁGICA DE CAPAS E TRADUÇÃO
         // ==========================================
         $printsRelacionados = collect();
         if ($cartas->count() > 0) {
-            if ($this->agrupar_conceito) {
-                // Modo Conceito: Puxa TODOS os prints dessas 30 cartas para acharmos a imagem vencedora e o texto PT
+            if (!$this->desagrupar) {
                 $conceptIds = $cartas->pluck('id')->toArray();
                 $printsRelacionados = CatalogPrint::whereIn('concept_id', $conceptIds)
                                                 ->orderBy('id', 'desc')
                                                 ->get()
                                                 ->groupBy('concept_id');
             } else {
-                // Modo Print: Busca APENAS os textos PT para servir de legenda
                 $setIds = $cartas->pluck('set_id')->unique()->toArray();
                 $collectorNumbers = $cartas->pluck('collector_number')->unique()->toArray();
 
@@ -251,18 +360,16 @@ class SinglePage extends Component
             $carta->desconto = $percentualDesconto;
             $carta->is_foil = (bool) str_contains(strtolower($carta->menor_preco_extras ?? ''), 'foil');
             
-            if ($this->agrupar_conceito) {
+            if (!$this->desagrupar) {
                 $prints = $printsRelacionados->get($carta->id, collect());
                 
-                // 1. Título em Português (O mais recente não nulo)
                 $printPt = $prints->first(function($p) {
                     return in_array(strtolower($p->language_code), ['pt', 'pt-br']) && !empty(trim($p->printed_name));
                 });
                 
                 $carta->nome_localizado = $printPt?->printed_name ?? $carta->name;
-                $carta->name = $carta->name; // Legenda (Inglês oficial do conceito)
+                $carta->name = $carta->name; 
                 
-                // 2. Imagem Vencedora baseada no Estoque
                 $imagemBruta = null;
 
                 if ($total > 0 && !empty($carta->print_id_in_stock)) {
@@ -273,7 +380,6 @@ class SinglePage extends Component
                     $imagemBruta = $printVencedor?->image_url ?? $printVencedor?->image_path;
                 }
 
-                // Fallback de imagem (Fantasma)
                 if (empty($imagemBruta)) {
                     $printEn = $prints->first(fn($p) => strtolower($p->language_code) === 'en' && (!empty($p->image_url) || !empty($p->image_path))) 
                                 ?? $prints->first(fn($p) => !empty($p->image_url) || !empty($p->image_path)) 
@@ -284,16 +390,12 @@ class SinglePage extends Component
                 $slugDb = $carta->slug;
                 $carta->slug_seguro = !empty($slugDb) ? $slugDb : 'card-id-' . $carta->id;
             } else {
-                // Modo Print (Desagrupado)
                 $key = $carta->set_id . '_' . $carta->collector_number;
                 $printPt = $printsRelacionados->get($key, collect())->first(function($p) {
                     return !empty(trim($p->printed_name));
                 });
 
-                // INVERSÃO: Nome principal é o original impresso na carta (JP, RU, EN, etc)
                 $carta->nome_localizado = !empty($carta->printed_name) ? $carta->printed_name : $carta->concept?->name; 
-                
-                // Legenda: Nome em português se existir, senão o Inglês do Conceito
                 $carta->name = $printPt?->printed_name ?? $carta->concept?->name ?? '---';
 
                 $imagemBruta = $carta->image_url ?? $carta->image_path ?? $carta->concept?->image_url ?? $carta->concept?->image_path ?? 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
@@ -307,7 +409,7 @@ class SinglePage extends Component
                                  : asset($imagemBruta);
             
             $carta->foil = false; 
-            $carta->is_concept = $this->agrupar_conceito;
+            $carta->is_concept = !$this->desagrupar;
 
             return $carta;
         });

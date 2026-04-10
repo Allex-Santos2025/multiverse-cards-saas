@@ -23,7 +23,7 @@
             <h2 class="text-sm mt-1 uppercase font-bold opacity-60" style="color: var(--cor-texto-principal);">Catálogo Global</h2>
         </div>
 
-        {{-- BARRA DE FILTROS (Fundo: Terciária | Botão: Secundária | Controles: Brancos Nativos) --}}
+        {{-- BARRA DE FILTROS --}}
         <div class="mb-8 p-4 rounded-xl flex flex-wrap gap-4 items-center justify-between shadow-md transition-colors duration-300" 
              style="background-color: var(--cor-terciaria); color: var(--cor-texto-terciaria);">
 
@@ -37,7 +37,7 @@
                         <option value="name_desc">Nome [Z-A]</option>
                         <option value="price_asc">Menor Preço</option>
                         <option value="price_desc">Maior Preço</option>
-                        @if(!$agrupar_conceito)
+                        @if($desagrupar)
                             <option value="number_asc">Número [1-9]</option>
                             <option value="number_desc">Número [9-1]</option>
                         @endif
@@ -45,7 +45,7 @@
                 </div>
 
                 {{-- Só mostra Raridade se estiver Desagrupado (Por Print) --}}
-                @if(!$agrupar_conceito)
+                @if($desagrupar)
                 <div class="flex items-center gap-2 transition-all">
                     <span class="text-[10px] font-bold uppercase opacity-80" style="color: inherit;">Raridade:</span>
                     <select wire:model="raridade" class="bg-white text-gray-900 border-gray-300 rounded-md text-sm px-3 py-1.5 focus:ring-2" style="--tw-ring-color: var(--cor-secundaria);">
@@ -82,8 +82,8 @@
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <input type="checkbox" id="agrupar_conceito" wire:model="agrupar_conceito" class="w-4 h-4 bg-white border-gray-400 rounded focus:ring-2 cursor-pointer" style="color: var(--cor-secundaria); --tw-ring-color: var(--cor-secundaria);">
-                        <label for="agrupar_conceito" class="text-xs font-bold uppercase cursor-pointer" style="color: inherit;" title="Agrupa todas as edições em uma única carta">Agrupar Versões</label>
+                        <input type="checkbox" id="desagrupar" wire:model="desagrupar" class="w-4 h-4 bg-white border-gray-400 rounded focus:ring-2 cursor-pointer" style="color: var(--cor-secundaria); --tw-ring-color: var(--cor-secundaria);">
+                        <label for="desagrupar" class="text-xs font-bold uppercase cursor-pointer" style="color: inherit;" title="Mostra cada edição da carta separadamente">Desagrupar Versões</label>
                     </div>
                 </div>
             </div>
@@ -104,7 +104,7 @@
                 </button>
             </div>
         </div>
-       
+        
         {{-- INFO PAGINAÇÃO E RESULTADOS --}}
         <div class="flex justify-between items-center mb-6 text-xs font-bold border-b border-gray-200 pb-2" style="color: var(--cor-texto-principal); opacity: 0.7;">
             <span class="uppercase">1-{{ $perPage ?? 30 }} de <strong style="color: var(--cor-1);">{{ method_exists($cartas, 'total') ? number_format($cartas->total(), 0, ',', '.') : $cartas->count() }}</strong> CARDS</span>
@@ -122,10 +122,7 @@
 
                 {{-- ESTADO 1: Morfídeo (Sem estoque, sem preço) --}}
                 @if($carta->total_estoque === 0 && !$carta->ultimo_preco)
-                    <a href="{{ route('store.catalog.product', [
-                            'slug' => $loja->url_slug,'gameSlug' => $gameSlug, 
-                            'conceptSlug' => $carta->slug_seguro 
-                        ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
+                    <a href="{{ route('store.catalog.product', ['slug' => $loja->url_slug,'gameSlug' => $gameSlug, 'conceptSlug' => $carta->slug_seguro ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
                          class="flex flex-col rounded-xl border transition-all duration-300 relative opacity-60 grayscale-[80%] hover:grayscale-[50%] bg-black/5 dark:bg-white/5 border-gray-200/50 dark:border-slate-700/50 cursor-default"
                          :class="hover ? 'z-[50] shadow-md' : 'z-10'">
                         <div class="relative p-3 pb-0 overflow-visible">
@@ -148,10 +145,7 @@
 
                 {{-- ESTADO 2: Com Estoque --}}
                 @elseif($carta->total_estoque > 0)
-                    <a href="{{ route('store.catalog.product', [
-                            'slug' => $loja->url_slug,'gameSlug' => $gameSlug, 
-                            'conceptSlug' => $carta->slug_seguro 
-                        ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
+                    <a href="{{ route('store.catalog.product', ['slug' => $loja->url_slug,'gameSlug' => $gameSlug, 'conceptSlug' => $carta->slug_seguro ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
                          class="flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border transition-all duration-300 relative cursor-pointer"
                          :class="hover ? 'z-[150] shadow-2xl' : 'z-10 border-gray-200 dark:border-slate-700'"
                          :style="hover ? 'border-color: var(--cor-cta);' : 'border-color: var(--cor-3, #e5e7eb);'">
@@ -165,10 +159,6 @@
                                 @endif
                             </div>
                             <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-auto aspect-[2.5/3.5] object-cover rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-500 transform relative z-50 bg-gray-100 dark:bg-gray-800" :class="hover ? 'scale-[2] shadow-2xl ring-2 ring-black/10' : ''" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
-                            
-                            @if($carta->foil)
-                                <span class="absolute top-4 left-4 bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 text-[9px] font-black px-2 py-0.5 rounded shadow-sm z-[60] transition-opacity duration-300" :class="hover ? 'opacity-0' : 'opacity-100'">FOIL</span>
-                            @endif
                         </div>
                         <div class="p-3 flex flex-col flex-grow justify-between gap-3 transition-opacity duration-300 relative z-[40] bg-white dark:bg-slate-800 rounded-b-xl" :class="hover ? 'opacity-0' : 'opacity-100'">
                             <div>
@@ -193,10 +183,7 @@
 
                 {{-- ESTADO 3: Esgotado com preço --}}
                 @elseif($carta->total_estoque === 0 && $carta->ultimo_preco > 0)
-                    <a href="{{ route('store.catalog.product', [
-                            'slug' => $loja->url_slug,'gameSlug' => $gameSlug, 
-                            'conceptSlug' => $carta->slug_seguro 
-                        ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
+                    <a href="{{ route('store.catalog.product', ['slug' => $loja->url_slug,'gameSlug' => $gameSlug, 'conceptSlug' => $carta->slug_seguro ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
                          class="flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 transition-all duration-300 relative opacity-70 grayscale-[30%] hover:grayscale-0"
                          :class="hover ? 'z-[100] shadow-xl border-gray-400 dark:border-gray-500' : 'z-10'">
                         <div class="absolute inset-x-0 top-1/3 flex justify-center z-[60] transition-opacity duration-300" :class="hover ? 'opacity-0' : 'opacity-100'">
@@ -239,6 +226,5 @@
                 @endfor
             @endforelse
         </div>
-
     </div>
 </div>

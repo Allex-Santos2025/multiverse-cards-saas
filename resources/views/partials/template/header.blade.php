@@ -85,7 +85,11 @@
                                 @endphp
 
                                 @if($menu->show_singles)
-                                    <li><a href="#" class="{{ $linkStyle }}">{{ $menu->name_singles }}</a></li>
+                                    <<li>
+                                        <a href="{{ route('store.catalog.singles', ['slug' => $loja->url_slug, 'gameSlug' => $menu->game->url_slug]) }}" class="{{ $linkStyle }}">
+                                            {{ $menu->name_singles }}
+                                        </a>
+                                    </li>
                                 @endif
 
                                 @if($menu->show_latest && $menu->recent_sets->count() > 0)

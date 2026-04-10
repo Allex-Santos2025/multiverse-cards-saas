@@ -4,6 +4,7 @@ namespace App\Livewire\Store\Template\Catalog;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\Url;
 use App\Models\Store;
 use App\Models\Game;
 use App\Models\Set;
@@ -23,11 +24,20 @@ class SetPage extends Component
     public $game;
     public $set;
 
-    // Filtros da Tela
+    // Filtros da Tela (Sincronizados com URL e Histórico do Navegador - Livewire 3)
+    #[Url(except: 'number_asc', history: true)]
     public $sortOrder = 'number_asc';
+
+    #[Url(except: 'todas', history: true)]
     public $raridade = 'todas';
+
+    #[Url(except: 'todas', history: true)]
     public $cor = 'todas';
+
+    #[Url(except: 30, history: true)]
     public $perPage = 30;
+
+    #[Url(except: false, history: true)]
     public $com_estoque = false;
 
     public function mount($slug, $gameSlug, $setCode)

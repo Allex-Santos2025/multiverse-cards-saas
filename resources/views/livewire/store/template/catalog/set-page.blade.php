@@ -93,14 +93,13 @@
                 </button>
             </div>
         </div>
-       
+        
         {{-- INFO PAGINAÇÃO E RESULTADOS --}}
         <div class="flex justify-between items-center mb-6 text-xs font-bold border-b border-gray-200 pb-2" style="color: var(--cor-texto-principal); opacity: 0.7;">
             <span class="uppercase">1-{{ $perPage ?? 30 }} de <strong style="color: var(--cor-1);">{{ method_exists($cartas, 'total') ? number_format($cartas->total(), 0, ',', '.') : $cartas->count() }}</strong> CARDS</span>
 
             @if(method_exists($cartas, 'links'))
                 <div class="flex items-center gap-2">
-                    {{-- Aqui a gente troca o 'pagination::tailwind' pelo caminho do seu novo arquivo --}}
                     {{ $cartas->links('livewire.store.template.components.custom-pagination') }}
                 </div>
             @endif
