@@ -46,20 +46,16 @@ class LoginLojista extends Component
     {
         $this->validate(['email' => 'required|email', 'password' => 'required|min:6']);
 
-        // Passamos a trava da loja direto na tentativa de login usando a coluna correta
         $credenciais = [
-            'email' => $this->email,
-            'password' => $this->password,
-            'current_store_id' => $this->loja->id 
+            'email'            => $this->email,
+            'password'         => $this->password,
+            'current_store_id' => $this->loja->id,
         ];
 
-        // O Laravel agora só loga se o e-mail, senha E a loja baterem na mesma linha do banco.
-        if (Auth::guard('store_user')->attempt($credenciais)) {
-            session()->regenerate();
+        if (Auth::guard('store_user')->attempt($credenciais, true)) {
             return redirect()->route('store.dashboard', ['slug' => $this->slug]);
         }
-        
-        // Se errar a senha ou tentar logar na loja alheia, cai direto aqui.
+
         $this->addError('email', 'Credenciais incorretas ou não pertencem a esta loja.');
     }
 

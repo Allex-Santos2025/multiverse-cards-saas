@@ -26,7 +26,7 @@ Route::prefix('loja/{slug}/dashboard')
 // Prefixo: /loja/{slug}
 // AQUI ESTAVA O PERIGO: O prefixo é definido aqui. O arquivo filho só completa.
 Route::prefix('loja/{slug}')
-    ->middleware(['web'])
+    ->middleware(['web', 'auth.store_optional'])
     ->group(base_path('routes/store_front.php'));
 
 

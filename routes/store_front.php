@@ -64,5 +64,8 @@ Route::get('/{gameSlug}/sets/{setCode}', SetPage::class)->name('store.catalog.se
 // O {printId?} é opcional. Se vier, já abre a tela com a edição/idioma específicos selecionados.
 Route::get('/{gameSlug}/card/{conceptSlug}', ProductPage::class)->name('store.catalog.product');
 
+Route::get('/{gameSlug}/busca', \App\Livewire\Store\Template\Catalog\SearchResults::class)
+    ->name('store.catalog.search');
+
 // Rota para o Catálogo Global de Cartas Avulsas (Singles)
 Route::get('/{gameSlug}/singles', SinglePage::class)->name('store.catalog.singles');

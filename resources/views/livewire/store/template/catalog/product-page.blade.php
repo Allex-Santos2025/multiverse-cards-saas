@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
-    
+
     {{-- Barra de Navegação (Breadcrumb) --}}
     <div class="py-2" style="background-color: var(--cor-secundaria); color: var(--cor-texto-secundaria);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -8,22 +8,23 @@
                 <span class="opacity-50">></span>
                 <a href="#" class="hover:underline opacity-90">{{ $concept->game->name ?? 'Cards' }}</a>
                 <span class="opacity-50">></span>
-                <span>{{ $concept->name }}</span>
+                <span>{{ $nomeLocalizado }}</span> {{-- Usa $nomeLocalizado para o breadcrumb --}}
             </nav>
         </div>
     </div>
 
     {{-- Container Principal do Conteúdo --}}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">
-            
+
             {{-- Coluna Esquerda: O "CORPO" DA CARTA (Tornada mais compacta) --}}
             <div class="lg:col-span-4 flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start z-10">
-                
+
                 {{-- 1. Imagem Base da Carta --}}
                 <div class="bg-white border border-gray-200 rounded-xl p-3 flex justify-center items-center shadow-sm relative">
-                    <img id="main-card-image" src="{{ $activeImage }}" class="w-full h-auto rounded-xl shadow-2xl">
+                    {{-- Usa $activeImage que é definido no componente --}}
+                    <img id="main-card-image" src="{{ $activeImage }}" alt="{{ $nomeLocalizado }}" class="w-full h-auto rounded-xl shadow-2xl">
                 </div>
 
                 {{-- 2. CAIXA DE PREÇOS (Movida para cá e ajustada para caber) --}}
@@ -69,9 +70,9 @@
                             return '<i class="ms ms-' . $val . ' ms-cost text-xs" style="filter: drop-shadow(-1px 1px 0px rgba(0,0,0,0.6));"></i>';
                         }, $textoFinal);
                     @endphp
-                    
+
                     <p class="mb-2 text-gray-800 font-medium">{!! nl2br($oracleHtml) !!}</p>
-                    
+
                     {{-- Flavor Text (Texto ilustrativo) --}}
                     @if(!empty($gameDetails->flavor_text))
                         <div class="border-t border-gray-100 mt-2 pt-2">
@@ -87,7 +88,7 @@
                 <div class="bg-white border border-gray-200 rounded-lg p-3 text-xs shadow-sm">
                     <div class="grid grid-cols-2 gap-y-3 gap-x-3">
                         @if($gameDetails)
-                            
+
                             {{-- Custo de Mana (Mecânica = Concept) --}}
                             @if(isset($concept->specific->mana_cost))
                             <div>
@@ -103,7 +104,7 @@
                                 </span>
                             </div>
                             @endif
-                            
+
                             {{-- Tipo (Tradução = Print. Fallback = Concept) --}}
                             <div>
                                 <span class="block text-[10px] font-bold uppercase mb-0.5 text-gray-500">Tipo</span> 
@@ -144,11 +145,11 @@
 
             {{-- Coluna Direita: MERCADO E VARIAÇÕES --}}
             <div class="lg:col-span-8 flex flex-col">
-                
+
                 {{-- Título da Carta e Favoritar --}}
                 <div class="mb-6 flex justify-between items-start">
                     <div class="mb-2 border-b border-gray-200/50 dark:border-slate-700/50 pb-4 w-full mr-4">
-                        
+
                         {{-- Regra exata: PT no topo (se houver e for diferente), EN embaixo. Caso contrário, só EN --}}
                         @if($nomeLocalizado && $nomeLocalizado !== $concept->name)
                             <h1 class="text-3xl font-black italic uppercase tracking-tight" style="color: var(--cor-secundaria);">
@@ -162,16 +163,16 @@
                                 {{ $concept->name }}
                             </h1>
                         @endif
-                        
+
                     </div>
-                    
+
                     <button class="text-gray-400 hover:text-red-500 transition border border-gray-200 rounded-lg p-2 bg-white shadow-sm hover:bg-gray-50 flex-shrink-0">
                         <i class="ph ph-heart text-xl"></i>
                     </button>
                 </div>
 
-                
-                    
+
+
                 {{-- Tabela de Estoque --}}
                 <div class="flex-grow">                    
                     {{-- Cabeçalho da Tabela com Botões de Lojista (Personalizados) --}}
@@ -179,7 +180,7 @@
                         <h2 class="text-lg font-bold uppercase text-gray-800">Edições Disponíveis</h2>
 
                         {{-- Botões Administrativos Personalizados --}}
-                        @if(auth()->check() && (auth()->id() == ($loja->user_id ?? $loja->id)))
+                        @if(auth('store_user')->check() && (auth('store_user')->user()->store->id == $loja->id))
                             <div class="flex gap-2">
                                 {{-- Botão 1: Logo Versus (Sistema Versus) --}}
                                 <button title="Sistema Versus" class="flex items-center justify-center w-11 h-11 bg-gray-100 border-0 rounded-lg shadow hover:shadow-md active:translate-y-px active:shadow-sm transition-all relative group overflow-hidden">
@@ -190,17 +191,24 @@
                                         onerror="this.src='{{ asset('assets/fallback-logo.png') }}';">                                  
                                 </button>
 
-                                {{-- Botão 2: Documento + Lápis (Cadastro Individual) --}}
-                                <button title="Cadastro Individual" class="flex items-center justify-center w-11 h-11 bg-gray-100 border-0 rounded-lg shadow hover:shadow-md transition-all relative">
+                                {{-- Botão 2: Cadastro Individual --}}
+                                <a href="{{ route('store.dashboard.stock.manage-card', [
+                                    'slug' => $slug, 
+                                    'game_slug' => $gameSlug, 
+                                    'conceptSlug' => $conceptSlug 
+                                ]) }}" 
+                                title="Cadastro Individual" 
+                                class="flex items-center justify-center w-11 h-11 bg-gray-100 border-0 rounded-lg shadow hover:shadow-md transition-all relative">
+
                                     <i class="ph ph-note-pencil text-xl text-gray-600"></i>
                                     <i class="ph ph-pencil-simple-fill absolute top-1 right-1 text-[24px] text-red-600"></i>
-                                </button>
+                                </a>
                             </div>
                         @endif
                     </div>
                     <div class="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
                         <table class="w-full text-sm text-left">
-                            
+
                             {{-- CABEÇALHO NA COR TERCIÁRIA --}}
                             <thead class="uppercase text-[10px] font-bold tracking-wider border-b border-gray-200" style="background-color: var(--cor-terciaria); color: var(--cor-texto-terciaria);">
                                 <tr>
@@ -213,13 +221,13 @@
                                     <th class="px-4 py-3 text-center w-28">Ação</th>
                                 </tr>
                             </thead>
-                            
+
                             <tbody class="divide-y divide-gray-100">
     @forelse($displayList as $item)
         @php 
             $print = $allPrints->where('id', $item['print_id'])->first();
             $stock = $item['stock_id'] ? $stockByPrint->get($print->id)->where('id', $item['stock_id'])->first() : null;
-            
+
             // Mapeamento de 11 Idiomas Oficiais
             $lang = strtolower($print->language_code ?? 'en');
             $langNames = [
@@ -248,7 +256,7 @@
             {{-- ESTADO 1: DISPONÍVEL --}}
             <tr class="transition cursor-pointer {{ $activePrintId == $item['print_id'] && $activeStockId == $item['stock_id'] ? 'bg-blue-50' : 'hover:bg-gray-50' }}"
                 wire:mouseenter="updateStats({{ $item['print_id'] }}, '{{ $item['stock_id'] ?? '' }}')">
-                
+
                 {{-- 1. Símbolo (Com Tooltip Corrigido) --}}
                 <td class="px-4 py-4 text-center">
                     <div class="relative group flex justify-center cursor-help">
@@ -265,7 +273,7 @@
                         <img src="{{ asset('assets/flags/' . $lang . '.svg') }}" 
                             class="w-6 h-auto mx-auto shadow-sm rounded-sm border border-gray-100" 
                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
-                        
+
                         {{-- Tooltip Padronizado Branco --}}
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-white text-gray-800 text-[10px] font-bold px-2 py-1.5 rounded shadow-md border border-gray-200 z-[100] w-max text-center leading-tight">
                             {{ $fullLang }}
@@ -279,7 +287,7 @@
                         <span class="text-xs font-bold text-gray-700 uppercase">
                             {{ $condition }}
                         </span>
-                        
+
                         {{-- Tooltip Padronizado Branco --}}
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-white text-gray-800 text-[10px] font-bold px-2 py-1.5 rounded shadow-md border border-gray-200 z-[100] w-max text-center leading-tight">
                             {{ $fullCondition }}
@@ -292,14 +300,14 @@
                     <div class="text-[12px] font-bold leading-tight flex flex-wrap justify-center items-center gap-1">
                         @php
                             $tags = [];
-                            
+
                             if(is_array($stock->extras) && !empty($stock->extras)) {
                                 foreach($stock->extras as $extra) {
                                     if(empty($extra)) continue;
-                                    
+
                                     // 1. Força TUDO para minúsculo primeiro para matar qualquer caixa alta do banco
                                     $lowerExtra = strtolower($extra);
-                                    
+
                                     if (str_contains($lowerExtra, 'etched')) {
                                         $tags[] = '<span class="text-orange-500 font-black">Foil Etched</span>';
                                     } elseif (str_contains($lowerExtra, 'foil')) {
@@ -352,7 +360,7 @@
             {{-- ESTADO 2: ESGOTADO --}}
             <tr class="hover:bg-gray-50 transition duration-150 cursor-pointer opacity-70 grayscale-[30%] {{ $activePrintId == $print->id ? 'bg-blue-50' : '' }}"
                 wire:mouseenter="updateStats({{ $print->id }})">
-                
+
                 {{-- 1. Símbolo (Com Tooltip) --}}
                 <td class="px-4 py-4 text-center">
                     <div class="relative group flex justify-center cursor-help">
@@ -370,8 +378,8 @@
                         <img src="{{ asset('assets/flags/' . $lang . '.svg') }}" 
                             class="w-6 h-auto mx-auto shadow-sm rounded-sm border border-gray-100 grayscale" 
                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
-                        
-                        <span class="text-[10px] font-bold uppercase hidden text-gray-400">{{ $lang }}</span>
+
+                        <span class="text-[10px] font-bold uppercase hidden text-gray-400"></span>
 
                         {{-- Tooltip Padronizado Branco --}}
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-white text-gray-800 text-[10px] font-bold px-2 py-1.5 rounded shadow-md border border-gray-200 z-[100] w-max text-center leading-tight">
@@ -399,14 +407,14 @@
                     <div class="text-[10px] font-bold leading-tight flex flex-wrap justify-center items-center gap-1">
                         @php
                             $tags = [];
-                            
+
                             if(is_array($stock->extras) && !empty($stock->extras)) {
                                 foreach($stock->extras as $extra) {
                                     if(empty($extra)) continue;
-                                    
+
                                     // 1. Força TUDO para minúsculo primeiro para matar qualquer caixa alta do banco
                                     $lowerExtra = strtolower($extra);
-                                    
+
                                     if (str_contains($lowerExtra, 'etched')) {
                                         $tags[] = '<span class="text-orange-500 font-black">Foil Etched</span>';
                                     } elseif (str_contains($lowerExtra, 'foil')) {
@@ -453,7 +461,7 @@
             {{-- ESTADO 3: NUNCA CADASTRADA --}}
             <tr class="hover:bg-gray-50 transition duration-150 cursor-pointer opacity-50 grayscale-[80%] {{ $activePrintId == $print->id ? 'bg-blue-50' : '' }}"
                 wire:mouseenter="updateStats({{ $print->id }})">
-                
+
                 {{-- 1. Símbolo (Com Tooltip) --}}
                 <td class="px-4 py-4 text-center">
                     <div class="relative group flex justify-center cursor-help">
@@ -469,7 +477,7 @@
 
                 {{-- 3. Qualidade --}}
                 <td class="px-4 py-4 text-center text-gray-400 font-bold">--</td>
-                
+
                 {{-- 4. Extras --}}
                 <td class="px-4 py-4 text-center text-gray-400 font-bold">--</td>
 
@@ -479,10 +487,10 @@
                         --
                     </div>
                 </td>
-                
+
                 {{-- 6. Estoque --}}
                 <td class="px-4 py-4 text-center font-medium text-gray-400">0 un.</td>
-                              
+
                 {{-- 7. Ação --}}
                 <td class="px-4 py-4 text-center">
                     <a href="#" class="inline-block text-[10px] font-bold uppercase text-blue-500 hover:text-blue-700 hover:underline transition-colors" style="color: var(--cor-1);">

@@ -31,7 +31,7 @@
 
             <div class="flex flex-wrap items-center gap-4 w-full md:w-auto">
                 <span class="text-[10px] font-bold uppercase opacity-80" style="color: inherit;">Filtros:</span>
-                
+
                 <div class="flex items-center gap-2">
                     <span class="text-[10px] font-bold uppercase opacity-80" style="color: inherit;">Ordenar:</span>
                     <select wire:model="sortOrder" class="bg-white text-gray-900 border-gray-300 rounded-md text-sm px-3 py-1.5 focus:ring-2" style="--tw-ring-color: var(--cor-secundaria);">
@@ -93,7 +93,7 @@
                 </button>
             </div>
         </div>
-        
+
         {{-- INFO PAGINAÇÃO E RESULTADOS --}}
         <div class="flex justify-between items-center mb-6 text-xs font-bold border-b border-gray-200 pb-2" style="color: var(--cor-texto-principal); opacity: 0.7;">
             <span class="uppercase">1-{{ $perPage ?? 30 }} de <strong style="color: var(--cor-1);">{{ method_exists($cartas, 'total') ? number_format($cartas->total(), 0, ',', '.') : $cartas->count() }}</strong> CARDS</span>
@@ -113,7 +113,7 @@
                 @if($carta->total_estoque === 0 && !$carta->ultimo_preco)
                     <a href="{{ route('store.catalog.product', [
                             'slug' => $loja->url_slug,'gameSlug' => $gameSlug, 
-                            'conceptSlug' => Str::slug($carta->name) 
+                            'conceptSlug' => $carta->concept_slug // ALTERAÇÃO: Usando o slug condicional
                         ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
                          class="flex flex-col rounded-xl border transition-all duration-300 relative opacity-60 grayscale-[80%] hover:grayscale-[50%] bg-black/5 dark:bg-white/5 border-gray-200/50 dark:border-slate-700/50 cursor-default"
                          :class="hover ? 'z-[50] shadow-md' : 'z-10'">
@@ -122,8 +122,8 @@
                         </div>
                         <div class="p-3 flex flex-col flex-grow justify-between gap-3">
                             <div>
-                                <h3 class="text-xs font-bold leading-tight line-clamp-2 text-inherit opacity-80" style="color: var(--cor-texto-principal);" title="{{ $carta->nome_localizado }}">{{ $carta->nome_localizado }}</h3>
-                                <p class="text-[9px] uppercase font-semibold opacity-50 mt-1" style="color: var(--cor-texto-principal);">{{ $carta->name ?? '---' }} &bull; #{{ $carta->collector_number }}</p>
+                                <h3 class="text-sm font-bold leading-tight line-clamp-2 text-inherit opacity-80" style="color: var(--cor-texto-principal);" title="{{ $carta->nome_localizado }}">{{ $carta->nome_localizado }}</h3>
+                                <p class="text-[9px] uppercase font-semibold opacity-50 mt-1" style="color: var(--cor-texto-principal);">{{ $carta->name }}</p>
                             </div>
                             <div class="flex items-center justify-between pt-2 border-t border-gray-200/50 dark:border-slate-700/50">
                                 <span class="text-[10px] font-bold opacity-40" style="color: var(--cor-texto-principal);">0 un.</span>
@@ -136,7 +136,7 @@
                 @elseif($carta->total_estoque > 0)
                     <a href="{{ route('store.catalog.product', [
                             'slug' => $loja->url_slug,'gameSlug' => $gameSlug, 
-                            'conceptSlug' => Str::slug($carta->name) 
+                            'conceptSlug' => $carta->concept_slug // ALTERAÇÃO: Usando o slug condicional
                         ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
                          class="flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border transition-all duration-300 relative cursor-pointer"
                          :class="hover ? 'z-[150] shadow-2xl' : 'z-10 border-gray-200 dark:border-slate-700'"
@@ -151,7 +151,7 @@
                                 @endif
                             </div>
                             <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-auto aspect-[2.5/3.5] object-cover rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-500 transform relative z-50 bg-gray-100 dark:bg-gray-800" :class="hover ? 'scale-[2] shadow-2xl ring-2 ring-black/10' : ''" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
-                            
+
                             @if($carta->foil)
                                 <span class="absolute top-4 left-4 bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 text-[9px] font-black px-2 py-0.5 rounded shadow-sm z-[60] transition-opacity duration-300" :class="hover ? 'opacity-0' : 'opacity-100'">FOIL</span>
                             @endif
@@ -159,17 +159,20 @@
                         <div class="p-3 flex flex-col flex-grow justify-between gap-3 transition-opacity duration-300 relative z-[40] bg-white dark:bg-slate-800 rounded-b-xl" :class="hover ? 'opacity-0' : 'opacity-100'">
                             <div>
                                 <h3 class="text-sm font-bold leading-tight line-clamp-2" style="color: var(--cor-texto-principal);" title="{{ $carta->nome_localizado }}">{{ $carta->nome_localizado }}</h3>
-                                <p class="text-[9px] uppercase font-semibold mt-1 opacity-70" style="color: var(--cor-texto-principal);">{{ $carta->name ?? '---' }} &bull; #{{ $carta->collector_number }}</p>
+                                <p class="text-[9px] uppercase font-semibold mt-1 opacity-70" style="color: var(--cor-texto-principal);">{{ $carta->name }}</p>
                             </div>
-                            <div class="flex flex-col items-end">
-                                <span class="text-[10px] font-bold opacity-60 mb-1" style="color: var(--cor-texto-principal);">{{ $carta->total_estoque }} un.</span>
-                                <span class="text-[9px] uppercase font-bold opacity-50" style="color: var(--cor-texto-principal);">A partir de</span>
-                                @if($carta->desconto > 0)
-                                    <span class="text-[10px] text-gray-400 line-through font-bold">R$ {{ number_format($carta->menor_preco, 2, ',', '.') }}</span>
-                                    <span class="text-base font-black tracking-tight leading-none" style="color: var(--cor-1);">R$ {{ number_format($carta->preco_final, 2, ',', '.') }}</span>
-                                @else
-                                    <span class="text-base font-black tracking-tight leading-none" style="color: var(--cor-1);">R$ {{ number_format($carta->menor_preco, 2, ',', '.') }}</span>
-                                @endif
+                            <!-- ALTERAÇÃO: Rodapé do card com quantidade à esquerda e preço à direita -->
+                            <div class="flex justify-between items-center pt-2 border-t border-gray-200/50 dark:border-slate-700/50">
+                                <span class="text-[10px] font-bold opacity-60" style="color: var(--cor-texto-principal);">{{ $carta->total_estoque }} un.</span>
+                                <div class="flex flex-col items-end">
+                                    <span class="text-[9px] uppercase font-bold opacity-50" style="color: var(--cor-texto-principal);">A partir de</span>
+                                    @if($carta->desconto > 0)
+                                        <span class="text-[10px] text-gray-400 line-through font-bold">R$ {{ number_format($carta->menor_preco, 2, ',', '.') }}</span>
+                                        <span class="text-base font-black tracking-tight leading-none" style="color: var(--cor-1);">R$ {{ number_format($carta->preco_final, 2, ',', '.') }}</span>
+                                    @else
+                                        <span class="text-base font-black tracking-tight leading-none" style="color: var(--cor-1);">R$ {{ number_format($carta->menor_preco, 2, ',', '.') }}</span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </a>
@@ -178,7 +181,7 @@
                 @elseif($carta->total_estoque === 0 && $carta->ultimo_preco > 0)
                     <a href="{{ route('store.catalog.product', [
                             'slug' => $loja->url_slug,'gameSlug' => $gameSlug, 
-                            'conceptSlug' => Str::slug($carta->name) 
+                            'conceptSlug' => $carta->concept_slug // ALTERAÇÃO: Usando o slug condicional
                         ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
                          class="flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 transition-all duration-300 relative opacity-70 grayscale-[30%] hover:grayscale-0"
                          :class="hover ? 'z-[100] shadow-xl border-gray-400 dark:border-gray-500' : 'z-10'">
@@ -196,8 +199,9 @@
                         <div class="p-3 flex flex-col flex-grow justify-between gap-3 transition-opacity duration-300 bg-white dark:bg-slate-800 relative z-[40] rounded-b-xl" :class="hover ? 'opacity-0' : 'opacity-100'">
                             <div>
                                 <h3 class="text-sm font-bold leading-tight line-clamp-2" style="color: var(--cor-texto-principal);" title="{{ $carta->nome_localizado }}">{{ $carta->nome_localizado }}</h3>
-                                <p class="text-[9px] uppercase font-semibold mt-1 opacity-70" style="color: var(--cor-texto-principal);">{{ $carta->name ?? '---' }} &bull; #{{ $carta->collector_number }}</p>
+                                <p class="text-[9px] uppercase font-semibold mt-1 opacity-70" style="color: var(--cor-texto-principal);">{{ $carta->name }}</p>
                             </div>
+                            <!-- ALTERAÇÃO: Rodapé do card com quantidade à esquerda e preço à direita -->
                             <div class="flex items-end justify-between pt-2 border-t border-gray-100 dark:border-slate-700">
                                 <div class="flex flex-col">
                                     <span class="text-xs font-black opacity-50" style="color: var(--cor-texto-principal);">0 un.</span>

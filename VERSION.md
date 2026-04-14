@@ -430,6 +430,44 @@ Este arquivo documenta a versão atual do sistema, o estágio de desenvolvimento
 
 ---
 
+**Versão:** `alpha v0.1.10`  
+**Data:** 12/04/2026  
+**Descrição da Versão:** Entrega do módulo de **Gerenciamento Individual de Estoque (Manage Single Card)**. Implementação de uma interface ultra-responsiva para controle cirúrgico de inventário, com suporte nativo à inteligência de terrenos básicos e normalização virtual de versões.
+
+### Funcionalidades (Engenharia de Dados & Nova Entrega):
+
+* **Arquitetura de Gerenciamento Modal (Inventory Control):** Lançamento do novo ambiente de cadastro individual via Modal Dinâmico. A solução permite a manipulação de dados de estoque sem a necessidade de recarregamento de página, utilizando estados reativos do Livewire e Alpine.js para uma experiência de "aplicativo nativo".
+* **Normalização de Terrenos Básicos (Virtual Concept Splitting):** Implementação da inteligência que desmembra terrenos básicos (Planície, Ilha, etc.) por número de colecionador. O sistema agora isola as quantidades e preços de cada arte específica, corrigindo a "venda cruzada" indesejada entre edições diferentes.
+* **Sistema de Precificação Inteligente (Market-Sync):** Integração visual com sugestões de preços de mercado (Mínimo, Médio e Máximo). O módulo permite que o lojista ajuste valores baseando-se em dados reais em tempo real, com suporte a campos de precisão decimal e descontos percentuais programados.
+* **Motor de Busca Reativo por Edição (Quick-Print-Finder):** Desenvolvimento de um sub-motor de busca interno dentro do modal de cadastro. O lojista pode filtrar instantaneamente entre centenas de variações da mesma carta, selecionando a edição correta com um clique, otimizando o tempo de catalogação em até 70%.
+* **Persistência de Estado e UI Ininterrupta:** Implementação da funcionalidade "Manter Aberto", permitindo o cadastro em massa de diferentes variações (idiomas, qualidades, foils) da mesma carta sem fechar o ambiente de trabalho, mantendo o foco do operador.
+
+### Páginas Adicionadas / Inauguradas:
+
+**Módulo Administrativo Versus TCG:**
+* **Interface de Gestão de Card (Manage Single):** Página dedicada ao controle de cada conceito do catálogo, com listagem detalhada de todos os itens em estoque e ferramentas de edição rápida.
+* **Modal de Cadastro Multidirecional:** Ambiente unificado para adição de novos itens com inteligência para detecção de variações Foil, Etched e idiomas globais.
+
+---
+
+**Versão:** `alpha v0.1.11`  
+**Data:** 13/04/2026  
+**Descrição da Versão:** Entrega e Integração do **Motor de Busca de Alta Performance (Meilisearch Core)**. Implementação do sistema de indexação ultra-rápida para busca global, com inteligência de processamento de linguagem natural e visualização premium de resultados.
+
+### Funcionalidades (Engenharia de Dados & Nova Entrega):
+
+* **Motor de Busca Baseado em Meilisearch:** Substituição das buscas tradicionais em banco de dados por um motor de indexação em memória. A nova arquitetura entrega resultados em milissegundos, processando erros de digitação (Typo-tolerance) e termos parciais de forma inteligente.
+* **Busca por Precisão Numérica (Regex Number-Detection):** Implementação de uma camada de inteligência que identifica números de colecionador nos termos de busca (ex: "Planície 292", "#292", "(292)"). O sistema separa o nome da carta do seu identificador físico, entregando o resultado exato e eliminando a poluição visual.
+* **Dropdown de Busca Premium (Estilo Marketplace):** Lançamento do componente de busca rápida com suporte a miniaturas dinâmicas (Thumbnails). O sistema pré-processa os resultados enquanto o usuário digita, exibindo a imagem da carta, nome localizado e nome original para uma identificação visual instantânea.
+* **Lógica "Stock-First" (Filtro de Relevância):** Reestruturação do motor de busca para priorizar a realidade da loja. O sistema utiliza os conceitos do Meilisearch como guarda-chuva, mas filtra os resultados estritamente pelo que a loja possui em estoque ou histórico, blindando a plataforma contra links órfãos ou páginas sem conteúdo.
+* **Unificação de Resultados (Smart-Grouping):** Implementação do agrupamento dinâmico na tela de busca. Cartas idênticas em diferentes idiomas ou estados de conservação são unificadas em um único bloco visual, exibindo o "Menor Preço" e a "Quantidade Total", mantendo a consistência visual com o catálogo de Singles.
+
+### Páginas Adicionadas / Inauguradas:
+
+**Módulo de Navegação Versus TCG:**
+* **Página de Resultados de Busca (Search Results):** Nova interface global para exibição de correspondências exatas e sugestões relacionadas, com suporte ao padrão visual de cards de alta densidade de informação.
+* **Componente GlobalSearch (Header):** Integração do motor de busca
+
 ## 🧩 Estrutura de Versionamento
 
 O projeto usa um modelo adaptado do Semantic Versioning:

@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request; // <--- IMPORTANTE: Adicionado para funcionar a lógica de URL
+use App\Http\Middleware\AuthenticateStoreUserOptional;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,7 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'store.onboarding' => \App\Http\Middleware\RedirectIfStoreOnboarded::class,
-            'store.onboarded' => \App\Http\Middleware\RedirectIfNotStoreOnboarded::class,
+            'store.onboarded' => \App\Http\Middleware\RedirectIfNotStoreOnboarded::class,        
+            'auth.store_optional' => AuthenticateStoreUserOptional::class,
         ]);
 
         // --- NOVA LÓGICA DE REDIRECIONAMENTO (Sessão Expirada / Logout) ---

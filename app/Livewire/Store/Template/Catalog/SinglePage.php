@@ -9,6 +9,8 @@ use App\Models\Store;
 use App\Models\Game;
 use App\Models\Catalog\CatalogPrint;
 use App\Models\Catalog\CatalogConcept;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SinglePage extends Component
 {
@@ -53,24 +55,33 @@ class SinglePage extends Component
 
     public function render()
     {
-        // A INTELIGÊNCIA DE PERFORMANCE: Só cruza o estoque inteiro se for estritamente necessário.
         $precisaCruzarEstoque = $this->com_estoque || in_array($this->sortOrder, ['price_asc', 'price_desc']);
 
-        // SE NÃO ESTÁ DESAGRUPADO (Ou seja, está no estado padrão de Concept)
         if (!$this->desagrupar) {
             // ----------------------------------------------------------------
-            // MODO AGRUPADO (POR CONCEITO)
+            // MODO AGRUPADO (POR CONCEITO + NORMALIZAÇÃO DOS TERRENOS BÁSICOS)
             // ----------------------------------------------------------------
-            $query = CatalogConcept::select('catalog_concepts.*')
-                        ->where('catalog_concepts.game_id', $this->game->id)
-                        ->where('catalog_concepts.is_valid', true);
+            $virtualNumberRaw = 'CASE WHEN catalog_prints.type_line LIKE "%Basic Land%" THEN catalog_prints.collector_number ELSE "" END';
+
+            $query = CatalogPrint::select(
+                        \DB::raw('MAX(catalog_prints.id) as id'),
+                        'cc.id as concept_id',
+                        'cc.name',
+                        \DB::raw('MAX(catalog_prints.type_line) as type_line'), 
+                        'cc.slug',
+                        \DB::raw("$virtualNumberRaw as virtual_number")
+                    )
+                    ->join('catalog_concepts as cc', 'catalog_prints.concept_id', '=', 'cc.id')
+                    ->where('cc.game_id', $this->game->id)
+                    ->where('catalog_prints.is_valid', true)
+                    ->groupBy('cc.id', \DB::raw($virtualNumberRaw), 'cc.name', 'cc.slug');
 
             if ($this->cor !== 'todas') {
-                $query->join('mtg_concepts as mc', 'catalog_concepts.specific_id', '=', 'mc.id');
+                $query->join('mtg_concepts as mc', 'cc.specific_id', '=', 'mc.id');
 
                 if (in_array($this->cor, ['W', 'U', 'B', 'R', 'G'])) {
                     $query->where('mc.colors', 'LIKE', '%"' . $this->cor . '"%')
-                             ->where('mc.colors', 'NOT LIKE', '%,%');
+                          ->where('mc.colors', 'NOT LIKE', '%,%');
                 } elseif ($this->cor === 'M') {
                     $query->where('mc.colors', 'LIKE', '%,%');
                 } elseif ($this->cor === 'C') {
@@ -79,18 +90,21 @@ class SinglePage extends Component
                           ->orWhere('mc.colors', '[]')
                           ->orWhere('mc.colors', '');
                     })
-                    ->where('catalog_concepts.type_line', 'NOT LIKE', '%Artifact%')
-                    ->where('catalog_concepts.type_line', 'NOT LIKE', '%Land%');
+                    ->where('catalog_prints.type_line', 'NOT LIKE', '%Artifact%')
+                    ->where('catalog_prints.type_line', 'NOT LIKE', '%Land%');
                 } elseif ($this->cor === 'A') {
-                    $query->where('catalog_concepts.type_line', 'LIKE', '%Artifact%');
+                    $query->where('catalog_prints.type_line', 'LIKE', '%Artifact%');
                 } elseif ($this->cor === 'L') {
-                    $query->where('catalog_concepts.type_line', 'LIKE', '%Land%');
+                    $query->where('catalog_prints.type_line', 'LIKE', '%Land%');
                 }
             }
 
             if ($precisaCruzarEstoque) {
+                $estoqueVirtualNumber = 'CASE WHEN cp.type_line LIKE "%Basic Land%" THEN cp.collector_number ELSE "" END';
+
                 $estoqueSubquery = \App\Models\StockItem::select(
                     'cp.concept_id',
+                    \DB::raw("$estoqueVirtualNumber as virtual_number"),
                     \DB::raw('SUM(stock_items.quantity) as total_estoque'),
                     \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
                     \DB::raw('MIN(stock_items.price) as ultimo_preco'),
@@ -101,7 +115,7 @@ class SinglePage extends Component
                 )
                 ->join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
                 ->where('stock_items.store_id', $this->loja->id)
-                ->groupBy('cp.concept_id');
+                ->groupBy('cp.concept_id', \DB::raw($estoqueVirtualNumber));
 
                 $query->addSelect(
                         \DB::raw('COALESCE(estoque.total_estoque, 0) as total_estoque'),
@@ -113,13 +127,26 @@ class SinglePage extends Component
                         'estoque.print_id_out_stock'
                     );
 
+                // STRICT MODE MYSQL (ONLY_FULL_GROUP_BY)
+                $query->groupBy(
+                    'estoque.total_estoque',
+                    'estoque.menor_preco',
+                    'estoque.ultimo_preco',
+                    'estoque.menor_preco_extras',
+                    'estoque.menor_preco_desconto',
+                    'estoque.print_id_in_stock',
+                    'estoque.print_id_out_stock'
+                );
+
                 if ($this->com_estoque) {
-                    $query->joinSub($estoqueSubquery, 'estoque', function ($join) {
-                        $join->on('catalog_concepts.id', '=', 'estoque.concept_id');
+                    $query->joinSub($estoqueSubquery, 'estoque', function ($join) use ($virtualNumberRaw) {
+                        $join->on('cc.id', '=', 'estoque.concept_id')
+                             ->on(\DB::raw($virtualNumberRaw), '=', 'estoque.virtual_number');
                     });
                 } else {
-                    $query->leftJoinSub($estoqueSubquery, 'estoque', function ($join) {
-                        $join->on('catalog_concepts.id', '=', 'estoque.concept_id');
+                    $query->leftJoinSub($estoqueSubquery, 'estoque', function ($join) use ($virtualNumberRaw) {
+                        $join->on('cc.id', '=', 'estoque.concept_id')
+                             ->on(\DB::raw($virtualNumberRaw), '=', 'estoque.virtual_number');
                     });
                 }
             }
@@ -200,7 +227,7 @@ class SinglePage extends Component
         // ==========================================
         // FILTROS GERAIS E ORDENAÇÃO
         // ==========================================
-        $tabela = !$this->desagrupar ? 'catalog_concepts' : 'catalog_prints';
+        $tabela = !$this->desagrupar ? 'cc' : 'catalog_prints';
         $colunaNome = !$this->desagrupar ? 'name' : 'printed_name';
         
         switch ($this->sortOrder) {
@@ -230,14 +257,22 @@ class SinglePage extends Component
         }
 
         // ==========================================
-        // PAGINAÇÃO ULTRA RÁPIDA E CACHEADA (MOTOR v8)
+        // PAGINAÇÃO CACHEADA (V10 - COUNT NATIVO DO LARAVEL)
         // ==========================================
-        $cacheKey = "count_v8_{$this->game->id}_{$this->desagrupar}_{$this->cor}_{$this->raridade}_{$this->com_estoque}_{$this->loja->id}";
+        $cacheKey = "count_v10_{$this->game->id}_{$this->desagrupar}_{$this->cor}_{$this->raridade}_{$this->com_estoque}_{$this->loja->id}";
         $totalReal = cache()->remember($cacheKey, now()->addHours(4), function () use ($query) {
-            return (clone $query)->count();
+            
+            // Pega o Query Builder puro do Laravel, descartando o peso do Eloquent ORM e dos relacionamentos "with"
+            $queryParaCount = clone $query->getQuery();
+            
+            // Removemos as ordenações para deixar a query de contagem extremamente leve
+            $queryParaCount->orders = null;
+            
+            // O getCountForPagination é uma função nativa da engrenagem do Laravel que já faz
+            // automaticamente e de forma correta o envelopamento de queries com GROUP BY
+            return $queryParaCount->getCountForPagination();
         });
 
-        // THIN PAGINATE: Ativa APENAS se estiver Desagrupado e NÃO tiver cruzamento de estoque
         if ($this->desagrupar && !$precisaCruzarEstoque) {
             $query->select('catalog_prints.id');
             $cartas = $query->paginate($this->perPage, ['*'], 'page', null, $totalReal)->onEachSide(0);
@@ -262,11 +297,13 @@ class SinglePage extends Component
         // HIDRATAÇÃO TARDIA DO ESTOQUE (LAZY LOADING)
         // ==========================================
         if (!$precisaCruzarEstoque && $cartas->count() > 0) {
-            $idsNaTela = $cartas->pluck('id')->toArray();
-
             if (!$this->desagrupar) {
+                $idsNaTela = $cartas->pluck('concept_id')->toArray();
+                $estoqueVirtualNumber = 'CASE WHEN cp.type_line LIKE "%Basic Land%" THEN cp.collector_number ELSE "" END';
+
                 $estoquesRapidos = \App\Models\StockItem::select(
                     'cp.concept_id',
+                    \DB::raw("$estoqueVirtualNumber as virtual_number"),
                     \DB::raw('SUM(stock_items.quantity) as total_estoque'),
                     \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
                     \DB::raw('MIN(stock_items.price) as ultimo_preco'),
@@ -278,12 +315,15 @@ class SinglePage extends Component
                 ->join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
                 ->where('stock_items.store_id', $this->loja->id)
                 ->whereIn('cp.concept_id', $idsNaTela) 
-                ->groupBy('cp.concept_id')
+                ->groupBy('cp.concept_id', \DB::raw($estoqueVirtualNumber))
                 ->get()
-                ->keyBy('concept_id');
+                ->keyBy(function($item) {
+                    return $item->concept_id . '_' . $item->virtual_number;
+                });
 
                 foreach ($cartas as $carta) {
-                    $st = $estoquesRapidos->get($carta->id);
+                    $key = $carta->concept_id . '_' . $carta->virtual_number;
+                    $st = $estoquesRapidos->get($key);
                     $carta->total_estoque = $st->total_estoque ?? 0;
                     $carta->menor_preco = $st->menor_preco ?? null;
                     $carta->ultimo_preco = $st->ultimo_preco ?? null;
@@ -293,6 +333,7 @@ class SinglePage extends Component
                     $carta->print_id_out_stock = $st->print_id_out_stock ?? null;
                 }
             } else {
+                $idsNaTela = $cartas->pluck('id')->toArray();
                 $estoquesRapidos = \App\Models\StockItem::select(
                     'catalog_print_id',
                     \DB::raw('SUM(stock_items.quantity) as total_estoque'),
@@ -324,7 +365,7 @@ class SinglePage extends Component
         $printsRelacionados = collect();
         if ($cartas->count() > 0) {
             if (!$this->desagrupar) {
-                $conceptIds = $cartas->pluck('id')->toArray();
+                $conceptIds = $cartas->pluck('concept_id')->toArray();
                 $printsRelacionados = CatalogPrint::whereIn('concept_id', $conceptIds)
                                                 ->orderBy('id', 'desc')
                                                 ->get()
@@ -361,14 +402,35 @@ class SinglePage extends Component
             $carta->is_foil = (bool) str_contains(strtolower($carta->menor_preco_extras ?? ''), 'foil');
             
             if (!$this->desagrupar) {
-                $prints = $printsRelacionados->get($carta->id, collect());
+                $prints = $printsRelacionados->get($carta->concept_id, collect());
+                if ($carta->virtual_number !== "") {
+                    $prints = $prints->where('collector_number', $carta->virtual_number);
+                }
                 
                 $printPt = $prints->first(function($p) {
                     return in_array(strtolower($p->language_code), ['pt', 'pt-br']) && !empty(trim($p->printed_name));
                 });
                 
-                $carta->nome_localizado = $printPt?->printed_name ?? $carta->name;
-                $carta->name = $carta->name; 
+                $isBasicLand = str_contains($carta->type_line, 'Basic Land');
+                $englishName = $carta->name; 
+                
+                if ($isBasicLand && $carta->virtual_number !== "") {
+                    $carta->nome_localizado = ($printPt?->printed_name ?? $englishName) . ' #' . $carta->virtual_number;
+                    $carta->name = $englishName . ' #' . $carta->virtual_number;
+                    
+                    $tiposBasicos = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
+                    $tipoEncontrado = null;
+                    foreach ($tiposBasicos as $tipo) {
+                        if (str_contains($carta->type_line, $tipo)) {
+                            $tipoEncontrado = $tipo; break;
+                        }
+                    }
+                    $carta->slug_seguro = \Str::slug($tipoEncontrado ?: $englishName) . '-' . $carta->virtual_number;
+                } else {
+                    $carta->nome_localizado = $printPt?->printed_name ?? $englishName;
+                    $carta->name = $englishName;
+                    $carta->slug_seguro = $carta->slug ?? 'card-id-' . $carta->concept_id;
+                }
                 
                 $imagemBruta = null;
 
@@ -384,11 +446,9 @@ class SinglePage extends Component
                     $printEn = $prints->first(fn($p) => strtolower($p->language_code) === 'en' && (!empty($p->image_url) || !empty($p->image_path))) 
                                 ?? $prints->first(fn($p) => !empty($p->image_url) || !empty($p->image_path)) 
                                 ?? $prints->first();
-                    $imagemBruta = $printEn?->image_url ?? $printEn?->image_path ?? $carta->image_url ?? $carta->image_path ?? 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
+                    $imagemBruta = $printEn?->image_url ?? $printEn?->image_path ?? 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
                 }
                 
-                $slugDb = $carta->slug;
-                $carta->slug_seguro = !empty($slugDb) ? $slugDb : 'card-id-' . $carta->id;
             } else {
                 $key = $carta->set_id . '_' . $carta->collector_number;
                 $printPt = $printsRelacionados->get($key, collect())->first(function($p) {

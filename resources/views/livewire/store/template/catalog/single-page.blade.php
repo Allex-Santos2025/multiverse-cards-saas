@@ -168,15 +168,17 @@
                                     @if(!$carta->is_concept && isset($carta->collector_number)) &bull; #{{ $carta->collector_number }} @endif
                                 </p>
                             </div>
-                            <div class="flex flex-col items-end">
-                                <span class="text-[10px] font-bold opacity-60 mb-1" style="color: var(--cor-texto-principal);">{{ $carta->total_estoque }} un.</span>
-                                <span class="text-[9px] uppercase font-bold opacity-50" style="color: var(--cor-texto-principal);">A partir de</span>
-                                @if($carta->desconto > 0)
-                                    <span class="text-[10px] text-gray-400 line-through font-bold">R$ {{ number_format($carta->menor_preco, 2, ',', '.') }}</span>
-                                    <span class="text-base font-black tracking-tight leading-none" style="color: var(--cor-1);">R$ {{ number_format($carta->preco_final, 2, ',', '.') }}</span>
-                                @else
-                                    <span class="text-base font-black tracking-tight leading-none" style="color: var(--cor-1);">R$ {{ number_format($carta->menor_preco, 2, ',', '.') }}</span>
-                                @endif
+                            <div class="flex justify-between items-center pt-2 border-t border-gray-200/50 dark:border-slate-700/50">
+                                <span class="text-[10px] font-bold opacity-60" style="color: var(--cor-texto-principal);">{{ $carta->total_estoque }} un.</span>
+                                <div class="flex flex-col items-end">
+                                    <span class="text-[9px] uppercase font-bold opacity-50" style="color: var(--cor-texto-principal);">A partir de</span>
+                                    @if($carta->desconto > 0)
+                                        <span class="text-[10px] text-gray-400 line-through font-bold">R$ {{ number_format($carta->menor_preco, 2, ',', '.') }}</span>
+                                        <span class="text-base font-black tracking-tight leading-none" style="color: var(--cor-1);">R$ {{ number_format($carta->preco_final, 2, ',', '.') }}</span>
+                                    @else
+                                        <span class="text-base font-black tracking-tight leading-none" style="color: var(--cor-1);">R$ {{ number_format($carta->menor_preco, 2, ',', '.') }}</span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </a>
@@ -226,5 +228,6 @@
                 @endfor
             @endforelse
         </div>
+
     </div>
 </div>

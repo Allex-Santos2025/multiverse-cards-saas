@@ -1,3 +1,14 @@
+@php
+    \Log::info('STORE_AUTH_DEBUG', [
+        'check'             => auth('store_user')->check(),
+        'user_id'           => optional(auth('store_user')->user())->id,
+        'current_store_id'  => optional(auth('store_user')->user())->current_store_id,
+        'loja_id'           => $loja->id ?? null,
+        'url'               => request()->fullUrl(),
+        'agent'             => request()->userAgent(),
+    ]);
+@endphp
+
 {{-- Verifica se está logado COMO LOJISTA e se a loja acessada é a DELE --}}
 @if(auth('store_user')->check() && auth('store_user')->user()->current_store_id == $loja->id)
     <div class="bg-[#0a0a0a] text-gray-300 py-2 px-4 border-b-2 border-[var(--cor-1)] text-xs z-50 relative">

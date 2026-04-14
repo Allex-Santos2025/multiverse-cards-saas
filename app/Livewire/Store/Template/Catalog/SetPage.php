@@ -9,6 +9,9 @@ use App\Models\Store;
 use App\Models\Game;
 use App\Models\Set;
 use App\Models\Catalog\CatalogPrint;
+use App\Models\Catalog\CatalogConcept;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SetPage extends Component
 {
@@ -24,7 +27,7 @@ class SetPage extends Component
     public $game;
     public $set;
 
-    // Filtros da Tela (Sincronizados com URL e Histórico do Navegador - Livewire 3)
+    // Filtros da Tela
     #[Url(except: 'number_asc', history: true)]
     public $sortOrder = 'number_asc';
 
@@ -71,14 +74,6 @@ class SetPage extends Component
             $cartas = collect([]); 
         } 
         else {
-            // A MINI-BUSCA DO NOME EM PORTUGUÊS
-            $nomePtSubquery = \App\Models\Catalog\CatalogPrint::from('catalog_prints as cp_pt')
-                ->select('cp_pt.printed_name')
-                ->whereColumn('cp_pt.set_id', 'catalog_prints.set_id')
-                ->whereColumn('cp_pt.collector_number', 'catalog_prints.collector_number')
-                ->whereIn('cp_pt.language_code', ['pt', 'PT', 'pt-br', 'pt-BR'])
-                ->limit(1);
-
             // ==========================================
             // FILTRANDO OS IDs BASE (Excluindo variantes A-)
             // ==========================================
@@ -94,31 +89,25 @@ class SetPage extends Component
             // A INTELIGÊNCIA HÍBRIDA (Cores vs Tipos)
             // ==========================================
             if ($this->cor !== 'todas') {
-                
-                // Se for Artefato ou Terreno, não precisa olhar pra tabela de Magic, o type_line resolve!
+
                 if ($this->cor === 'A') {
                     $queryIds->where('type_line', 'LIKE', '%Artifact%');
                 } 
                 elseif ($this->cor === 'L') {
                     $queryIds->where('type_line', 'LIKE', '%Land%');
                 } 
-                // Se for as Cores de Magic (W, U, B, R, G, Multicolor ou Colorless)
                 else {
-                    // Fazemos a ponte: catalog_prints -> catalog_concepts -> mtg_concepts
                     $queryIds->join('catalog_concepts as cc', 'catalog_prints.concept_id', '=', 'cc.id')
                              ->join('mtg_concepts as mc', 'cc.specific_id', '=', 'mc.id');
 
                     if (in_array($this->cor, ['W', 'U', 'B', 'R', 'G'])) {
-                        // Carta de cor exata e NÃO multicolorida
                         $queryIds->where('mc.colors', 'LIKE', '%"' . $this->cor . '"%')
                                  ->where('mc.colors', 'NOT LIKE', '%,%');
                     } 
                     elseif ($this->cor === 'M') {
-                        // Multicolor: Se tem vírgula no array de cores
                         $queryIds->where('mc.colors', 'LIKE', '%,%');
                     } 
                     elseif ($this->cor === 'C') {
-                        // Incolor (Eldrazi, Ugin, etc) -> Sem cor, E não é artefato, E não é terreno
                         $queryIds->where(function($q) {
                             $q->whereNull('mc.colors')
                               ->orWhere('mc.colors', '[]')
@@ -130,14 +119,13 @@ class SetPage extends Component
                 }
             }
 
-            // CORREÇÃO AQUI: Não agrupamos mais por concept_id. Cada Print (arte/número) é uma carta única.
             $printIds = $queryIds->pluck('catalog_prints.id');
 
             // ==========================================
-            // 2. A TABELA VIRTUAL DE ESTOQUE (Ajustada para enxergar todas as línguas)
+            // 2. A TABELA VIRTUAL DE ESTOQUE (CORREÇÃO: AGRUPA POR NÚMERO, NÃO POR ID)
             // ==========================================
             $estoqueSubquery = \App\Models\StockItem::select(
-                'cp.concept_id', // MUDANÇA: Agrupamos pelo conceito para captar todas as linguagens
+                'cp.collector_number', // O SEGREDO ESTÁ AQUI: Agrupa todas as línguas do mesmo número!
                 \DB::raw('SUM(stock_items.quantity) as total_estoque'),
                 \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
                 \DB::raw('MIN(stock_items.price) as ultimo_preco'),
@@ -147,10 +135,10 @@ class SetPage extends Component
             ->join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
             ->where('stock_items.store_id', $this->loja->id)
             ->where('cp.set_id', $this->set->id)
-            ->groupBy('cp.concept_id'); // MUDANÇA: O estoque agora é somado por "identidade" da carta
+            ->groupBy('cp.collector_number'); // O SEGREDO ESTÁ AQUI TAMBÉM
 
             // ==========================================
-            // 3. A QUERY MESTRA (Ligação por concept_id)
+            // 3. A QUERY MESTRA
             // ==========================================
             $query = \App\Models\Catalog\CatalogPrint::select(
                     'catalog_prints.*',
@@ -160,12 +148,11 @@ class SetPage extends Component
                     'estoque.menor_preco_extras',
                     'estoque.menor_preco_desconto'
                 )
-                ->selectSub($nomePtSubquery, 'nome_pt_banco')
-                ->with(['concept'])
+                ->with(['concept', 'concept.prints']) 
                 ->whereIn('catalog_prints.id', $printIds)
                 ->leftJoinSub($estoqueSubquery, 'estoque', function ($join) {
-                    // MUDANÇA: Ligamos o print (EN) ao estoque total via concept_id
-                    $join->on('catalog_prints.concept_id', '=', 'estoque.concept_id');
+                    // A LIGAÇÃO: Usa o número de colecionador para pescar o bloco inteiro de estoque daquele número
+                    $join->on('catalog_prints.collector_number', '=', 'estoque.collector_number');
                 });
 
             // ==========================================
@@ -184,10 +171,12 @@ class SetPage extends Component
             // ==========================================
             switch ($this->sortOrder) {
                 case 'price_asc':
-                    $query->orderByRaw('estoque.menor_preco IS NULL')->orderBy('estoque.menor_preco', 'asc');
+                    $query->orderByRaw('estoque.menor_preco IS NULL')
+                          ->orderBy('estoque.menor_preco', 'asc');
                     break;
                 case 'price_desc':
-                    $query->orderByRaw('estoque.menor_preco IS NULL')->orderBy('estoque.menor_preco', 'desc');
+                    $query->orderByRaw('estoque.menor_preco IS NULL')
+                          ->orderBy('estoque.menor_preco', 'desc');
                     break;
                 case 'name_asc':
                     $query->orderBy('catalog_prints.printed_name', 'asc');
@@ -223,12 +212,45 @@ class SetPage extends Component
                 $carta->total_estoque = $total;
                 $carta->menor_preco = $precoBase;
                 $carta->desconto = $percentualDesconto;
-                
+
                 $carta->is_foil = (bool) str_contains(strtolower($carta->menor_preco_extras ?? ''), 'foil');
-                
-                $carta->nome_localizado = $carta->nome_pt_banco ?? $carta->concept->name ?? $carta->printed_name; 
-                $carta->name = $carta->concept->name ?? $carta->printed_name;
-                
+
+                // --- Lógica de Nomes PT/EN e Geração de Slug Condicional ---
+                $englishName = $carta->concept->name ?? $carta->printed_name;
+                $globalPtName = null;
+
+                if ($carta->concept && $carta->concept->relationLoaded('prints')) {
+                    $globalPtName = $carta->concept->prints
+                                    ->firstWhere(fn ($print) => in_array($print->language_code, ['pt', 'PT', 'pt-br', 'pt-BR']))
+                                    ?->printed_name;
+                }
+
+                $carta->nome_localizado = $globalPtName ?: $englishName;
+
+                $isBasicLand = str_contains($carta->type_line, 'Basic Land');
+
+                $carta->name = sprintf('%s • #%s', $englishName, $carta->collector_number);
+
+                // --- GERAÇÃO DO SLUG PARA O LINK DO PRODUTO (CONDICIONAL) ---
+                if ($isBasicLand) {
+                    $tiposBasicos = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
+                    $tipoEncontrado = null;
+                    foreach ($tiposBasicos as $tipo) {
+                        if (str_contains($carta->type_line, $tipo)) {
+                            $tipoEncontrado = $tipo;
+                            break;
+                        }
+                    }
+
+                    if ($tipoEncontrado) {
+                        $carta->concept_slug = \Str::slug($tipoEncontrado) . '-' . $carta->collector_number;
+                    } else {
+                        $carta->concept_slug = \Str::slug($englishName);
+                    }
+                } else {
+                    $carta->concept_slug = \Str::slug($englishName);
+                }
+
                 $imagemBruta = $carta->image_url 
                             ?? $carta->image_path 
                             ?? $carta->concept->image_url 
@@ -238,9 +260,9 @@ class SetPage extends Component
                 $carta->imagem_final = filter_var($imagemBruta, FILTER_VALIDATE_URL) 
                                      ? $imagemBruta 
                                      : asset($imagemBruta);
-                
+
                 $carta->foil = false; 
-                
+
                 return $carta;
             });
         }

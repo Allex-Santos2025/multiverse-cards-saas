@@ -38,6 +38,28 @@ class CatalogConcept extends Model
         return !preg_match('/^(A|H|1|2|3|4)-/', $this->name);
     }
 
+    public function toSearchableArray(): array
+    {
+        $namePt = \App\Models\Catalog\CatalogPrint::where('concept_id', $this->id)
+            ->whereIn('language_code', ['pt', 'pt-br', 'pt-BR'])
+            ->whereNotNull('printed_name')
+            ->where('printed_name', '!=', '')
+            ->value('printed_name');
+
+        return [
+            'id'      => $this->id,
+            'name'    => $this->name,
+            'name_pt' => $namePt ?? null,
+            'slug'    => $this->slug,
+            'game_id' => $this->game_id,
+        ];
+    }
+
+    public function searchableAs(): string
+    {
+        return 'catalog_concepts';
+    }
+
     // Relação Polimórfica: Traz os dados específicos
     public function specific(): MorphTo
     {

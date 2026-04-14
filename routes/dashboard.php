@@ -4,7 +4,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Livewire\Store\Dashboard\Stock\ManageInventory; 
-use App\Livewire\Store\Dashboard\Layout\VisualIdentity; // Importando o nosso novo componente
+use App\Livewire\Store\Dashboard\Stock\ManageSingleCard; // 1. IMPORTAÇÃO DO NOVO COMPONENTE
+use App\Livewire\Store\Dashboard\Layout\VisualIdentity;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,7 +16,6 @@ use App\Livewire\Store\Dashboard\Layout\VisualIdentity; // Importando o nosso no
 */
 
 // 1. A ROTA PRINCIPAL (Home do Dashboard)
-// Voltamos para Closure (Função) para evitar o erro "Multiple Root Elements" do Livewire
 Route::get('/', function ($slug) {
     
     // A. Validação da Loja
@@ -23,7 +23,6 @@ Route::get('/', function ($slug) {
     if (!$store) return redirect()->route('home');
 
     // B. Lógica dos Botões (Magic/Pokemon)
-    // Se não vier na URL, assume 'magic'.
     $gameSlug = request()->query('game_slug', 'magic');
     $inactiveSlug = ($gameSlug === 'magic') ? 'pokemon' : 'magic';
 
@@ -41,13 +40,18 @@ Route::get('/', function ($slug) {
 })->name('store.dashboard'); 
 
 
-// 2. O RESTO DAS ROTAS (Mantidas originais)
+// 2. O RESTO DAS ROTAS
 Route::name('store.dashboard.')->group(function () {
 
     // --- GRUPO DE JOGOS E ESTOQUE ---
     Route::prefix('{game_slug}')->group(function () {
         Route::prefix('estoque')->name('stock.')->group(function () {
+            
             Route::get('/', ManageInventory::class)->name('index');
+            
+            // 2. ROTA DE GERENCIAMENTO INDIVIDUAL DA CARTA ADICIONADA AQUI
+            Route::get('/carta/{conceptSlug}', ManageSingleCard::class)->name('manage-card');
+            
         });
     });
 

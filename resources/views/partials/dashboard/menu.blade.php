@@ -103,7 +103,7 @@
                     <div x-show="openMenu === 'm-{{ $key }}'" x-transition class="bg-zinc-50 dark:bg-black/20 py-2">
                         @if($key === 'dashboard')
                             <a href="{{ route('store.dashboard', ['slug' => auth('store_user')->user()->store->url_slug]) }}" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Painel Geral</a>
-                            <a href="{{ route('store.view', ['slug' => auth('store_user')->user()->store->url_slug]) }}" target="_blank" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Ver Minha Loja ↗</a>
+                            <a href="{{ route('store.view', ['slug' => auth('store_user')->user()->store->url_slug]) }}" target="_self" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Ver Minha Loja ↗</a>
                             <a href="{{ route('store.dashboard.logs', ['slug' => auth('store_user')->user()->store->url_slug]) }}" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Logs do Sistema</a>
                             <a href="{{ route('store.dashboard.novidades', ['slug' => auth('store_user')->user()->store->url_slug]) }}" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Novidades</a>
                         @elseif($key === 'catalogo')
