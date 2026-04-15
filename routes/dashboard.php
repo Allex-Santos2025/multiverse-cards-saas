@@ -3,8 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Livewire\Store\Dashboard\Index; // O componente novo do dashboard
 use App\Livewire\Store\Dashboard\Stock\ManageInventory; 
-use App\Livewire\Store\Dashboard\Stock\ManageSingleCard; // 1. IMPORTAÇÃO DO NOVO COMPONENTE
+use App\Livewire\Store\Dashboard\Stock\ManageSingleCard;
+use App\Livewire\Store\Dashboard\Stock\StockHistory; // O componente do histórico
 use App\Livewire\Store\Dashboard\Layout\VisualIdentity;
 
 /*
@@ -15,33 +17,14 @@ use App\Livewire\Store\Dashboard\Layout\VisualIdentity;
 |--------------------------------------------------------------------------
 */
 
-// 1. A ROTA PRINCIPAL (Home do Dashboard)
-Route::get('/', function ($slug) {
-    
-    // A. Validação da Loja
-    $store = DB::table('stores')->where('url_slug', $slug)->first();
-    if (!$store) return redirect()->route('home');
-
-    // B. Lógica dos Botões (Magic/Pokemon)
-    $gameSlug = request()->query('game_slug', 'magic');
-    $inactiveSlug = ($gameSlug === 'magic') ? 'pokemon' : 'magic';
-
-    // C. Paginação Vazia (Para não quebrar o @forelse da View)
-    $items = new LengthAwarePaginator([], 0, 15);
-
-    // D. Retorna a View direto (assim o @extends funciona perfeitamente)
-    return view('livewire.store.dashboard.index', [
-        'slug' => $slug,
-        'gameSlug' => $gameSlug,
-        'inactiveSlug' => $inactiveSlug,
-        'items' => $items
-    ]);
-
-})->name('store.dashboard'); 
-
+// 1. A ROTA PRINCIPAL (Home do Dashboard - Agora via Componente Livewire)
+Route::get('/', Index::class)->name('store.dashboard'); 
 
 // 2. O RESTO DAS ROTAS
 Route::name('store.dashboard.')->group(function () {
+
+    // --- NOVA ROTA: Histórico de Estoque (Global, sem depender do jogo) ---
+    Route::get('/historico-estoque', StockHistory::class)->name('stock.history');
 
     // --- GRUPO DE JOGOS E ESTOQUE ---
     Route::prefix('{game_slug}')->group(function () {
@@ -49,7 +32,7 @@ Route::name('store.dashboard.')->group(function () {
             
             Route::get('/', ManageInventory::class)->name('index');
             
-            // 2. ROTA DE GERENCIAMENTO INDIVIDUAL DA CARTA ADICIONADA AQUI
+            // ROTA DE GERENCIAMENTO INDIVIDUAL DA CARTA
             Route::get('/carta/{conceptSlug}', ManageSingleCard::class)->name('manage-card');
             
         });

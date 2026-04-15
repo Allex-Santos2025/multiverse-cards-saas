@@ -487,6 +487,28 @@ STAGE vMAJOR.MINOR.PATCH
 
 ---
 
+**Versão:** `alpha v0.1.12`  
+**Data:** 15/04/2026  
+**Descrição da Versão:** Consolidação do Módulo de Inteligência de Negócios (BI) do Lojista. Implementação do Dashboard principal e da tela de Histórico Consolidado de Estoque, com arquitetura Multi-TCG dinâmica, gráficos avançados (Stock Market UI) e tabelas responsivas de alta densidade.
+
+### Funcionalidades (Engenharia de Dados & Nova Entrega):
+
+* **Gráfico de Evolução Contínua (Stock Market UI):** Implementação de análise gráfica avançada (ApexCharts) para o histórico de estoque. O motor agora projeta uma linha do tempo ininterrupta, preenchendo automaticamente os "buracos" de dias sem snapshot com o último valor conhecido, garantindo a integridade visual da evolução a longo prazo. Inclui ferramentas de Zoom e Pan.
+* **Tabela de Alta Densidade Dinâmica:** Desenvolvimento de uma grid de dados responsiva ao comportamento do usuário. O sistema calcula o número de jogos selecionados no filtro e ajusta matematicamente o padding e a tipografia (text-sm para text-[9px]). Ultrapassando o limite visual, o sistema habilita automaticamente um scroll horizontal fluído (padrão Liga Magic).
+* **Filtros Inteligentes Multi-TCG (Blind Search):** O motor de PHP agora realiza uma varredura completa ("busca cega") no JSON do histórico da loja para extrair as chaves de jogos. Botões de filtros são gerados e coloridos dinamicamente na interface à medida que novos jogos (`game_id`) são adicionados ao banco, sem necessidade de manutenção de código.
+* **Sincronização Temporal do Servidor (UTC Fix):** Ajuste aprofundado no fuso horário do servidor Linux e na configuração `APP_TIMEZONE` do Laravel (`America/Sao_Paulo`). O sistema agora garante que os *Snapshots* automáticos e manuais registrem a data local precisa, evitando "saltos" temporais incorretos nos gráficos de evolução.
+* **Smart-Theming JavaScript:** Gráficos foram interligados ao sistema de cores (Dark/Light mode) do Tailwind. Eixos, textos e linhas de grade reagem instantaneamente e invertem seu contraste ao trocar o tema do painel administrativo.
+
+### Páginas Adicionadas / Inauguradas:
+
+**Módulo Administrativo da Loja (Dashboard):**
+* **Dashboard Principal (Store Index):** Layout inaugural do painel do lojista, contendo atalhos rápidos de entrada, cards de status de vendas (Buylist, Balcão, Aguardando Envio), gráfico de desempenho de 7 dias e distribuição de estoque em gráfico de Pizza (Pie Chart) centralizado.
+* **Histórico Consolidado de Estoque (Stock History):** Nova página dedicada à análise profunda de capital alocado. Exibe detalhamento item/valor fragmentado pelos jogos que a loja opera, com capacidade total de expansão visual e filtros independentes.
+
+### Correções e Melhorias (Patches):
+* Correção de renderização no Livewire (`extends` e `section` aplicados em substituição ao layout de slot vazio), evitando a quebra de telas ("tela branca") nos componentes do Dashboard.
+* Ajuste na extração de datas pelo JavaScript no gráfico detalhado (`substring(0, 10)`), blindando a renderização contra falhas de conversão de fuso do navegador.
+
 ## 📜 Histórico de Versões
 
 ### `alpha v0.0.1` — 21/12/2025  
