@@ -509,6 +509,23 @@ STAGE vMAJOR.MINOR.PATCH
 * Correção de renderização no Livewire (`extends` e `section` aplicados em substituição ao layout de slot vazio), evitando a quebra de telas ("tela branca") nos componentes do Dashboard.
 * Ajuste na extração de datas pelo JavaScript no gráfico detalhado (`substring(0, 10)`), blindando a renderização contra falhas de conversão de fuso do navegador.
 
+---
+
+**Versão:** `alpha v0.1.13`  
+**Data:** 16/04/2026  
+**Descrição da Versão:** Aprimoramento visual da vitrine e estabilização crítica do fluxo de cadastro B2B. Injeção de identificadores dinâmicos de tratamento e desconto em todo o front-end da loja, somados à recuperação estrutural do motor de busca para exibição de sugestões de catálogo (fantasmas) e sincronização do Dashboard.
+
+### Funcionalidades (Engenharia de Dados & Nova Entrega):
+
+* **Sistema Dinâmico de Badges (Vitrine):** Implementação de identificadores visuais premium em todas as telas de exibição de produtos da loja. O sistema agora mapeia os metadados do `StockItem` (`extras`, `specific`) e renderiza automaticamente selos de tratamento visual (**Foil**, **Foil Etched**) e promotores de conversão calculados dinamicamente (**Sale -X%**).
+
+### Correções e Melhorias (Patches):
+
+* **Correção Crítica no Motor de Busca (Global Search & Search Results):** Reestruturação da lógica de *gatekeeper* de sessão (`isLojista`). O componente voltou a validar corretamente a autenticação através do `current_store_id` e `store_id`, restaurando a renderização da grade de "Fantasmas" (cartas e paginação exaustiva de terrenos básicos do catálogo global não presentes no estoque) para o fluxo de cadastro do dono da loja.
+* **Sincronização em Tempo Real do Gráfico de Pizza (Dashboard Index):** Ajuste na manipulação da coleção de *Snapshots* no frontend (Blade). O componente Alpine.js/ApexCharts agora aponta estritamente para a extremidade correta do array invertido (`last()`), garantindo que o gráfico de distribuição espacial reflita imediatamente os novos volumes físicos de estoque após o recálculo do servidor.
+
+---
+
 ## 📜 Histórico de Versões
 
 ### `alpha v0.0.1` — 21/12/2025  

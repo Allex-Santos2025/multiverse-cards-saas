@@ -5,30 +5,50 @@ namespace App\Models\Catalog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Laravel\Scout\Searchable; // 1. IMPORTAÇÃO DO SCOUT AQUI
+use Laravel\Scout\Searchable;
 use App\Models\Set;
 
 class CatalogPrint extends Model
 {
-    use Searchable; // 2. LIGANDO O MOTOR NO MODEL
+    use Searchable;
 
     protected $table = 'catalog_prints';
 
     protected $fillable = [
         'concept_id', 'set_id', 'image_path', 'printed_name', 
         'language_code', 'collector_number', 
-        'rarity', 'type_line', 'cmc', 'mana_cost', // <--- Adicione estes
+        'rarity', 'type_line', 'cmc', 'mana_cost',
         'specific_type', 'specific_id',
     ];
 
     // ========================================================
-    // 3. A BARREIRA DE ENTRADA DO MEILISEARCH
-    // Só envia para o motor de busca se retornar TRUE.
+    // A BARREIRA DE ENTRADA DO MEILISEARCH
     // ========================================================
     public function shouldBeSearchable()
     {
         // Barra cartas que começam com A-, H-, 1-, 2-, 3- ou 4-
         return !preg_match('/^(A|H|1|2|3|4)-/', $this->printed_name);
+    }
+
+    // ========================================================
+    // O SEGREDO DO MEILISEARCH: Ensinando o que ele deve indexar
+    // ========================================================
+    public function toSearchableArray(): array
+    {
+        // 1. Pega as colunas nativas
+        $array = $this->toArray();
+
+        // 2. Carrega a relação específica (ex: MtgPrint, PkmPrint)
+        $specific = $this->specific;
+
+        // 3. Injeta as flags de Foil e Etched no índice do Meilisearch
+        $array['is_foil']   = $specific->is_foil ?? $specific->has_foil ?? false;
+        $array['is_etched'] = $specific->is_etched ?? $specific->has_etched ?? false;
+
+        // 4. Injeta o nome da edição para facilitar a busca e a renderização do card
+        $array['set_name']  = $this->set->name ?? null;
+
+        return $array;
     }
 
     // Adicione essa relação para facilitar a busca do estoque

@@ -1,4 +1,28 @@
 <div>
+    {{-- CSS DO EFEITO FOIL (Cards Menores) --}}
+    <style>
+        .efeito-foil-suave {
+            position: relative;
+            overflow: hidden;
+        }
+        .efeito-foil-suave::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg);
+            animation: brilho-foil 4s infinite;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+            z-index: 20;
+        }
+        @keyframes brilho-foil {
+            0% { left: -100%; }
+            20% { left: 200%; }
+            100% { left: 200%; }
+        }
+    </style>
+
     {{-- BREADCRUMB (Fundo: Secundária | Texto: Contraste da Secundária) --}}
     <div class="py-2" style="background-color: var(--cor-secundaria); color: var(--cor-texto-secundaria);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -44,7 +68,7 @@
                     </select>
                 </div>
 
-                {{-- Só mostra Raridade se estiver Desagrupado (Por Print) --}}
+                {{-- Só mostra Raridade se estiver Desagrupado --}}
                 @if($desagrupar)
                 <div class="flex items-center gap-2 transition-all">
                     <span class="text-[10px] font-bold uppercase opacity-80" style="color: inherit;">Raridade:</span>
@@ -120,6 +144,17 @@
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-4 lg:gap-6 pt-4 pb-12">
             @forelse($cartas as $carta)
 
+                {{-- LÓGICA BLINDADA: Define Etched e Foil anulando o outro --}}
+                @php
+                    $extrasEstoque = is_array($carta->menor_preco_extras ?? null) ? implode(' ', $carta->menor_preco_extras) : ($carta->menor_preco_extras ?? '');
+                    $extrasEsgotado = is_array($carta->ultimo_preco_extras ?? null) ? implode(' ', $carta->ultimo_preco_extras) : ($carta->ultimo_preco_extras ?? '');
+                    
+                    $extrasStr = strtolower($extrasEstoque . ' ' . $extrasEsgotado);
+
+                    $isEtched = str_contains($extrasStr, 'etched') || ($carta->is_etched ?? false);
+                    $isFoil   = (str_contains($extrasStr, 'foil') || ($carta->is_foil ?? false)) && !$isEtched;
+                @endphp
+
                 {{-- ESTADO 1: Morfídeo (Sem estoque, sem preço) --}}
                 @if($carta->total_estoque === 0 && !$carta->ultimo_preco)
                     <a href="{{ route('store.catalog.product', ['slug' => $loja->url_slug,'gameSlug' => $gameSlug, 'conceptSlug' => $carta->slug_seguro ]) }}" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false" 
@@ -150,15 +185,26 @@
                          :class="hover ? 'z-[150] shadow-2xl' : 'z-10 border-gray-200 dark:border-slate-700'"
                          :style="hover ? 'border-color: var(--cor-cta);' : 'border-color: var(--cor-3, #e5e7eb);'">
                         <div class="relative p-3 pb-0 overflow-visible">
+                            
+                            {{-- TORRE DE BADGES EMPILHADAS (Fitas Pousando) --}}
                             <div class="absolute top-2 left-0 z-[60] flex flex-col gap-1 transition-opacity duration-300" :class="hover ? 'opacity-0' : 'opacity-100'">
-                                @if($carta->desconto > 0)
+                                @if(($carta->desconto ?? 0) > 0)
                                     <span class="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-r shadow-md uppercase tracking-tighter">-{{ number_format($carta->desconto, 0) }}%</span>
                                 @endif
-                                @if($carta->is_foil)
-                                    <span class="bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 text-[9px] font-black px-2 py-0.5 rounded shadow-sm">FOIL</span>
+                                @if($isFoil)
+                                    <span class="bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 text-[9px] font-black px-2 py-0.5 rounded-r shadow-sm">FOIL</span>
+                                @endif
+                                @if($isEtched)
+                                    <span class="bg-gradient-to-r from-amber-500 to-orange-700 text-white text-[9px] font-black px-2 py-0.5 rounded-r shadow-sm">FOIL ETCHED</span>
                                 @endif
                             </div>
-                            <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-auto aspect-[2.5/3.5] object-cover rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-500 transform relative z-50 bg-gray-100 dark:bg-gray-800" :class="hover ? 'scale-[2] shadow-2xl ring-2 ring-black/10' : ''" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
+
+                            {{-- WRAPPER DA IMAGEM PARA O EFEITO FOIL (Isola o zoom e o brilho) --}}
+                            <div class="w-full h-auto aspect-[2.5/3.5] rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-500 transform relative z-50 bg-gray-100 dark:bg-gray-800 {{ $isFoil || $isEtched ? 'efeito-foil-suave border border-yellow-400/50' : '' }}" 
+                                 :class="hover ? 'scale-[2] shadow-2xl ring-2 ring-black/10' : ''">
+                                <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-full object-cover rounded-lg" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
+                            </div>
+
                         </div>
                         <div class="p-3 flex flex-col flex-grow justify-between gap-3 transition-opacity duration-300 relative z-[40] bg-white dark:bg-slate-800 rounded-b-xl" :class="hover ? 'opacity-0' : 'opacity-100'">
                             <div>
@@ -172,7 +218,7 @@
                                 <span class="text-[10px] font-bold opacity-60" style="color: var(--cor-texto-principal);">{{ $carta->total_estoque }} un.</span>
                                 <div class="flex flex-col items-end">
                                     <span class="text-[9px] uppercase font-bold opacity-50" style="color: var(--cor-texto-principal);">A partir de</span>
-                                    @if($carta->desconto > 0)
+                                    @if(($carta->desconto ?? 0) > 0)
                                         <span class="text-[10px] text-gray-400 line-through font-bold">R$ {{ number_format($carta->menor_preco, 2, ',', '.') }}</span>
                                         <span class="text-base font-black tracking-tight leading-none" style="color: var(--cor-1);">R$ {{ number_format($carta->preco_final, 2, ',', '.') }}</span>
                                     @else
@@ -191,13 +237,28 @@
                         <div class="absolute inset-x-0 top-1/3 flex justify-center z-[60] transition-opacity duration-300" :class="hover ? 'opacity-0' : 'opacity-100'">
                             <span class="bg-red-600 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full shadow-lg border border-red-800">Esgotado</span>
                         </div>
+                        
                         <div class="relative p-3 pb-0 overflow-visible opacity-80 transition-opacity duration-300" :class="hover ? 'opacity-100' : ''">
+                            
+                            {{-- TORRE DE BADGES EMPILHADAS (Fitas Pousando) --}}
                             <div class="absolute top-2 left-0 z-[60] flex flex-col gap-1 transition-opacity duration-300" :class="hover ? 'opacity-0' : 'opacity-100'">
-                                @if($carta->is_foil)
-                                    <span class="bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 text-[9px] font-black px-2 py-0.5 rounded shadow-sm">FOIL</span>
+                                @if(($carta->desconto ?? 0) > 0)
+                                    <span class="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-r shadow-md uppercase tracking-tighter">-{{ number_format($carta->desconto, 0) }}%</span>
+                                @endif
+                                @if($isFoil)
+                                    <span class="bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 text-[9px] font-black px-2 py-0.5 rounded-r shadow-sm">FOIL</span>
+                                @endif
+                                @if($isEtched)
+                                    <span class="bg-gradient-to-r from-amber-500 to-orange-700 text-white text-[9px] font-black px-2 py-0.5 rounded-r shadow-sm">FOIL ETCHED</span>
                                 @endif
                             </div>
-                            <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-auto aspect-[2.5/3.5] object-cover rounded-lg shadow-sm transition-all duration-500 transform relative z-50 bg-gray-100 dark:bg-gray-800" :class="hover ? 'scale-[1.7] shadow-xl ring-1 ring-black/10' : ''" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
+
+                            {{-- WRAPPER DA IMAGEM PARA O EFEITO FOIL --}}
+                            <div class="w-full h-auto aspect-[2.5/3.5] rounded-lg shadow-sm transition-all duration-500 transform relative z-50 bg-gray-100 dark:bg-gray-800 {{ $isFoil || $isEtched ? 'efeito-foil-suave border border-yellow-400/50' : '' }}" 
+                                 :class="hover ? 'scale-[1.7] shadow-xl ring-1 ring-black/10' : ''">
+                                <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-full object-cover rounded-lg" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
+                            </div>
+
                         </div>
                         <div class="p-3 flex flex-col flex-grow justify-between gap-3 transition-opacity duration-300 bg-white dark:bg-slate-800 relative z-[40] rounded-b-xl" :class="hover ? 'opacity-0' : 'opacity-100'">
                             <div>

@@ -2,6 +2,29 @@
 {{-- A REGRA DE OURO DO LIVEWIRE: UMA DIV PARA GOVERNAR TODAS                   --}}
 {{-- ========================================================================== --}}
 <div>
+    {{-- CSS DO EFEITO FOIL (Cards da Home) --}}
+    <style>
+        .efeito-foil-suave {
+            position: relative;
+            overflow: hidden;
+        }
+        .efeito-foil-suave::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg);
+            animation: brilho-foil 4s infinite;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+            z-index: 20;
+        }
+        @keyframes brilho-foil {
+            0% { left: -100%; }
+            20% { left: 200%; }
+            100% { left: 200%; }
+        }
+    </style>
 
     {{-- ========================================================================== --}}
     {{-- 1. HERO BANNER & OFERTAS SELADOS (TOPO)                                    --}}
@@ -59,7 +82,7 @@
                         </h2>
                     </div>
 
-                    {{-- Oferta 1: Black Lotus (Mantém tons de alerta vermelhos fixos para "Tempo esgotando") --}}
+                    {{-- Oferta 1: Black Lotus --}}
                     <div x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false" 
                          class="bg-white border border-red-200 rounded-lg shadow-md relative block cursor-pointer transition-all duration-300"
                          :class="open ? 'z-[100] border-red-500 shadow-2xl' : 'z-20'">
@@ -78,7 +101,7 @@
                         </div>
                     </div>
 
-                    {{-- Oferta 2: Charizard (Destaque atrelado à marca da loja) --}}
+                    {{-- Oferta 2: Charizard --}}
                     <div x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false"
                          class="bg-white border border-gray-200 rounded-lg shadow-sm relative block cursor-pointer transition-all duration-300"
                          :class="open ? 'z-[100] border-main-1 shadow-2xl' : 'z-20'">
@@ -101,39 +124,56 @@
                 <div class="relative overflow-visible">
                     <div class="flex justify-between items-end mb-6 border-b border-gray-200 pb-2">
                         <h2 class="text-2xl font-black text-gray-800 uppercase tracking-tight">Últimas Adições</h2>
-                        <a href="#" class="text-main-1 text-xs font-black hover:underline uppercase tracking-widest">Ver todas</a>
+                        <a href="{{ route('store.catalog.search', ['slug' => $loja->url_slug, 'gameSlug' => 'magic']) }}" class="text-main-1 text-xs font-black hover:underline uppercase tracking-widest">Ver todas</a>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-6 overflow-visible">
                         @forelse ($ultimasAdicoes as $item)
                         @php
                             $nomeItem = $item->catalogPrint->printed_name 
-                                     ?? $item->concept->name 
+                                     ?? $item->catalogPrint->concept->name 
                                      ?? 'Nome Indisponível';
 
                             $imagemBruta = $item->catalogPrint->image_url 
                                         ?? $item->catalogPrint->image_path 
-                                        ?? $item->concept->image_url 
-                                        ?? $item->concept->image_path 
-                                        ?? 'https://cards.scryfall.io/large/front/3/4/3462a3d0-5552-49fa-9eb7-100960c55891.jpg?1562828007';
+                                        ?? 'https://placehold.co/250x350/eeeeee/999999?text=X';
 
                             $imagemFinal = filter_var($imagemBruta, FILTER_VALIDATE_URL) 
                                          ? $imagemBruta 
                                          : asset($imagemBruta); 
+
+                            // LÓGICA DE BADGES
+                            $extrasRaw = $item->extras;
+                            $extrasStr = strtolower(is_array($extrasRaw) ? implode(' ', $extrasRaw) : (string)$extrasRaw);
+                            
+                            $catalogEtched = false;
+                            $catalogFoil   = false;
+                            if($item->catalogPrint && $item->catalogPrint->specific) {
+                                $catalogEtched = $item->catalogPrint->specific->is_etched ?? $item->catalogPrint->specific->has_etched ?? false;
+                                $catalogFoil   = $item->catalogPrint->specific->is_foil ?? $item->catalogPrint->specific->has_foil ?? false;
+                            }
+
+                            $isEtched = str_contains($extrasStr, 'etched') || $catalogEtched;
+                            $isFoil   = (str_contains($extrasStr, 'foil') || $catalogFoil) && !$isEtched;
                         @endphp
 
-                        <a href="#" x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false"
+                        <a href="{{ route('store.catalog.product', ['slug' => $loja->url_slug, 'gameSlug' => 'magic', 'conceptSlug' => $item->catalogPrint->concept->slug ?? 'card']) }}" 
+                           x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false"
                            class="block bg-white border border-gray-100 rounded-xl p-3 shadow-sm transition-all duration-300 h-full flex flex-col justify-between relative"
                            :class="hover ? 'z-[150] shadow-2xl border-main-1' : 'z-10'">
                             
                             <div class="relative aspect-[2.5/3.5] bg-gray-50 mb-4 overflow-visible">
-                                {{-- FLAGS --}}
+                                {{-- TORRE DE BADGES EMPILHADAS (Fitas) --}}
                                 <div class="absolute top-2 left-0 z-[60] flex flex-col gap-1 transition-opacity duration-300" :class="hover ? 'opacity-0' : 'opacity-100'">
-                                    @if($item->is_promotion && $item->discount_percent > 0)
+                                    @if($item->is_promotion && ($item->discount_percent ?? 0) > 0)
                                         <span class="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-r shadow-md uppercase tracking-tighter">-{{ number_format($item->discount_percent, 0) }}%</span>
                                     @endif
 
-                                    @if(!empty($item->extras['foil']))
-                                        <span class="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white text-[10px] font-black px-2 py-0.5 rounded-r shadow-md uppercase tracking-widest">Foil</span>
+                                    @if($isFoil)
+                                        <span class="bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 text-[9px] font-black px-2 py-0.5 rounded-r shadow-md uppercase tracking-widest">Foil</span>
+                                    @endif
+
+                                    @if($isEtched)
+                                        <span class="bg-gradient-to-r from-amber-500 to-orange-700 text-white text-[10px] font-black px-2 py-0.5 rounded-r shadow-md uppercase tracking-widest">Foil Etched</span>
                                     @endif
                                 </div>
                                 
@@ -143,17 +183,19 @@
                                     <span class="block text-[8px] uppercase tracking-tighter text-gray-300 mt-0.5 font-bold">UNID</span>
                                 </div>
                                 
-                                <img src="{{ $imagemFinal }}" 
-                                     class="w-full h-full object-cover rounded-lg shadow-sm transition-all duration-500 transform relative z-50"
+                                {{-- WRAPPER DA IMAGEM PARA O EFEITO FOIL --}}
+                                <div class="w-full h-full rounded-lg transition-all duration-500 transform relative z-50 {{ $isFoil || $isEtched ? 'efeito-foil-suave border border-yellow-400/20' : '' }}" 
                                      :class="hover ? 'scale-[1.7] shadow-[0_25px_60px_rgba(0,0,0,0.8)] ring-1 ring-black' : ''">
+                                    <img src="{{ $imagemFinal }}" alt="{{ $nomeItem }}" class="w-full h-full object-cover rounded-lg shadow-sm">
+                                </div>
                             </div>
                             
                             <div class="text-center mt-auto transition-opacity duration-300" :class="hover ? 'opacity-0' : 'opacity-100'">
                                 <h3 class="text-xs font-bold text-gray-600 line-clamp-1 uppercase px-1" title="{{ $nomeItem }}">{{ $nomeItem }}</h3>
                                 
-                                @if($item->is_promotion && $item->discount_percent > 0)
+                                @if($item->is_promotion && ($item->discount_percent ?? 0) > 0)
                                     <span class="text-[10px] text-gray-400 line-through font-bold uppercase tracking-tight block mt-1">R$ {{ number_format($item->price, 2, ',', '.') }}</span>
-                                    <p class="text-lg font-black text-main-1 mt-0 tracking-tighter">R$ {{ number_format($item->final_price, 2, ',', '.') }}</p>
+                                    <p class="text-lg font-black text-main-1 mt-0 tracking-tighter">R$ {{ number_format($item->final_price ?? $item->price, 2, ',', '.') }}</p>
                                 @else
                                     <p class="text-lg font-black text-main-1 mt-1 tracking-tighter">R$ {{ number_format($item->price, 2, ',', '.') }}</p>
                                 @endif
@@ -168,7 +210,7 @@
                     </div>
                 </div>
 
-                {{-- 2.2 PRATELEIRAS CONFIGURÁVEIS (Estáticas por enquanto) --}}
+                {{-- 2.2 PRATELEIRAS CONFIGURÁVEIS (Estáticas) --}}
                 @foreach(['Destaques Pokémon', 'Mais Procuradas', 'Commander Staples', 'Yu-Gi-Oh! TCG', 'Energias & Terrenos'] as $titulo)
                 <div class="relative overflow-visible">
                     <div class="flex justify-between items-end mb-4 border-b border-gray-200 pb-2">
@@ -232,19 +274,16 @@
     </section>
 
     {{-- ========================================================================== --}}
-    {{-- 4. NEWSLETTER                                                              --}}
+    {{-- 4. NEWSLETTER (COM FAIXA VERMELHA DUPLA)                                   --}}
     {{-- ========================================================================== --}}
-    <section class="bg-secondary-1 py-12 border-t-4 border-main-1 relative z-0">
+    <section class="bg-secondary-1 py-12 border-t-4 border-b-2 border-red-600 relative z-0 mb-0">
         <div class="max-w-3xl mx-auto px-4 text-center">
             <h2 class="text-2xl md:text-3xl font-black text-white uppercase mb-6 tracking-tight">Inscreva-se na nossa Newsletter</h2>
             <form class="flex flex-col sm:flex-row gap-2 max-w-xl mx-auto">
-                <input type="email" placeholder="Seu melhor e-mail..." class="flex-1 px-4 py-3 rounded-md focus:outline-none focus:border-main-1 focus:ring-1 focus:ring-main-1 text-gray-800 font-bold uppercase text-[10px]">
+                <input type="email" placeholder="Seu melhor e-mail..." class="flex-1 px-4 py-3 rounded-md focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-gray-800 font-bold uppercase text-[10px]">
                 <button type="button" class="bg-accent-1 hover:opacity-80 text-gray-900 font-black px-8 py-3 rounded-md transition-colors uppercase tracking-wide">Assinar</button>
             </form>
         </div>
     </section>
 
 </div>
-{{-- ========================================================================== --}}
-{{-- FIM DA DIV PAI DO LIVEWIRE                                                 --}}
-{{-- ========================================================================== --}}

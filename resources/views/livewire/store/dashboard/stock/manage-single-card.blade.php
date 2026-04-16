@@ -241,13 +241,7 @@
                                 return this.localExtras
                                     .map(i => i.toLowerCase())
                                     .includes(v);
-                            },
-                            isDisabled(val) {
-                                const v = val.toLowerCase();
-                                if (v === 'foil')   return true;
-                                if (v === 'etched') return true;
-                                return false;
-                            },
+                            }
                          }"
                          @scroll.window="open = false"
                          @resize.window="open = false">
@@ -267,7 +261,6 @@
                                  :style="`left: ${style.left}; top: ${style.top}; width: ${style.width};`"
                                  style="display: none;">
 
-                                {{-- Aplicado no-scrollbar no Teleport --}}
                                 <div class="max-h-40 overflow-y-auto no-scrollbar p-1.5 bg-white dark:bg-[#1e293b]">
                                     @php
                                         $selectedExtrasLower = array_map('strtolower', $selectedExtras);
@@ -277,11 +270,9 @@
                                     @foreach($availableExtras as $value => $label)
                                         @php
                                             $lowerValue   = strtolower($value);
-                                            $isFoil       = $lowerValue === 'foil';
-                                            $isEtched     = $lowerValue === 'foil_etched';
-
+                                            // Lógica agnóstica: verifica se tá bloqueado e se tá ativo
                                             $isDisabled   = in_array($lowerValue, $disabledExtrasLower, true);
-                                            $etchedActive = in_array('foil_etched', $selectedExtrasLower, true);
+                                            $isActive     = in_array($lowerValue, $selectedExtrasLower, true);
                                         @endphp
 
                                         <label class="flex items-center gap-3 p-2.5 rounded-lg transition-colors"
@@ -292,7 +283,7 @@
                                                 type="checkbox"
                                                 class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-0 shrink-0 pointer-events-none transition-all"
                                                 @if($isDisabled)
-                                                    @if($isEtched && $etchedActive)
+                                                    @if($isActive)
                                                         checked disabled
                                                     @else
                                                         disabled
@@ -305,7 +296,9 @@
                                             <span class="text-[11px] font-bold select-none font-sans">{{ $label }}</span>
 
                                             @if($isDisabled)
-                                                <span class="ml-auto text-[8px] font-black uppercase opacity-50">fixo</span>
+                                                <span class="ml-auto text-[8px] font-black uppercase {{ $isActive ? 'text-blue-500' : 'opacity-40' }}">
+                                                    {{ $isActive ? 'Fixo' : 'Incompatível' }}
+                                                </span>
                                             @endif
                                         </label>
                                     @endforeach

@@ -213,7 +213,9 @@ class SetPage extends Component
                 $carta->menor_preco = $precoBase;
                 $carta->desconto = $percentualDesconto;
 
-                $carta->is_foil = (bool) str_contains(strtolower($carta->menor_preco_extras ?? ''), 'foil');
+                $extrasRaw = strtolower($carta->menor_preco_extras ?? '');
+                $carta->is_etched = str_contains($extrasRaw, 'etched');
+                $carta->is_foil   = str_contains($extrasRaw, 'foil') && !$carta->is_etched;
 
                 // --- Lógica de Nomes PT/EN e Geração de Slug Condicional ---
                 $englishName = $carta->concept->name ?? $carta->printed_name;

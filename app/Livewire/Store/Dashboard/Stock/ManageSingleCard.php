@@ -156,6 +156,11 @@ class ManageSingleCard extends Component
         if ($this->isEditing) return;
 
         $mtgData = DB::table('mtg_prints')->where('id', $print->specific_id)->first();
+        
+        // Zera sempre para não herdar travas da carta clicada anteriormente
+        $this->selectedExtras = [];
+        $this->disabledExtras = [];
+
         if (!$mtgData || empty($mtgData->prices)) {
             // Sem info de preço: não infere nada, só limpa etched que possa ter sobrado
             $this->selectedExtras = array_values(
@@ -172,52 +177,45 @@ class ManageSingleCard extends Component
         $hasFoil   = !empty($prices['usd_foil']);
         $hasEtched = !empty($prices['usd_etched']);
 
-        // Começa sempre limpando o que vier de antes
-        $this->selectedExtras = [];
-
         /**
          * Cenário 1: carta antiga, só NORMAL
-         * - usd      = OK
-         * - usd_foil = vazio
-         * - usd_etched = vazio
-         * => nenhum extra marcado, foil e etched não são opções reais
          */
         if ($hasNormal && !$hasFoil && !$hasEtched) {
-            $this->selectedExtras = [];
             $this->disabledExtras = ['foil', 'foil_etched'];
             return;
         }
 
         /**
          * Cenário 2: carta que pode ser NORMAL ou FOIL (padrão moderno)
-         * - usd      = OK
-         * - usd_foil = OK
-         * - usd_etched = vazio
-         * => etched nunca é opção; foil fica a critério do lojista (não marca automático)
          */
         if ($hasNormal && $hasFoil && !$hasEtched) {
-            $this->selectedExtras = []; // deixa o lojista escolher marcar FOIL ou não
             $this->disabledExtras = ['foil_etched'];
             return;
         }
 
         /**
          * Cenário 3: carta só existe em FOIL ETCHED
-         * - usd_etched = OK
-         * - usd       = vazio
-         * - usd_foil  = vazio
-         * => fixa foil_etched
          */
         if ($hasEtched && !$hasNormal && !$hasFoil) {
             $this->selectedExtras = ['foil_etched'];
-            $this->disabledExtras = ['foil', 'foil_etched'];
+            $this->disabledExtras = ['foil', 'foil_etched']; // Trava ambos para não mudar
+            return;
+        }
+
+        /**
+         * Cenário 4 (NOVO): Carta só existe em FOIL PADRÃO (ex: Gift Pack 2017)
+         * - usd = vazio
+         * - usd_etched = vazio
+         * - usd_foil = OK
+         */
+        if ($hasFoil && !$hasNormal && !$hasEtched) {
+            $this->selectedExtras = ['foil']; // Marca automático
+            $this->disabledExtras = ['foil', 'foil_etched']; // Trava o foil para não desmarcar e o etched para não marcar
             return;
         }
 
         /**
          * Qualquer outro cenário híbrido estranho:
-         * - por segurança: não marca foil_etched sozinho
-         * - não marca foil automático
          */
         $this->selectedExtras = array_values(
             array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'foil_etched')
@@ -269,7 +267,7 @@ class ManageSingleCard extends Component
 
         $usd = 0;
         $extrasLower = array_map('strtolower', $this->selectedExtras);
-        $isEtched = in_array('etched', $extrasLower);
+        $isEtched = in_array('etched', $extrasLower) || in_array('foil_etched', $extrasLower); // Fallback caso Blade use 'foil_etched'
         $isFoil = in_array('foil', $extrasLower);
 
         if ($mtgData && !empty($mtgData->prices)) {

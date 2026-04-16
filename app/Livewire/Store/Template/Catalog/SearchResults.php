@@ -14,8 +14,9 @@ class SearchResults extends Component
 {
     public $slug, $gameSlug, $query;
     public $loja;
-    public $exactResults   = [];
-    public $relatedResults = [];
+    public array $estoqueResults = [];
+    public array $globalResults  = [];
+    public bool  $isLojista      = false;
 
     public function mount($slug, $gameSlug)
     {
@@ -24,6 +25,9 @@ class SearchResults extends Component
         $this->loja     = Store::where('url_slug', $slug)->firstOrFail();
         $this->query    = request('q', '');
 
+        $this->isLojista = auth('store_user')->check()
+            && auth('store_user')->user()->store?->id === $this->loja->id;
+
         if (mb_strlen(trim($this->query)) >= 2) {
             $this->runSearch();
         }
@@ -31,11 +35,10 @@ class SearchResults extends Component
 
     private function runSearch(): void
     {
-        $term = trim($this->query);
-        
-        // Regex Inteligente: Isola números se o cliente buscar "#292" ou "(292)"
+        $term         = trim($this->query);
         $numberFilter = null;
-        if (preg_match('/^(.*?)(?:[\s\(\)#]+)(\d+)[\)]*$/', $term, $m)) {
+
+        if (preg_match('/^(.*?)(?:[\s|$$|#]+)(\d+)[$|]*$/', $term, $m)) {
             $termToSearch = trim($m[1]);
             $numberFilter = trim($m[2]);
         } else {
@@ -46,109 +49,189 @@ class SearchResults extends Component
         $hits = collect($raw['hits'] ?? [])->keyBy('id');
 
         if ($hits->isEmpty() && $numberFilter) {
-            $raw = CatalogConcept::search($term)->raw();
-            $hits = collect($raw['hits'] ?? [])->keyBy('id');
+            $raw          = CatalogConcept::search($term)->raw();
+            $hits         = collect($raw['hits'] ?? [])->keyBy('id');
             $numberFilter = null;
         }
 
         if ($hits->isEmpty()) return;
 
-        $conceptIds = $hits->keys()->all();
-        
-        // A MESMA MÁGICA DA SINGLE PAGE: Separa os Terrenos e junta as Cartas Comuns
+        $conceptIds           = $hits->keys()->all();
         $estoqueVirtualNumber = 'CASE WHEN cp.type_line LIKE "%Basic Land%" THEN cp.collector_number ELSE "" END';
 
-        // 1. Puxa O ESTOQUE REAL agrupado corretamente
+        // Busca estoque real agrupado por conceito + set + virtual_number
+        // Inclui extras e discount_percent para foil/etched/desconto
         $stocksRaw = StockItem::selectRaw("
                 cp.concept_id,
+                cp.set_id,
                 MAX(cp.type_line) as type_line,
-                $estoqueVirtualNumber as virtual_number,
-                MIN(stock_items.price) as menor_preco,
-                MAX(stock_items.price) as ultimo_preco,
+                {$estoqueVirtualNumber} as virtual_number,
                 SUM(stock_items.quantity) as total_estoque,
+                MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco,
+                MAX(stock_items.price) as ultimo_preco,
+                SUBSTRING_INDEX(GROUP_CONCAT(
+                    CASE WHEN stock_items.quantity > 0 THEN stock_items.extras END
+                    ORDER BY stock_items.price ASC SEPARATOR '|||'
+                ), '|||', 1) as menor_preco_extras,
+                SUBSTRING_INDEX(GROUP_CONCAT(
+                    CASE WHEN stock_items.quantity > 0 THEN stock_items.discount_percent END
+                    ORDER BY stock_items.price ASC SEPARATOR '|||'
+                ), '|||', 1) as menor_preco_desconto,
                 SUBSTRING_INDEX(GROUP_CONCAT(cp.id ORDER BY stock_items.price ASC SEPARATOR ','), ',', 1) as print_id_in_stock
             ")
             ->join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
             ->where('stock_items.store_id', $this->loja->id)
             ->whereIn('cp.concept_id', $conceptIds)
-            ->where('stock_items.quantity', '>', 0) // IGNORA TUDO QUE NÃO TEM ESTOQUE!
             ->when($numberFilter, fn($q) => $q->where('cp.collector_number', $numberFilter))
-            ->groupBy('cp.concept_id', DB::raw($estoqueVirtualNumber))
+            ->groupBy('cp.concept_id', 'cp.set_id', DB::raw($estoqueVirtualNumber))
             ->get();
 
-        // 2. Traz os Prints para as imagens e traduções
-        $printsFisicos = CatalogPrint::whereIn('concept_id', $conceptIds)->get();
+        $stocksByConcept = $stocksRaw->groupBy('concept_id');
 
-        $termNormalized = mb_strtolower($termToSearch);
-        $exact   = [];
-        $related = [];
+        $estoque = [];
+        $global  = [];
 
-        // 3. Monta os Cards apenas pro que existe no Banco da Loja
-        foreach ($stocksRaw as $row) {
-            $hit = $hits->get($row->concept_id);
-            if (!$hit) continue;
+        foreach ($hits as $hit) {
+            $cId         = $hit['id'];
+            $isBasicLand = preg_match('/(Plains|Island|Swamp|Mountain|Forest)/i', $hit['name'])
+                || (isset($hit['type_line']) && stripos($hit['type_line'], 'Basic Land') !== false);
 
-            $isBasicLand = stripos($row->type_line, 'Basic Land') !== false;
-            $vNum = $row->virtual_number;
-            
-            // Puxa as traduções do bloco específico
-            $printsDoConceito = $printsFisicos->where('concept_id', $row->concept_id);
-            if ($isBasicLand && $vNum !== "") {
-                $printsDoConceito = $printsDoConceito->where('collector_number', $vNum);
+            // ESTOQUE REAL (disponível e esgotado)
+            if ($stocksByConcept->has($cId)) {
+                foreach ($stocksByConcept->get($cId) as $row) {
+                    $vNum      = $row->virtual_number;
+                    $printInfo = CatalogPrint::with('set')->find($row->print_id_in_stock);
+
+                    if (!$printInfo) continue;
+
+                    $nomeEn = $hit['name'] ?? '';
+                    $nomePt = $printInfo->printed_name ?? $hit['name_pt'] ?? $nomeEn;
+
+                    if ($isBasicLand && $vNum !== '') {
+                        $nomeEn     .= ' #' . $vNum;
+                        $nomePt     .= ' #' . $vNum;
+                        $conceptSlug = Str::slug($hit['name']) . '-' . $vNum;
+                    } else {
+                        $conceptSlug = $this->cleanSlug($hit['slug'] ?? Str::slug($nomeEn));
+                    }
+
+                    $imagemFinal = $printInfo->image_path
+                        ? (filter_var($printInfo->image_path, FILTER_VALIDATE_URL) ? $printInfo->image_path : asset($printInfo->image_path))
+                        : 'https://placehold.co/250x350/eeeeee/999999?text=X';
+
+                    // Foil / Etched / Desconto
+                    $extrasStr  = strtolower($row->menor_preco_extras ?? '');
+                    $isEtched   = str_contains($extrasStr, 'etched');
+                    $isFoil     = str_contains($extrasStr, 'foil') && !$isEtched;
+                    $desconto   = (float) ($row->menor_preco_desconto ?? 0);
+                    $precoBase  = (float) ($row->menor_preco ?? 0);
+                    $precoFinal = $desconto > 0 ? $precoBase * (1 - ($desconto / 100)) : $precoBase;
+
+                    $estoque[] = [
+                        'nome_localizado' => $nomePt,
+                        'name'            => $nomeEn,
+                        'set_name'        => $printInfo->set?->name,
+                        'imagem_final'    => $imagemFinal,
+                        'total_estoque'   => (int) $row->total_estoque,
+                        'menor_preco'     => $precoBase,
+                        'ultimo_preco'    => (float) ($row->ultimo_preco ?? 0),
+                        'preco_final'     => $precoFinal,
+                        'desconto'        => $desconto,
+                        'is_foil'         => $isFoil,
+                        'is_etched'       => $isEtched,
+                        'status'          => $row->total_estoque > 0 ? 'available' : 'out_of_stock',
+                        'url'             => route('store.catalog.product', [
+                            'slug'        => $this->slug,
+                            'gameSlug'    => $this->gameSlug,
+                            'conceptSlug' => $conceptSlug,
+                        ]),
+                    ];
+                }
             }
 
-            $printPt = $printsDoConceito->first(fn($p) => in_array(strtolower($p->language_code), ['pt', 'pt-br']) && !empty(trim($p->printed_name)));
-            $printImg = $printsFisicos->where('id', $row->print_id_in_stock)->first() ?? $printsDoConceito->first();
-            
-            $nomeEn = $hit['name'] ?? '';
-            $nomePt = $printPt->printed_name ?? $hit['name_pt'] ?? $nomeEn;
-            
-            if ($isBasicLand && $vNum !== "") {
-                $nomeEn .= ' #' . $vNum;
-                $nomePt .= ' #' . $vNum;
-                
-                $tiposBasicos = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
-                $tipoEncontrado = null;
-                foreach ($tiposBasicos as $tipo) {
-                    if (stripos($row->type_line, $tipo) !== false) {
-                        $tipoEncontrado = $tipo; break;
+            // FANTASMAS — só para lojista
+            if ($this->isLojista) {
+                if (!$isBasicLand) {
+                    if (!$stocksByConcept->has($cId)) {
+                        $prints   = CatalogPrint::where('concept_id', $cId)->get();
+                        $global[] = $this->generateGhostData($hit, $prints);
+                    }
+                } else {
+                    $allNumbers = CatalogPrint::where('concept_id', $cId)
+                        ->when($numberFilter, fn($q) => $q->where('collector_number', $numberFilter))
+                        ->distinct()
+                        ->pluck('collector_number');
+
+                    $numbersInStore = $stocksByConcept->has($cId)
+                        ? $stocksByConcept->get($cId)->pluck('virtual_number')->map(fn($n) => (string) $n)->all()
+                        : [];
+
+                    foreach ($allNumbers as $num) {
+                        if (!in_array((string) $num, $numbersInStore)) {
+                            $printsDesteNumero = CatalogPrint::where('concept_id', $cId)
+                                ->where('collector_number', $num)
+                                ->get();
+                            $global[] = $this->generateGhostData($hit, $printsDesteNumero, (string) $num);
+                        }
                     }
                 }
-                $conceptSlug = Str::slug($tipoEncontrado ?: $hit['name']) . '-' . $vNum;
-            } else {
-                $conceptSlug = $this->cleanSlug($hit['slug']);
-            }
-            
-            $imagemBruta = $printImg->image_url ?? $printImg->image_path ?? null;
-            $imagemFinal = $imagemBruta ? (filter_var($imagemBruta, FILTER_VALIDATE_URL) ? $imagemBruta : asset($imagemBruta)) : 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
-
-            $item = [
-                'nome_localizado' => $nomePt,
-                'name'            => $nomeEn,
-                'set_name'        => null,
-                'imagem_final'    => $imagemFinal,
-                'total_estoque'   => $row->total_estoque,
-                'menor_preco'     => $row->menor_preco,
-                'ultimo_preco'    => $row->ultimo_preco,
-                'status'          => 'available', // Tudo que passa agora tem estoque
-                'url'             => route('store.catalog.product', [
-                    'slug'        => $this->slug,
-                    'gameSlug'    => $this->gameSlug,
-                    'conceptSlug' => $conceptSlug,
-                ]),
-            ];
-
-            $namePtCheck = mb_strtolower($hit['name_pt'] ?? '');
-            $nameEnCheck = mb_strtolower($hit['name'] ?? '');
-            if ($namePtCheck === $termNormalized || $nameEnCheck === $termNormalized) {
-                $exact[] = $item;
-            } else {
-                $related[] = $item;
             }
         }
 
-        $this->exactResults   = $exact;
-        $this->relatedResults = $related;
+        $this->estoqueResults = collect($estoque)
+            ->sortByDesc(fn($i) => $i['status'] === 'available' ? 1 : 0)
+            ->values()->all();
+
+        $this->globalResults = collect($global)->values()->all();
+    }
+
+    private function generateGhostData($hit, $prints, $vNum = null): array
+    {
+        $nomeEn   = $hit['name'] ?? '';
+        $printEn  = $prints->filter(fn($p) => strtolower($p->language_code) === 'en' && !empty($p->image_path))->sortByDesc('id')->first();
+        $printImg = $printEn
+            ?? $prints->filter(fn($p) => !empty($p->image_path))->sortByDesc('id')->first()
+            ?? $prints->first();
+        $printPt = $prints->filter(fn($p) =>
+            in_array(strtolower($p->language_code), ['pt', 'pt-br', 'pt_br']) &&
+            !empty(trim($p->printed_name ?? ''))
+        )->sortByDesc('id')->first();
+        $nomePt = $printPt->printed_name ?? $hit['name_pt'] ?? $nomeEn;
+
+        if ($vNum) {
+            $displayEn   = "$nomeEn #$vNum";
+            $displayPt   = "$nomePt #$vNum";
+            $conceptSlug = Str::slug($hit['name']) . '-' . $vNum;
+        } else {
+            $displayEn   = $nomeEn;
+            $displayPt   = $nomePt;
+            $conceptSlug = $this->cleanSlug($hit['slug'] ?? Str::slug($nomeEn));
+        }
+
+        $imagemFinal = $printImg && $printImg->image_path
+            ? (filter_var($printImg->image_path, FILTER_VALIDATE_URL) ? $printImg->image_path : asset($printImg->image_path))
+            : 'https://placehold.co/250x350/eeeeee/999999?text=X';
+
+        return [
+            'status'          => 'ghost',
+            'name'            => $displayEn,
+            'nome_localizado' => $displayPt,
+            'set_name'        => ($printImg && $printImg->set) ? $printImg->set->name : null,
+            'imagem_final'    => $imagemFinal,
+            // fantasmas não têm preço nem foil definido
+            'is_foil'         => false,
+            'is_etched'       => false,
+            'desconto'        => 0,
+            'preco_final'     => 0,
+            'menor_preco'     => 0,
+            'ultimo_preco'    => 0,
+            'total_estoque'   => 0,
+            'url'             => route('store.catalog.product', [
+                'slug'        => $this->slug,
+                'gameSlug'    => $this->gameSlug,
+                'conceptSlug' => $conceptSlug,
+            ]),
+        ];
     }
 
     private function cleanSlug(string $slug): string

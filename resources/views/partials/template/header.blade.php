@@ -34,7 +34,14 @@
 
             {{-- Barra de Busca --}}
             <div class="w-full lg:w-2/4 order-3 lg:order-none">
-                @livewire('global-search', ['storeSlug' => $loja->url_slug])
+                @php
+                    $isLojista = auth('store_user')->check() 
+                        && auth('store_user')->user()->store?->id === $loja->id;
+                @endphp
+                @livewire('global-search', [
+                    'storeSlug' => $loja->url_slug,
+                    'isLojista' => $isLojista,
+                ])
             </div>
 
             {{-- Ícones do Usuário e Carrinho --}}

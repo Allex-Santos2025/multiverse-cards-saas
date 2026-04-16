@@ -6,7 +6,7 @@
     <title>{{ $loja->name ?? 'Minha Loja TCG' }} - Powered by Versus</title>
     {{-- Fontes de Ícones do Magic (Temporário via CDN para teste) --}}
     <link rel="stylesheet" href="{{ asset('css/keyrune.css') }}">
-<link rel="stylesheet" href="{{ asset('css/mana.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/mana.css') }}">
     <link rel="stylesheet" href="{{ mix('css/app.css') }}">
     <script src="{{ mix('js/app.js') }}" defer></script>
 
@@ -29,13 +29,14 @@
     @livewireStyles
     @include('partials.template.styles')
 </head>
-<body class="bg-white text-gray-800 font-sans antialiased flex flex-col min-h-screen">
+<body class="bg-white text-gray-800 font-sans antialiased flex flex-col min-h-screen m-0 p-0">
     
     @include('partials.template.admin-bar')
 
     @include('partials.template.header')
 
-    <main class="flex-grow bg-gray-50">
+    {{-- O segredo é o 'flow-root': ele impede que margens internas 'vazem' e criem o buraco branco --}}
+    <main class="flex-grow bg-gray-50 flow-root">
         {{-- Para páginas clássicas do Blade --}}
         @yield('content')
         

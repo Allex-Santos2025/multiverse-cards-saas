@@ -369,7 +369,7 @@ function stockPieChart(breakdownData) {
         </div>
 
         {{-- Card 2: Estoque por Categoria (PIZZA CENTRALIZADA E FONTE MENOR) --}}
-        <div x-data="stockPieChart({{ isset($snapshots) && $snapshots->isNotEmpty() ? json_encode($snapshots->first()->game_breakdown) : 'null' }})" class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] p-6 flex flex-col items-start transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+        <div x-data="stockPieChart({{ isset($snapshots) && $snapshots->isNotEmpty() ? json_encode($snapshots->last()->game_breakdown) : 'null' }})" class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] p-6 flex flex-col items-start transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
             
             <div class="flex justify-between items-center mb-6 w-full">
                 <h3 class="font-semibold text-slate-900 dark:text-white text-sm tracking-wide border-l-4 border-sky-500 pl-3">Estoque por Categoria</h3>

@@ -1,5 +1,30 @@
 <div class="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
 
+    {{-- EFEITO FOIL (CSS Ajustado para imagens maiores) --}}
+    <style>
+        .efeito-foil-grande {
+            position: relative;
+            overflow: hidden;
+        }
+        .efeito-foil-grande::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -150%; width: 50%; height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg);
+            animation: brilho-foil-grande 6s ease-in-out infinite;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+            z-index: 20;
+            border-radius: 0.75rem;
+        }
+        @keyframes brilho-foil-grande {
+            0% { left: -150%; }
+            30% { left: 250%; }
+            100% { left: 250%; }
+        }
+    </style>
+
     {{-- Barra de Navegação (Breadcrumb) --}}
     <div class="py-2" style="background-color: var(--cor-secundaria); color: var(--cor-texto-secundaria);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -13,6 +38,27 @@
         </div>
     </div>
 
+    {{-- Descobre se o print ativo tem estoque e é Foil/Etched --}}
+    @php
+        $activeItemHasFoil = false;
+        $activeItemHasStock = false;
+        
+        foreach($displayList as $item) {
+            if($item['print_id'] == $activePrintId && $item['stock_id'] == $activeStockId) {
+                $stock = $item['stock_id'] ? $stockByPrint->get($item['print_id'])->where('id', $item['stock_id'])->first() : null;
+                if($stock) {
+                    $activeItemHasStock = $stock->quantity > 0;
+                    $extrasArray = is_array($stock->extras) ? $stock->extras : [];
+                    $extrasStr = strtolower(implode(',', $extrasArray));
+                    if(str_contains($extrasStr, 'foil') || str_contains($extrasStr, 'etched')) {
+                        $activeItemHasFoil = true;
+                    }
+                }
+                break;
+            }
+        }
+    @endphp
+
     {{-- Container Principal do Conteúdo --}}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
 
@@ -22,9 +68,9 @@
             <div class="lg:col-span-4 flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start z-10">
 
                 {{-- 1. Imagem Base da Carta --}}
-                <div class="bg-white border border-gray-200 rounded-xl p-3 flex justify-center items-center shadow-sm relative">
+                <div class="bg-white border border-gray-200 rounded-xl p-3 flex justify-center items-center shadow-sm relative {{ $activeItemHasFoil && $activeItemHasStock ? 'efeito-foil-grande ring-2 ring-yellow-400' : '' }}">
                     {{-- Usa $activeImage que é definido no componente --}}
-                    <img id="main-card-image" src="{{ $activeImage }}" alt="{{ $nomeLocalizado }}" class="w-full h-auto rounded-xl shadow-2xl">
+                    <img id="main-card-image" src="{{ $activeImage }}" alt="{{ $nomeLocalizado }}" class="w-full h-auto rounded-xl shadow-2xl relative z-10">
                 </div>
 
                 {{-- 2. CAIXA DE PREÇOS (Movida para cá e ajustada para caber) --}}
@@ -359,7 +405,7 @@
             {{-- ========================================================== --}}
             {{-- ESTADO 2: ESGOTADO --}}
             <tr class="hover:bg-gray-50 transition duration-150 cursor-pointer opacity-70 grayscale-[30%] {{ $activePrintId == $print->id ? 'bg-blue-50' : '' }}"
-                wire:mouseenter="updateStats({{ $print->id }})">
+                wire:mouseenter="updateStats({{ $print->id }}, '{{ $item['stock_id'] ?? '' }}')">
 
                 {{-- 1. Símbolo (Com Tooltip) --}}
                 <td class="px-4 py-4 text-center">

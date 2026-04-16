@@ -46,21 +46,22 @@
             @forelse($results as $item)
                 <a
                     href="{{ $item['url'] }}"
-                    class="flex flex-row items-center gap-3 px-4 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
+                    class="flex flex-row items-center gap-3 px-4 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors {{ $item['status'] === 'ghost' ? 'bg-red-50/30' : '' }}"
                 >
-                    {{-- Miniatura da Carta (Estilo Liga Magic) --}}
-                    <div class="w-8 h-11 shrink-0 rounded overflow-hidden shadow-sm border border-gray-200/50 bg-gray-100">
-                        <img src="{{ $item['imagem'] }}" alt="Miniatura" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=X';">
+                    {{-- Miniatura da Carta --}}
+                    <div class="w-8 h-11 shrink-0 rounded overflow-hidden shadow-sm border border-gray-200/50 bg-gray-100 relative">
+                        <img src="{{ $item['imagem_final'] }}" alt="Miniatura" class="w-full h-full object-cover {{ $item['status'] === 'ghost' ? 'grayscale opacity-70' : '' }}" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=X';">
                     </div>
                     
                     {{-- Textos --}}
-                    <div class="flex flex-col overflow-hidden">
-                        @if($item['name_pt'])
-                            <span class="font-bold text-gray-900 text-[13px] truncate">{{ $item['name_pt'] }}</span>
-                            <span class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide truncate">{{ $item['name'] }}</span>
-                        @else
-                            <span class="font-bold text-gray-900 text-[13px] truncate">{{ $item['name'] }}</span>
-                        @endif
+                    <div class="flex flex-col overflow-hidden w-full">
+                        <div class="flex justify-between items-center w-full">
+                            <span class="font-bold text-gray-900 text-[13px] truncate">{{ $item['nome_localizado'] }}</span>
+                            @if($item['status'] === 'ghost')
+                                <span class="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider ml-2">Global</span>
+                            @endif
+                        </div>
+                        <span class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide truncate">{{ $item['name'] }}</span>
                     </div>
                 </a>
             @empty

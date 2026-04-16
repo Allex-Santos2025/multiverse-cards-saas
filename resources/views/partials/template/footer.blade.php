@@ -1,4 +1,4 @@
-<footer class="bg-secondary-1 text-gray-200 mt-12 pt-12 pb-6 transition-colors duration-300">
+<footer class="bg-secondary-1 text-gray-200 mt-0 pt-12 pb-6 transition-colors duration-300">
     <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 border-b border-white/10 pb-8">
         
         {{-- Coluna 1: Sobre a Loja --}}

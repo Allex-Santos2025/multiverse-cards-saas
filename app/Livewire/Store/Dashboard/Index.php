@@ -11,13 +11,13 @@ use Livewire\Attributes\Layout;
 
 class Index extends Component
 {
-    // 1. DECLARAÇÃO DAS VARIÁVEIS (Isso resolve o erro "Property not found")
+    // 1. DECLARAÇÃO DAS VARIÁVEIS
     public $slug;
     public $loja;
     public $gameSlug;
     public $inactiveSlug;
 
-    // 2. MOUNT: Executa assim que a tela abre, pegando a loja da URL
+    // 2. MOUNT
     public function mount($slug)
     {
         $this->slug = $slug;
@@ -29,7 +29,7 @@ class Index extends Component
     // 3. A FUNÇÃO DO BOTÃO "Atualizar Gráficos"
     public function refreshStockData()
     {
-        // A. Calcula Totais Gerais (Lê da tabela original de estoque)
+        // A. Calcula Totais Gerais
         $stats = StockItem::where('store_id', $this->loja->id)
             ->selectRaw('SUM(quantity) as total_qty, SUM(quantity * COALESCE(price, 0)) as total_val')
             ->first();
@@ -45,22 +45,23 @@ class Index extends Component
             ->keyBy('game_name')
             ->toArray();
 
-        // C. Tira a fotografia de hoje com os dados completos
-        StoreStockSnapshot::updateOrCreate(
-            ['store_id' => $this->loja->id, 'snapshot_date' => now()->format('Y-m-d')],
-            [
-                'total_items' => $stats->total_qty ?? 0,
-                'total_value' => $stats->total_val ?? 0,
-                'game_breakdown' => $breakdown
-            ]
-        );
+        // C. Tira a fotografia de hoje FORÇANDO a gravação do array (ignora bloqueios do Model)
+        $snapshot = StoreStockSnapshot::firstOrNew([
+            'store_id' => $this->loja->id, 
+            'snapshot_date' => now()->format('Y-m-d')
+        ]);
+        
+        $snapshot->total_items = $stats->total_qty ?? 0;
+        $snapshot->total_value = $stats->total_val ?? 0;
+        $snapshot->game_breakdown = $breakdown;
+        $snapshot->save();
 
         return redirect()->route('store.dashboard', ['slug' => $this->slug]);
     }
 
     public function render()
     {
-        // Pega os 14 registros mais recentes, mas inverte para o gráfico desenhar do mais antigo pro atual
+        // Pega os 14 registros mais recentes, invertidos para o gráfico
         $snapshots = StoreStockSnapshot::where('store_id', $this->loja->id)
             ->orderBy('snapshot_date', 'desc')
             ->take(14)
