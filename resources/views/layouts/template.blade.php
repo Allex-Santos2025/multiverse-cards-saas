@@ -46,6 +46,9 @@
 
     @include('partials.template.footer')
 
+    {{-- MODAL DE LOGIN (Com a trava isMarketplace falsa para virar White-label) --}}
+    @livewire('marketplace.auth-modal-login', ['isMarketplace' => false, 'loja' => $loja])
+
     @livewireScripts
 </body>
 </html>

@@ -10,6 +10,7 @@ use App\Models\Catalog\CatalogConcept;
 use App\Models\Catalog\CatalogPrint;
 use App\Models\StockItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Enums\StockExtra;
 
 class ManageSingleCard extends Component
@@ -22,6 +23,10 @@ class ManageSingleCard extends Component
     // Variáveis exclusivas para isolar os Terrenos Básicos
     public $isBasicLand = false;
     public $basicNumber = null;
+
+    // Variáveis exclusivas para isolar as Variantes de Arte (FEM, ALL, HML)
+    public $isArtVariant = false;
+    public $validPrintIds = [];
 
     public $showModal = false, $isEditing = false, $editingItemId, $keepOpen = false;
     public $searchPrint = '', $selectedPrintId;
@@ -100,16 +105,112 @@ class ManageSingleCard extends Component
                 : $displayEnglishName;
 
         } else {
-            // LÓGICA ORIGINAL PARA CARTA NORMAL
-            $this->concept = CatalogConcept::where(function($q) use ($conceptSlug) {
-                $q->where('slug', $conceptSlug)->orWhere('slug', 'like', $conceptSlug . '-%');
-            })->with('prints.set')->firstOrFail();
+            // =====================================================
+            // 2) LÓGICA PARA CARTA NORMAL & VARIANTES DE ARTE (BLINDADO)
+            // =====================================================
+            
+            // Tenta achar com o sufixo de 4 caracteres exato
+            $conceptFound = CatalogConcept::where('game_id', $this->game->id)
+                ->where('slug', 'like', $conceptSlug . '-____')
+                ->with('prints.set')->first();
+
+            // Busca progressiva para variantes de arte (se não achou o base)
+            if (!$conceptFound) {
+                $parts = explode('-', $conceptSlug);
+                array_pop($parts);
+                
+                while (count($parts) > 0) {
+                    $testSlug = implode('-', $parts);
+                    $conceptFound = CatalogConcept::where('game_id', $this->game->id)
+                        ->where('slug', 'like', $testSlug . '-____')
+                        ->with('prints.set')->first();
+                    if ($conceptFound) break;
+                    array_pop($parts);
+                }
+            }
+
+            if (!$conceptFound) abort(404, 'Carta não encontrada no catálogo.');
+            $this->concept = $conceptFound;
+
+            $allConceptPrints = $this->concept->prints;
+            $specificIds = $allConceptPrints->pluck('specific_id')->filter()->unique();
+            $mtgPrintsData = DB::table('mtg_prints')->whereIn('id', $specificIds)->get()->keyBy('id');
+
+            // --- LÓGICA DE CONTADOR DE ARTISTAS COM ISOLAMENTO POR SET ---
+            $artistIndexesCache = [];
+            $siblings = DB::table('catalog_prints')
+                ->join('mtg_prints', 'catalog_prints.specific_id', '=', 'mtg_prints.id')
+                ->where('catalog_prints.concept_id', $this->concept->id)
+                ->where('catalog_prints.collector_number', 'REGEXP', '[a-zA-Z]')
+                ->select('catalog_prints.collector_number', 'catalog_prints.set_id', 'mtg_prints.artist')
+                ->orderBy('catalog_prints.collector_number', 'asc')
+                ->get();
+            
+            foreach($siblings as $sib) {
+                $art = trim($sib->artist ?: 'Artista Desconhecido');
+                $sid = $sib->set_id;
+                $cNum = strtolower(trim($sib->collector_number));
+
+                if(!isset($artistIndexesCache[$sid][$art])) {
+                    $artistIndexesCache[$sid][$art] = [];
+                }
+                
+                if (!in_array($cNum, $artistIndexesCache[$sid][$art])) {
+                    $artistIndexesCache[$sid][$art][] = $cNum;
+                }
+            }
+
+            $matchingPrints = collect();
+            $variantArtistLabel = null;
+
+            foreach ($allConceptPrints as $print) {
+                $printMtgData = $mtgPrintsData->get($print->specific_id);
+                $rawArtist = trim($printMtgData->artist ?? 'Artista Desconhecido');
+                
+                $englishName = $this->concept->name;
+                $setCode = strtoupper($print->set->code ?? '');
+                $isVariantSet = in_array($setCode, ['FEM', 'ALL', 'HML']);
+                $hasLetterInNumber = preg_match('/[a-zA-Z]/', $print->collector_number);
+                $isPrintBasicLand = str_contains($print->type_line ?? '', 'Basic Land');
+
+                if ($isVariantSet && $hasLetterInNumber && !$isPrintBasicLand) {
+                    $nomeArtistaFinal = $rawArtist;
+                    $sid = $print->set_id;
+
+                    // Só aplica o número se houver mais de uma arte do mesmo artista NESTE set
+                    if (isset($artistIndexesCache[$sid][$rawArtist]) && count($artistIndexesCache[$sid][$rawArtist]) > 1) {
+                        $idx = array_search(strtolower(trim($print->collector_number)), $artistIndexesCache[$sid][$rawArtist]);
+                        if ($idx !== false) {
+                            $nomeArtistaFinal .= ' ' . ($idx + 1);
+                        }
+                    }
+
+                    $virtualSlug = Str::slug($englishName . '-' . $nomeArtistaFinal);
+                    $print->artist_virtual = $nomeArtistaFinal;
+                    $print->is_art_variant = true;
+                } else {
+                    $virtualSlug = $this->conceptSlug; // URL base sem o sufixo
+                    $print->artist_virtual = $rawArtist;
+                    $print->is_art_variant = false;
+                }
+
+                if ($virtualSlug === $conceptSlug) {
+                    $matchingPrints->push($print);
+                    $variantArtistLabel = $print->artist_virtual;
+                }
+            }
+
+            if ($matchingPrints->isNotEmpty() && $matchingPrints->first()->is_art_variant) {
+                $this->isArtVariant = true;
+                $this->validPrintIds = $matchingPrints->pluck('id')->toArray();
+            }
 
             $printPt = CatalogPrint::where('concept_id', $this->concept->id)
                 ->whereIn('language_code', ['pt', 'pt-br', 'pt-BR'])
                 ->whereNotNull('printed_name')->where('printed_name', '!=', '')->first();
 
-            $this->nomePT = $printPt ? $printPt->printed_name : $this->concept->name;
+            $baseName = $printPt ? $printPt->printed_name : $this->concept->name;
+            $this->nomePT = ($this->isArtVariant && $variantArtistLabel) ? $baseName . ' (' . $variantArtistLabel . ')' : $baseName;
         }
 
         try {
@@ -118,10 +219,11 @@ class ManageSingleCard extends Component
             $this->availableExtras = ['foil' => 'Foil', 'etched' => 'Etched', 'promo' => 'Promo'];
         }
 
-        // Filtra a inicialização caso seja terreno
         $initialPrints = $this->concept->prints;
-        if ($this->isBasicLand) {
+        if ($this->isBasicLand && $this->basicNumber) {
             $initialPrints = $initialPrints->where('collector_number', $this->basicNumber);
+        } elseif ($this->isArtVariant && !empty($this->validPrintIds)) {
+            $initialPrints = $initialPrints->whereIn('id', $this->validPrintIds);
         }
 
         if($initialPrints->count() === 1) {
@@ -145,9 +247,7 @@ class ManageSingleCard extends Component
             })->toArray();
 
         $this->language = $mainPrint->language_code;
-
         $this->autoDetectTreatment($mainPrint);
-
         $this->updateMarketData();
     }
 
@@ -156,76 +256,30 @@ class ManageSingleCard extends Component
         if ($this->isEditing) return;
 
         $mtgData = DB::table('mtg_prints')->where('id', $print->specific_id)->first();
-        
-        // Zera sempre para não herdar travas da carta clicada anteriormente
         $this->selectedExtras = [];
         $this->disabledExtras = [];
 
         if (!$mtgData || empty($mtgData->prices)) {
-            // Sem info de preço: não infere nada, só limpa etched que possa ter sobrado
-            $this->selectedExtras = array_values(
-                array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'foil_etched')
-            );
+            $this->selectedExtras = array_values(array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'foil_etched'));
             return;
         }
 
-        $prices = is_string($mtgData->prices)
-            ? json_decode($mtgData->prices, true)
-            : (array)$mtgData->prices;
-
+        $prices = is_string($mtgData->prices) ? json_decode($mtgData->prices, true) : (array)$mtgData->prices;
         $hasNormal = !empty($prices['usd']);
         $hasFoil   = !empty($prices['usd_foil']);
         $hasEtched = !empty($prices['usd_etched']);
 
-        /**
-         * Cenário 1: carta antiga, só NORMAL
-         */
-        if ($hasNormal && !$hasFoil && !$hasEtched) {
-            $this->disabledExtras = ['foil', 'foil_etched'];
-            return;
-        }
+        if ($hasNormal && !$hasFoil && !$hasEtched) { $this->disabledExtras = ['foil', 'foil_etched']; return; }
+        if ($hasNormal && $hasFoil && !$hasEtched) { $this->disabledExtras = ['foil_etched']; return; }
+        if ($hasEtched && !$hasNormal && !$hasFoil) { $this->selectedExtras = ['foil_etched']; $this->disabledExtras = ['foil', 'foil_etched']; return; }
+        if ($hasFoil && !$hasNormal && !$hasEtched) { $this->selectedExtras = ['foil']; $this->disabledExtras = ['foil', 'foil_etched']; return; }
 
-        /**
-         * Cenário 2: carta que pode ser NORMAL ou FOIL (padrão moderno)
-         */
-        if ($hasNormal && $hasFoil && !$hasEtched) {
-            $this->disabledExtras = ['foil_etched'];
-            return;
-        }
-
-        /**
-         * Cenário 3: carta só existe em FOIL ETCHED
-         */
-        if ($hasEtched && !$hasNormal && !$hasFoil) {
-            $this->selectedExtras = ['foil_etched'];
-            $this->disabledExtras = ['foil', 'foil_etched']; // Trava ambos para não mudar
-            return;
-        }
-
-        /**
-         * Cenário 4 (NOVO): Carta só existe em FOIL PADRÃO (ex: Gift Pack 2017)
-         * - usd = vazio
-         * - usd_etched = vazio
-         * - usd_foil = OK
-         */
-        if ($hasFoil && !$hasNormal && !$hasEtched) {
-            $this->selectedExtras = ['foil']; // Marca automático
-            $this->disabledExtras = ['foil', 'foil_etched']; // Trava o foil para não desmarcar e o etched para não marcar
-            return;
-        }
-
-        /**
-         * Qualquer outro cenário híbrido estranho:
-         */
-        $this->selectedExtras = array_values(
-            array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'foil_etched')
-        );
+        $this->selectedExtras = array_values(array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'foil_etched'));
     }
 
     public function updatedSelectedExtras() 
     { 
         $extras = array_map('strtolower', $this->selectedExtras);
-
         if (in_array('foil', $extras) && in_array('etched', $extras)) {
             $lastAdded = strtolower(end($this->selectedExtras));
             if ($lastAdded === 'etched') {
@@ -234,7 +288,6 @@ class ManageSingleCard extends Component
                 $this->selectedExtras = array_values(array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'etched'));
             }
         }
-
         $this->updateMarketData(); 
     }
 
@@ -257,33 +310,25 @@ class ManageSingleCard extends Component
         if (!$currentPrint) return;
 
         $this->currentPrintImage = $currentPrint->image_path;
-
         $englishPrint = CatalogPrint::where('set_id', $currentPrint->set_id)
             ->where('collector_number', $currentPrint->collector_number)
             ->where('language_code', 'en')
             ->first() ?? $currentPrint;
 
         $mtgData = DB::table('mtg_prints')->where('id', $englishPrint->specific_id)->first();
-
         $usd = 0;
         $extrasLower = array_map('strtolower', $this->selectedExtras);
-        $isEtched = in_array('etched', $extrasLower) || in_array('foil_etched', $extrasLower); // Fallback caso Blade use 'foil_etched'
+        $isEtched = in_array('etched', $extrasLower) || in_array('foil_etched', $extrasLower); 
         $isFoil = in_array('foil', $extrasLower);
 
         if ($mtgData && !empty($mtgData->prices)) {
             $pricesArray = is_string($mtgData->prices) ? json_decode($mtgData->prices, true) : (array)$mtgData->prices;
-
-            if ($isEtched) {
-                $usd = $pricesArray['usd_etched'] ?? 0;
-            } elseif ($isFoil) {
-                $usd = $pricesArray['usd_foil'] ?? 0;
-            } else {
-                $usd = $pricesArray['usd'] ?? 0;
-            }
+            if ($isEtched) { $usd = $pricesArray['usd_etched'] ?? 0; }
+            elseif ($isFoil) { $usd = $pricesArray['usd_foil'] ?? 0; }
+            else { $usd = $pricesArray['usd'] ?? 0; }
         }
 
         $this->marketPrices['mid'] = (float)$usd * 5.50;
-
         $stats = $this->getMarketStats($currentPrint, $isFoil, $isEtched);
         $this->marketPrices['min'] = (float)($stats['min'] ?? 0);
         $this->marketPrices['max'] = (float)($stats['max'] ?? 0);
@@ -299,38 +344,31 @@ class ManageSingleCard extends Component
             'HP' => [['HP'], ['MP', 'D'], ['SP'], ['NM', 'M']],
             'D'  => [['D'], ['HP'], ['MP'], ['SP'], ['NM', 'M']],
         ];
-
         $steps = $fallbackOrders[$this->quality] ?? [[$this->quality]];
 
         foreach ($steps as $qualities) {
             $res = $this->queryVersusPrices($print, $isFoil, $isEtched, $qualities, true);
             if ($res->min_p > 0) return ['min' => $res->min_p, 'max' => $res->max_p];
         }
-
         foreach ($steps as $qualities) {
             $res = $this->queryVersusPrices($print, $isFoil, $isEtched, $qualities, false);
             if ($res->min_p > 0) return ['min' => $res->min_p, 'max' => $res->max_p];
         }
-
         return ['min' => 0, 'max' => 0];
     }
 
     private function queryVersusPrices($print, $isFoil, $isEtched, $qualities, $onlyActive = true)
     {
         $query = StockItem::withoutGlobalScopes()
-            ->whereHas('catalogPrint', function($q) use ($print) {
-                $q->where('set_id', $print->set_id)->where('collector_number', $print->collector_number);
-            })
+            ->whereHas('catalogPrint', fn($q) => $q->where('set_id', $print->set_id)->where('collector_number', $print->collector_number))
             ->whereIn('condition', $qualities);
 
         if ($onlyActive) $query->where('quantity', '>', 0);
-
         $query->where(function($q) use ($isFoil, $isEtched) {
             if ($isEtched) { $q->where('extras', 'like', '%etched%'); }
             elseif ($isFoil) { $q->where('extras', 'like', '%foil%')->where('extras', 'not like', '%etched%'); }
             else { $q->where('extras', 'not like', '%foil%')->where('extras', 'not like', '%etched%'); }
         });
-
         return $query->selectRaw('MIN(price) as min_p, MAX(price) as max_p')->first();
     }
 
@@ -353,13 +391,9 @@ class ManageSingleCard extends Component
         $p = $item->catalogPrint;
         $label = "#{$p->collector_number} - " . ($p->set->name_pt ?? $p->set->name);
         $this->selectPrint($item->catalog_print_id, $label);
-        $this->language = $item->language;
-        $this->quality = $item->condition;
-        $this->price = $item->price;
-        $this->quantity = $item->quantity;
-        $this->selectedExtras = is_array($item->extras) ? $item->extras : [];
-        $this->comment = $item->comments;
-        $this->discount_percent = $item->discount_percent;
+        $this->language = $item->language; $this->quality = $item->condition; $this->price = $item->price;
+        $this->quantity = $item->quantity; $this->selectedExtras = is_array($item->extras) ? $item->extras : [];
+        $this->comment = $item->comments; $this->discount_percent = $item->discount_percent;
         $this->discount_start = $item->discount_start ? \Carbon\Carbon::parse($item->discount_start)->format('Y-m-d') : null;
         $this->discount_end = $item->discount_end ? \Carbon\Carbon::parse($item->discount_end)->format('Y-m-d') : null;
         $this->showModal = true;
@@ -367,23 +401,14 @@ class ManageSingleCard extends Component
 
     public function deleteItem(int $id): void
     {
-        $item = StockItem::withoutGlobalScopes()->findOrFail($id);
-
-        $item->delete();
-
-        $this->dispatch(
-            'notify',
-            type: 'success',
-            message: 'Card removido do estoque!'
-        );
+        StockItem::withoutGlobalScopes()->findOrFail($id)->delete();
+        $this->dispatch('notify', type: 'success', message: 'Card removido do estoque!');
     }
 
     public function resetForm()
     {
         $this->reset(['isEditing', 'editingItemId', 'price', 'quantity', 'comment', 'realImage', 'selectedExtras', 'discount_percent', 'discount_start', 'discount_end', 'selectedPrintId', 'searchPrint', 'availableLanguages', 'quality']);
-        $this->quality = 'NM';
-        $this->showModal = false;
-        $this->currentPrintImage = null;
+        $this->quality = 'NM'; $this->showModal = false; $this->currentPrintImage = null;
         $this->marketPrices = ['min' => 0, 'mid' => 0, 'max' => 0];
     }
 
@@ -396,12 +421,8 @@ class ManageSingleCard extends Component
             'comments' => $this->comment, 'discount_percent' => $this->discount_percent,
             'discount_start' => $this->discount_start, 'discount_end' => $this->discount_end,
         ];
-
-        if ($this->isEditing) {
-            StockItem::withoutGlobalScopes()->find($this->editingItemId)->update($data);
-        } else {
-            StockItem::create(array_merge($data, ['store_id' => $this->userStoreId]));
-        }
+        if ($this->isEditing) { StockItem::withoutGlobalScopes()->find($this->editingItemId)->update($data); }
+        else { StockItem::create(array_merge($data, ['store_id' => $this->userStoreId])); }
 
         $this->dispatch('notify', type: 'success', message: $this->isEditing ? 'Atualizado!' : 'Cadastrado!');
         if (!$this->keepOpen) $this->resetForm();
@@ -410,36 +431,29 @@ class ManageSingleCard extends Component
     public function render()
     {
         $conceptPrints = $this->concept->prints;
-        
-        // O FILTRO VITAL: Impede o vazamento de outras planícies na hidratação
         if ($this->isBasicLand && $this->basicNumber) {
             $conceptPrints = $conceptPrints->where('collector_number', $this->basicNumber);
+        } elseif ($this->isArtVariant && !empty($this->validPrintIds)) {
+            $conceptPrints = $conceptPrints->whereIn('id', $this->validPrintIds);
         }
         
         $printIds = $conceptPrints->pluck('id')->toArray();
-
-        $stockItems = StockItem::where('store_id', $this->userStoreId)
-            ->whereIn('catalog_print_id', $printIds) // Busca apenas as prints filtradas
-            ->with(['catalogPrint.set'])
-            ->get()
-            ->map(function($item) {
+        $stockItems = StockItem::where('store_id', $this->userStoreId)->whereIn('catalog_print_id', $printIds) 
+            ->with(['catalogPrint.set'])->get()->map(function($item) {
                 $item->nome_da_edicao = $item->catalogPrint->set->name_pt ?? $item->catalogPrint->set->name ?? 'Edição n/a';
                 return $item;
             });
 
-        $availablePrints = $conceptPrints // Usa a coleção filtrada para o dropdown
-            ->groupBy(fn($p) => $p->set_id . '-' . $p->collector_number)
+        $availablePrints = $conceptPrints->groupBy(fn($p) => $p->set_id . '-' . $p->collector_number)
             ->map(fn($group) => $group->firstWhere('language_code', 'en') ?? $group->first())
             ->map(function($p) {
                 $p->label_dropdown = "#{$p->collector_number} - " . ($p->set->name_pt ?? $p->set->name ?? 'Edição n/a');
                 return $p;
-            })
-            ->filter(function($p) {
+            })->filter(function($p) {
                 if (empty($this->searchPrint) || $this->searchPrint === $p->label_dropdown) return true;
                 $term = strtolower($this->searchPrint);
                 return str_contains(strtolower($p->label_dropdown), $term) || str_contains(strtolower($p->set->code), $term);
-            })
-            ->values();
+            })->values();
 
         return view('livewire.store.dashboard.stock.manage-single-card', [
             'stockItems' => $stockItems,

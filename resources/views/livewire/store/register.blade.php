@@ -49,28 +49,25 @@
     <div class="w-full max-w-3xl">
 
 {{-- PROGRESS BAR --}}
-<div class="flex justify-between mb-12 relative" x-data="{ currentStepAlpine: @entangle('currentStep') }">
+<div class="flex justify-between mb-12 relative" wire:key="progress-bar-container">
     
     {{-- LINHA DE FUNDO (Trilho) --}}
-    <div class="absolute top-1/2 left-0 w-full h-0.5 bg-gray-800 -z-10 transform -translate-y-1/2 flex">
+    <div class="absolute top-1/2 left-0 w-full h-0.5 bg-gray-800 -z-10 transform -translate-y-1/2 flex" wire:key="progress-track">
         {{-- Segmentos da Linha que mudam de cor sozinhos --}}
-        <div class="flex-1 h-full transition-all duration-500" :class="currentStepAlpine >= 2 ? 'bg-[#ff5500]' : 'bg-gray-800'"></div>
-        <div class="flex-1 h-full transition-all duration-500" :class="currentStepAlpine >= 3 ? 'bg-[#ff5500]' : 'bg-gray-800'"></div>
-        <div class="flex-1 h-full transition-all duration-500" :class="currentStepAlpine >= 4 ? 'bg-[#ff5500]' : 'bg-gray-800'"></div>
+        <div wire:key="track-line-1" class="flex-1 h-full transition-all duration-500 {{ $currentStep >= 2 ? 'bg-[#ff5500]' : 'bg-gray-800' }}"></div>
+        <div wire:key="track-line-2" class="flex-1 h-full transition-all duration-500 {{ $currentStep >= 3 ? 'bg-[#ff5500]' : 'bg-gray-800' }}"></div>
+        <div wire:key="track-line-3" class="flex-1 h-full transition-all duration-500 {{ $currentStep >= 4 ? 'bg-[#ff5500]' : 'bg-gray-800' }}"></div>
     </div>
 
     {{-- INDICADORES (Bolinhas) --}}
     @foreach([1 => 'Termos', 2 => 'Pessoal', 3 => 'Loja', 4 => 'Conclusão'] as $num => $label)
-        <div class="flex flex-col items-center gap-2 transition-all duration-300" 
-             :class="currentStepAlpine >= {{ $num }} ? 'opacity-100' : 'opacity-50'">
+        <div wire:key="step-wrapper-{{ $num }}" class="flex flex-col items-center gap-2 transition-all duration-300 {{ $currentStep >= $num ? 'opacity-100' : 'opacity-50' }}">
             
-            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 border-[#0a0a0a] transition-colors duration-500"
-                 :class="currentStepAlpine >= {{ $num }} ? 'bg-[#ff5500] text-white' : 'bg-gray-800 text-gray-400'">
+            <div wire:key="step-circle-{{ $num }}" class="w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 border-[#0a0a0a] transition-colors duration-500 {{ $currentStep >= $num ? 'bg-[#ff5500] text-white' : 'bg-gray-800 text-gray-400' }}">
                 {{ $num }}
             </div>
             
-            <span class="text-xs font-bold uppercase tracking-wider transition-colors duration-500"
-                  :class="currentStepAlpine >= {{ $num }} ? 'text-white' : 'text-gray-500'">
+            <span wire:key="step-label-{{ $num }}" class="text-xs font-bold uppercase tracking-wider transition-colors duration-500 {{ $currentStep >= $num ? 'text-white' : 'text-gray-500' }}">
                 {{ $label }}
             </span>
         </div>

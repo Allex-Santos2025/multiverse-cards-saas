@@ -19,6 +19,8 @@
     {{-- O 'defer' é vital para o Alpine não brigar com o Livewire --}}
     <script src="{{ mix('js/app.js') }}" defer></script>
     {{-- 3. Estilos do Livewire --}}
+    {{-- Biblioteca de Ícones (Phosphor Icons) - Injetada para os botões aparecerem --}}
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     @livewireStyles
 
     @stack('head')

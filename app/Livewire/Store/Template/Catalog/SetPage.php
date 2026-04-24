@@ -17,17 +17,8 @@ class SetPage extends Component
 {
     use WithPagination;
 
-    // Variáveis da Rota
-    public $slug;
-    public $gameSlug;
-    public $setCode;
+    public $slug, $gameSlug, $setCode, $loja, $game, $set;
 
-    // Variáveis da Página
-    public $loja;
-    public $game;
-    public $set;
-
-    // Filtros da Tela
     #[Url(except: 'number_asc', history: true)]
     public $sortOrder = 'number_asc';
 
@@ -47,72 +38,56 @@ class SetPage extends Component
     {
         $this->slug = $slug;
         $this->loja = Store::with('visual')->where('url_slug', $slug)->firstOrFail();
-
         $this->gameSlug = $gameSlug;
         $this->game = Game::where('url_slug', $gameSlug)->firstOrFail();
-
         $this->setCode = $setCode;
-        $this->set = Set::where('game_id', $this->game->id)
-                        ->where('code', $setCode)
-                        ->firstOrFail();
+        $this->set = Set::where('game_id', $this->game->id)->where('code', $setCode)->firstOrFail();
     }
 
-    public function updated($propertyName)
-    {
-        $this->resetPage();
-    }
+    public function updated($propertyName) { $this->resetPage(); }
 
     public function render()
     {
-        // 1. O GATEKEEPER: A loja trabalha com esse Set?
         $lojaTrabalhaComOSet = \App\Models\StockItem::where('store_id', $this->loja->id)
-            ->whereHas('catalogPrint', function ($q) {
-                $q->where('set_id', $this->set->id);
-            })->exists();
+            ->whereHas('catalogPrint', fn($q) => $q->where('set_id', $this->set->id))->exists();
 
         if (!$lojaTrabalhaComOSet) {
             $cartas = collect([]); 
-        } 
-        else {
-            // ==========================================
-            // FILTRANDO OS IDs BASE (Excluindo variantes A-)
-            // ==========================================
+        } else {
+            // --- LÓGICA DE FALLBACK DE IDIOMA (EN -> PT -> OUTROS) ---
+            $langsInSet = \App\Models\Catalog\CatalogPrint::where('set_id', $this->set->id)
+                ->distinct()->pluck('language_code')->toArray();
+
+            $mainLanguage = 'en';
+            if (!in_array('en', $langsInSet)) {
+                // Se não tem inglês, busca qualquer variante de português
+                $ptLang = collect($langsInSet)->first(fn($l) => in_array(strtolower($l), ['pt', 'pt-br', 'pt-br', 'pt_br']));
+                $mainLanguage = $ptLang ?: ($langsInSet[0] ?? 'en');
+            }
+
             $queryIds = \App\Models\Catalog\CatalogPrint::where('set_id', $this->set->id)
-                ->where('language_code', 'en')
+                ->where('language_code', $mainLanguage)
                 ->where('printed_name', 'NOT LIKE', 'A-%');
 
             if ($this->set->card_count > 0) {
                 $queryIds->whereRaw('CAST(collector_number AS UNSIGNED) <= ?', [$this->set->card_count]);
             }
 
-            // ==========================================
-            // A INTELIGÊNCIA HÍBRIDA (Cores vs Tipos)
-            // ==========================================
             if ($this->cor !== 'todas') {
-
                 if ($this->cor === 'A') {
                     $queryIds->where('type_line', 'LIKE', '%Artifact%');
-                } 
-                elseif ($this->cor === 'L') {
+                } elseif ($this->cor === 'L') {
                     $queryIds->where('type_line', 'LIKE', '%Land%');
-                } 
-                else {
+                } else {
                     $queryIds->join('catalog_concepts as cc', 'catalog_prints.concept_id', '=', 'cc.id')
                              ->join('mtg_concepts as mc', 'cc.specific_id', '=', 'mc.id');
 
                     if (in_array($this->cor, ['W', 'U', 'B', 'R', 'G'])) {
-                        $queryIds->where('mc.colors', 'LIKE', '%"' . $this->cor . '"%')
-                                 ->where('mc.colors', 'NOT LIKE', '%,%');
-                    } 
-                    elseif ($this->cor === 'M') {
+                        $queryIds->where('mc.colors', 'LIKE', '%"' . $this->cor . '"%')->where('mc.colors', 'NOT LIKE', '%,%');
+                    } elseif ($this->cor === 'M') {
                         $queryIds->where('mc.colors', 'LIKE', '%,%');
-                    } 
-                    elseif ($this->cor === 'C') {
-                        $queryIds->where(function($q) {
-                            $q->whereNull('mc.colors')
-                              ->orWhere('mc.colors', '[]')
-                              ->orWhere('mc.colors', '');
-                        })
+                    } elseif ($this->cor === 'C') {
+                        $queryIds->where(fn($q) => $q->whereNull('mc.colors')->orWhere('mc.colors', '[]')->orWhere('mc.colors', ''))
                         ->where('catalog_prints.type_line', 'NOT LIKE', '%Artifact%')
                         ->where('catalog_prints.type_line', 'NOT LIKE', '%Land%');
                     }
@@ -121,11 +96,8 @@ class SetPage extends Component
 
             $printIds = $queryIds->pluck('catalog_prints.id');
 
-            // ==========================================
-            // 2. A TABELA VIRTUAL DE ESTOQUE (CORREÇÃO: AGRUPA POR NÚMERO, NÃO POR ID)
-            // ==========================================
             $estoqueSubquery = \App\Models\StockItem::select(
-                'cp.collector_number', // O SEGREDO ESTÁ AQUI: Agrupa todas as línguas do mesmo número!
+                'cp.collector_number', 
                 \DB::raw('SUM(stock_items.quantity) as total_estoque'),
                 \DB::raw('MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco'),
                 \DB::raw('MIN(stock_items.price) as ultimo_preco'),
@@ -135,80 +107,42 @@ class SetPage extends Component
             ->join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
             ->where('stock_items.store_id', $this->loja->id)
             ->where('cp.set_id', $this->set->id)
-            ->groupBy('cp.collector_number'); // O SEGREDO ESTÁ AQUI TAMBÉM
+            ->groupBy('cp.collector_number');
 
-            // ==========================================
-            // 3. A QUERY MESTRA
-            // ==========================================
             $query = \App\Models\Catalog\CatalogPrint::select(
                     'catalog_prints.*',
                     \DB::raw('COALESCE(estoque.total_estoque, 0) as total_estoque'),
-                    'estoque.menor_preco',
-                    'estoque.ultimo_preco',
-                    'estoque.menor_preco_extras',
-                    'estoque.menor_preco_desconto'
+                    'estoque.menor_preco', 'estoque.ultimo_preco', 'estoque.menor_preco_extras', 'estoque.menor_preco_desconto',
+                    'mtg.artist' 
                 )
+                ->leftJoin('mtg_prints as mtg', 'catalog_prints.specific_id', '=', 'mtg.id')
                 ->with(['concept', 'concept.prints']) 
                 ->whereIn('catalog_prints.id', $printIds)
-                ->leftJoinSub($estoqueSubquery, 'estoque', function ($join) {
-                    // A LIGAÇÃO: Usa o número de colecionador para pescar o bloco inteiro de estoque daquele número
-                    $join->on('catalog_prints.collector_number', '=', 'estoque.collector_number');
-                });
+                ->leftJoinSub($estoqueSubquery, 'estoque', fn($join) => $join->on('catalog_prints.collector_number', '=', 'estoque.collector_number'));
 
-            // ==========================================
-            // 4. APLICAÇÃO DOS FILTROS (Raridade e Estoque)
-            // ==========================================
-            if ($this->raridade !== 'todas') {
-                $query->where('catalog_prints.rarity', $this->raridade); 
-            }
+            if ($this->raridade !== 'todas') $query->where('catalog_prints.rarity', $this->raridade); 
+            if ($this->com_estoque) $query->where('total_estoque', '>', 0);
 
-            if ($this->com_estoque) {
-                $query->where('total_estoque', '>', 0);
-            }
-
-            // ==========================================
-            // 5. ORDENAÇÃO DINÂMICA
-            // ==========================================
             switch ($this->sortOrder) {
-                case 'price_asc':
-                    $query->orderByRaw('estoque.menor_preco IS NULL')
-                          ->orderBy('estoque.menor_preco', 'asc');
-                    break;
-                case 'price_desc':
-                    $query->orderByRaw('estoque.menor_preco IS NULL')
-                          ->orderBy('estoque.menor_preco', 'desc');
-                    break;
-                case 'name_asc':
-                    $query->orderBy('catalog_prints.printed_name', 'asc');
-                    break;
-                case 'name_desc':
-                    $query->orderBy('catalog_prints.printed_name', 'desc');
-                    break;
-                case 'number_desc':
-                    $query->orderByRaw('CAST(catalog_prints.collector_number AS UNSIGNED) DESC');
-                    break;
-                case 'number_asc':
-                default:
-                    $query->orderByRaw('CAST(catalog_prints.collector_number AS UNSIGNED) ASC');
-                    break;
+                case 'price_asc': $query->orderByRaw('estoque.menor_preco IS NULL')->orderBy('estoque.menor_preco', 'asc'); break;
+                case 'price_desc': $query->orderByRaw('estoque.menor_preco IS NULL')->orderBy('estoque.menor_preco', 'desc'); break;
+                case 'name_desc': $query->orderBy('catalog_prints.printed_name', 'desc'); break;
+                case 'number_desc': $query->orderByRaw('CAST(catalog_prints.collector_number AS UNSIGNED) DESC'); break;
+                case 'name_asc': $query->orderBy('catalog_prints.printed_name', 'asc'); break;
+                case 'number_asc': default: $query->orderByRaw('CAST(catalog_prints.collector_number AS UNSIGNED) ASC'); break;
             }
 
-            // 6. PAGINAÇÃO
+            $setCodeForTransform = strtoupper($this->set->code);
             $cartas = $query->paginate($this->perPage)->onEachSide(0);
 
-            // 7. TRANSFORMANDO DADOS (Blade)
-            $cartas->getCollection()->transform(function ($carta) {
+            $cartas->getCollection()->transform(function ($carta) use ($setCodeForTransform) {
                 $total = (int) ($carta->total_estoque ?? 0);
                 $precoBase = (float) ($carta->menor_preco ?? 0);
                 $ultimoPreco = (float) ($carta->ultimo_preco ?? 0);
                 $percentualDesconto = (float) ($carta->menor_preco_desconto ?? 0);
 
-                $referenciaParaCalculo = ($total > 0) ? $precoBase : $ultimoPreco;
-
-                $carta->preco_final = ($percentualDesconto > 0) 
-                    ? $referenciaParaCalculo * (1 - ($percentualDesconto / 100))
-                    : $referenciaParaCalculo;
-
+                $refCalc = ($total > 0) ? $precoBase : $ultimoPreco;
+                $carta->preco_final = ($percentualDesconto > 0) ? $refCalc * (1 - ($percentualDesconto / 100)) : $refCalc;
                 $carta->total_estoque = $total;
                 $carta->menor_preco = $precoBase;
                 $carta->desconto = $percentualDesconto;
@@ -217,60 +151,83 @@ class SetPage extends Component
                 $carta->is_etched = str_contains($extrasRaw, 'etched');
                 $carta->is_foil   = str_contains($extrasRaw, 'foil') && !$carta->is_etched;
 
-                // --- Lógica de Nomes PT/EN e Geração de Slug Condicional ---
                 $englishName = $carta->concept->name ?? $carta->printed_name;
                 $globalPtName = null;
 
                 if ($carta->concept && $carta->concept->relationLoaded('prints')) {
                     $globalPtName = $carta->concept->prints
-                                    ->firstWhere(fn ($print) => in_array($print->language_code, ['pt', 'PT', 'pt-br', 'pt-BR']))
+                                    ->firstWhere(fn ($p) => in_array($p->language_code, ['pt', 'PT', 'pt-br', 'pt-BR']))
                                     ?->printed_name;
                 }
 
-                $carta->nome_localizado = $globalPtName ?: $englishName;
-
                 $isBasicLand = str_contains($carta->type_line, 'Basic Land');
+                $isVariantSet = in_array($setCodeForTransform, ['FEM', 'ALL', 'HML']); 
+                $hasLetterInNumber = preg_match('/[a-zA-Z]/', $carta->collector_number); 
+                $isArtVariant = $isVariantSet && $hasLetterInNumber && !$isBasicLand;
 
-                $carta->name = sprintf('%s • #%s', $englishName, $carta->collector_number);
-
-                // --- GERAÇÃO DO SLUG PARA O LINK DO PRODUTO (CONDICIONAL) ---
-                if ($isBasicLand) {
-                    $tiposBasicos = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
-                    $tipoEncontrado = null;
-                    foreach ($tiposBasicos as $tipo) {
-                        if (str_contains($carta->type_line, $tipo)) {
-                            $tipoEncontrado = $tipo;
-                            break;
+                // --- APLICAÇÃO DO CONCEITO VIRTUAL (ISOLADO POR SET E ARTISTA) ---
+                if ($isArtVariant && !empty($carta->artist)) {
+                    static $artistIndexesCache = []; // RAM Cache
+                    $cid = $carta->concept_id;
+                    $sid = $carta->set_id; 
+                    $cacheKey = $cid . '_' . $sid;
+                    $nomeArtistaBase = trim($carta->artist);
+                    
+                    if (!isset($artistIndexesCache[$cacheKey])) {
+                        $artistIndexesCache[$cacheKey] = [];
+                        $siblings = \Illuminate\Support\Facades\DB::table('catalog_prints')
+                            ->join('mtg_prints', 'catalog_prints.specific_id', '=', 'mtg_prints.id')
+                            ->where('catalog_prints.concept_id', $cid)
+                            ->where('catalog_prints.set_id', $sid) 
+                            ->where('catalog_prints.collector_number', 'REGEXP', '[a-zA-Z]')
+                            ->select('catalog_prints.collector_number', 'mtg_prints.artist')
+                            ->orderBy('catalog_prints.collector_number', 'asc')
+                            ->get();
+                            
+                        foreach($siblings as $sib) {
+                            $art = trim($sib->artist ?: 'Artista Desconhecido');
+                            $cNum = strtolower(trim($sib->collector_number));
+                            
+                            if(!isset($artistIndexesCache[$cacheKey][$art])) $artistIndexesCache[$cacheKey][$art] = [];
+                            
+                            if (!in_array($cNum, $artistIndexesCache[$cacheKey][$art])) {
+                                $artistIndexesCache[$cacheKey][$art][] = $cNum;
+                            }
                         }
                     }
+                    
+                    $nomeArtistaFinal = $nomeArtistaBase;
+                    if (isset($artistIndexesCache[$cacheKey][$nomeArtistaBase]) && count($artistIndexesCache[$cacheKey][$nomeArtistaBase]) > 1) {
+                        $idx = array_search(strtolower(trim($carta->collector_number)), $artistIndexesCache[$cacheKey][$nomeArtistaBase]);
+                        if ($idx !== false) $nomeArtistaFinal .= ' ' . ($idx + 1);
+                    }
 
-                    if ($tipoEncontrado) {
-                        $carta->concept_slug = \Str::slug($tipoEncontrado) . '-' . $carta->collector_number;
+                    $carta->nome_localizado = ($globalPtName ?: $englishName) . ' (' . $nomeArtistaFinal . ')';
+                    $carta->name = sprintf('%s (%s) • #%s', $englishName, $nomeArtistaFinal, $carta->collector_number);
+                    $carta->concept_slug = \Str::slug($englishName . '-' . $nomeArtistaFinal);
+
+                } else {
+                    // CARTA NORMAL (Ou Terreno Básico)
+                    $carta->nome_localizado = $globalPtName ?: $englishName;
+                    $carta->name = sprintf('%s • #%s', $englishName, $carta->collector_number);
+
+                    if ($isBasicLand) {
+                        $tiposBasicos = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
+                        $tipoEncontrado = collect($tiposBasicos)->first(fn($t) => str_contains($carta->type_line, $t));
+                        $carta->concept_slug = \Str::slug($tipoEncontrado ?: $englishName) . '-' . $carta->collector_number;
                     } else {
                         $carta->concept_slug = \Str::slug($englishName);
                     }
-                } else {
-                    $carta->concept_slug = \Str::slug($englishName);
                 }
 
-                $imagemBruta = $carta->image_url 
-                            ?? $carta->image_path 
-                            ?? $carta->concept->image_url 
-                            ?? $carta->concept->image_path 
-                            ?? 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
-
-                $carta->imagem_final = filter_var($imagemBruta, FILTER_VALIDATE_URL) 
-                                     ? $imagemBruta 
-                                     : asset($imagemBruta);
-
+                $imagemBruta = $carta->image_url ?? $carta->image_path ?? $carta->concept->image_url ?? $carta->concept->image_path ?? 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
+                $carta->imagem_final = filter_var($imagemBruta, FILTER_VALIDATE_URL) ? $imagemBruta : asset($imagemBruta);
                 $carta->foil = false; 
 
                 return $carta;
             });
         }
 
-        return view('livewire.store.template.catalog.set-page', [
-            'cartas' => $cartas
-        ])->layout('layouts.template', ['loja' => $this->loja]);
+        return view('livewire.store.template.catalog.set-page', ['cartas' => $cartas])->layout('layouts.template', ['loja' => $this->loja]);
     }
 }

@@ -300,7 +300,7 @@
         @if($stock && $stock->quantity > 0)
             {{-- ========================================================== --}}
             {{-- ESTADO 1: DISPONÍVEL --}}
-            <tr class="transition cursor-pointer {{ $activePrintId == $item['print_id'] && $activeStockId == $item['stock_id'] ? 'bg-blue-50' : 'hover:bg-gray-50' }}"
+            <tr x-data="{ qty: 1 }" class="transition cursor-pointer {{ $activePrintId == $item['print_id'] && $activeStockId == $item['stock_id'] ? 'bg-blue-50' : 'hover:bg-gray-50' }}"
                 wire:mouseenter="updateStats({{ $item['print_id'] }}, '{{ $item['stock_id'] ?? '' }}')">
 
                 {{-- 1. Símbolo (Com Tooltip Corrigido) --}}
@@ -386,7 +386,7 @@
                 {{-- 6. Estoque --}}
                 <td class="px-2 py-4 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <input type="number" value="1" min="1" max="{{ $stock->quantity }}" 
+                        <input type="number" id="input-qty-{{ $stock->id }}" value="1" min="1" max="{{ $stock->quantity }}" 
                         class="w-12 h-8 text-center font-bold text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none">
                         <span class="text-[10px] font-bold text-gray-500">
                             de {{ $stock->quantity }} un.
@@ -396,9 +396,7 @@
 
                 {{-- 7. Ação --}}
                 <td class="px-2 py-4 text-center">
-                    <button class="px-4 py-2 w-full rounded-lg font-bold text-[10px] tracking-wider uppercase text-white shadow-sm hover:opacity-90 transition-opacity" style="background-color: var(--cor-cta);">
-                        Comprar
-                    </button>
+                    <livewire:store.template.cart.add-button :stockItem="$stock" :wire:key="'add-cart-'.$stock->id" />
                 </td>
             </tr>
         @elseif($stock)

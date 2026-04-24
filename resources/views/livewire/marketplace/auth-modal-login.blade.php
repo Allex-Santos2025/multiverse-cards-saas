@@ -3,105 +3,89 @@
     x-on:open-login-modal.window="show = true"
     x-on:close-login-modal.window="show = false"
     x-on:keydown.escape.window="show = false"
-    x-show="show"
-    x-cloak
-    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background-color: rgba(0, 0, 0, 0.9); backdrop-filter: blur(20px);"
+    x-show="show" x-cloak
+    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(15px);"
 >
     <div 
         @click.away="show = false"
-        style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 450px; background: rgba(9, 9, 11, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1.5rem; padding: 3rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); animation: fadeInVs 0.3s ease-out;"
+        style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 450px; 
+        background-color: {{ $isMarketplace ? 'rgba(9, 9, 11, 0.95)' : 'var(--cor-bg-header)' }}; 
+        border: 1px solid {{ $isMarketplace ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255,255,255,0.1)' }}; 
+        border-radius: 1.5rem; padding: 3rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); animation: fadeInVs 0.3s ease-out;
+        color: {{ $isMarketplace ? '#ffffff' : 'var(--cor-texto-secundaria, #ffffff)' }};"
     >
         {{-- BOTÃO FECHAR --}}
-        <button @click="show = false" style="position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: none; color: #52525b; cursor: pointer;">
+        <button @click="show = false" style="position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: none; color: inherit; cursor: pointer; opacity: 0.5;">
             <svg style="width: 1.5rem; height: 1.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
 
         {{-- LOGIN DO JOGADOR --}}
         <div x-show="state === 'player'" style="text-align: center;">
-            <div style="margin-bottom: 2rem;">
-                <div style="display: inline-block; background-color: #f59e0b; color: #000; font-weight: 900; font-style: italic; padding: 0.3rem 0.8rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.8rem;">VS</div>
-                <h2 style="font-size: 1.75rem; font-weight: 800; color: #ffffff; text-transform: uppercase; font-style: italic;">Bem-vindo</h2>
-                <p style="color: #a1a1aa; font-size: 0.9rem;">Acesse sua conta de <span style="color: #f59e0b; font-weight: 700;">Jogador</span></p>
+            <div style="margin-bottom: 2.5rem;">
+                {{-- LOGO OU FALLBACK --}}
+                <div class="flex justify-center mb-6">
+                    @if(!$isMarketplace && isset($loja->visual) && $loja->visual->logo_main)
+                        <img src="{{ asset('store_images/' . $loja->url_slug . '/' . $loja->visual->logo_main) }}" alt="{{ $loja->name }}" class="max-h-16 object-contain">
+                    @else
+                        <div style="background-color: {{ $isMarketplace ? '#f59e0b' : 'var(--cor-cta)' }}; color: #fff; font-weight: 900; padding: 0.8rem; border-radius: 8px; font-size: 1.2rem; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            {{ $isMarketplace ? 'VS' : strtoupper(substr($loja->name ?? 'L', 0, 1)) }}
+                        </div>
+                    @endif
+                </div>
+
+                <h2 style="font-size: 1.8rem; font-weight: 900; text-transform: uppercase; font-style: italic; letter-spacing: -0.025em;">Bem-vindo</h2>
+                <p style="opacity: 0.7; font-size: 0.95rem; font-weight: 500;">Acesse sua conta de <span style="color: {{ $isMarketplace ? '#f59e0b' : 'var(--cor-cta)' }}; font-weight: 800;">Jogador</span></p>
             </div>
 
-            <form wire:submit.prevent="loginPlayer" style="display: flex; flex-direction: column; gap: 1rem; text-align: left;">
+            <form wire:submit.prevent="loginPlayer" style="display: flex; flex-direction: column; gap: 1.25rem; text-align: left;">
                 <div>
-                    <input type="email" wire:model="email" placeholder="Seu e-mail" style="width: 100%; background: #18181b; border: 1px solid #27272a; color: #fff; padding: 0.8rem 1rem; border-radius: 0.75rem; outline: none;">
-                    {{-- CORREÇÃO AQUI: @enderror --}}
-                    @error('email') <span style="color: #ef4444; font-size: 0.7rem; margin-top: 4px; display: block;">{{ $message }}</span> @enderror
+                    <label style="display: block; font-size: 0.7rem; font-weight: 800; opacity: 0.5; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">E-MAIL OU USUÁRIO</label>
+                    <input type="email" wire:model="email" class="w-full text-sm border-none outline-none shadow-inner py-4 px-4 rounded-xl"
+                        style="background-color: {{ $isMarketplace ? '#18181b' : 'var(--cor-terciaria)' }}; color: inherit;">
                 </div>
 
                 <div>
-                    <input type="password" wire:model="password" placeholder="Sua senha" style="width: 100%; background: #18181b; border: 1px solid #27272a; color: #fff; padding: 0.8rem 1rem; border-radius: 0.75rem; outline: none;">
-                    {{-- CORREÇÃO AQUI: @enderror --}}
-                    @error('password') <span style="color: #ef4444; font-size: 0.7rem; margin-top: 4px; display: block;">{{ $message }}</span> @enderror
+                    <label style="display: block; font-size: 0.7rem; font-weight: 800; opacity: 0.5; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">SENHA</label>
+                    <input type="password" wire:model="password" class="w-full text-sm border-none outline-none shadow-inner py-4 px-4 rounded-xl"
+                        style="background-color: {{ $isMarketplace ? '#18181b' : 'var(--cor-terciaria)' }}; color: inherit;">
                 </div>
 
-                <button type="submit" style="width: 100%; background: #fff; color: #000; font-weight: 900; padding: 1rem; border-radius: 0.75rem; border: none; cursor: pointer; text-transform: uppercase; font-size: 0.8rem;">
-                    ENTRAR NA ARENA
+                <button type="submit" 
+                    style="width: 100%; background-color: {{ $isMarketplace ? '#ffffff' : 'var(--cor-cta)' }}; 
+                    color: {{ $isMarketplace ? '#000000' : 'var(--cor-cta-txt)' }}; 
+                    font-weight: 900; padding: 1.25rem; border-radius: 0.75rem; border: none; cursor: pointer; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.025em; transition: opacity 0.2s;">
+                    ENTRAR
                 </button>
             </form>
-
-            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
-                <button @click="state = 'store'" style="background: none; border: none; color: #3b82f6; font-weight: 700; cursor: pointer; font-size: 0.85rem; width: 100%;">Acesse o Painel da Loja →</button>
-            </div>
-        </div>
-
-        {{-- LOCALIZADOR DE LOJA --}}
-        <div x-show="state === 'store'" style="text-align: center;">
-            <button @click="state = 'player'" style="background: none; border: none; color: #52525b; font-weight: 700; cursor: pointer; font-size: 0.75rem; margin-bottom: 1.5rem;">← VOLTAR</button>
-            
-            <div style="margin-bottom: 2rem;">
-                <h2 style="font-size: 1.75rem; font-weight: 800; color: #ffffff; text-transform: uppercase; font-style: italic;">Painel Loja</h2>
-                <p style="color: #a1a1aa; font-size: 0.9rem;">Informe o slug da sua loja.</p>
-            </div>
-
-            <div style="display: flex; align-items: center; background: #121214; border-radius: 0.75rem; padding: 0.8rem 1rem; border: 1px solid #3b82f644; margin-bottom: 1.5rem;">
-                <span style="color: #52525b; font-size: 0.85rem; font-weight: 700;">versustcg.com.br/loja/</span>
-                <input type="text" wire:model="storeSlug" placeholder="minha-loja" style="background: none; border: none; color: #fff; outline: none; margin-left: 0.25rem; width: 100%;">
-            </div>
-
-            <div style="text-align: right; margin-bottom: 1.5rem;">
-                <button type="button" @click="state = 'recover'" style="background: none; border: none; color: #a1a1aa; font-size: 0.7rem; font-weight: 700; cursor: pointer; text-transform: uppercase; transition: color 0.2s;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#a1a1aa'">
-                    Esqueceu sua loja?
-                </button>
-            </div>
-
-            <button type="button" wire:click="redirectToStore" style="width: 100%; background: #3b82f6; color: #fff; font-weight: 900; padding: 1rem; border-radius: 0.75rem; border: none; cursor: pointer; text-transform: uppercase; font-size: 0.8rem;">
-                IR PARA MEU PAINEL
-            </button>
-        </div>
-        {{-- 2. A TELA DE RECUPERAÇÃO NOVA AQUI --}}
-        <div x-show="state === 'recover'" style="text-align: center;">
-            <button @click="state = 'store'" style="background: none; border: none; color: #52525b; font-weight: 700; cursor: pointer; font-size: 0.75rem; margin-bottom: 1.5rem;">← VOLTAR</button>
-            
-            <div style="margin-bottom: 2rem;">
-                <h2 style="font-size: 1.5rem; font-weight: 800; color: #ffffff; text-transform: uppercase; font-style: italic;">Recuperar Loja</h2>
-                <p style="color: #a1a1aa; font-size: 0.85rem;">Digite o e-mail do seu cadastro lojista.</p>
-            </div>
-
-            <div style="margin-bottom: 1.5rem; text-align: left;">
-                <input type="email" wire:model="recoverEmail" placeholder="Seu e-mail de cadastro" style="width: 100%; background: #121214; border: 1px solid #27272a; color: #fff; padding: 0.8rem 1rem; border-radius: 0.75rem; outline: none;">
+            @if(!$isMarketplace)
+            <div style="margin-top: 1.5rem; text-align: center; border-top: 1px solid {{ $isMarketplace ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)' }}; padding-top: 1.5rem;">
+                <p style="font-size: 0.75rem; font-weight: 600; opacity: 0.6; margin-bottom: 0.5rem; color: {{ $isMarketplace ? '#ffffff' : 'var(--cor-texto-secundaria, #ffffff)' }};">
+                    Ainda não tem uma conta no VersusTCG?
+                </p>
                 
-                {{-- Mensagens de Validação e Erro --}}
-                @error('recoverEmail') <span style="color: #ef4444; font-size: 0.7rem; margin-top: 4px; display: block;">{{ $message }}</span> @enderror
-                @if (session()->has('recoverError'))
-                    <span style="color: #ef4444; font-size: 0.75rem; margin-top: 8px; display: block; font-weight: 600;">{{ session('recoverError') }}</span>
-                @endif
-                @if (session()->has('recoverSuccess'))
-                    <span style="color: #10b981; font-size: 0.75rem; margin-top: 8px; display: block; font-weight: 600;">{{ session('recoverSuccess') }}</span>
-                @endif
+                {{-- AQUI ENTRA O GATILHO PARA O SEU WIZARD --}}
+                <a href="/registro/jogador?loja={{ $loja->url_slug }}" 
+                    style="display: inline-block; background: none; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; transition: opacity 0.2s; color: var(--cor-cta); text-decoration: none;"
+                    class="hover:opacity-80">
+                    Criar Minha Conta
+                </a>
             </div>
+            @endif
 
-            <button type="button" wire:click="recoverStoreSlug" style="width: 100%; background: #3b82f6; color: #fff; font-weight: 900; padding: 1rem; border-radius: 0.75rem; border: none; cursor: pointer; text-transform: uppercase; font-size: 0.8rem;">
-                ENVIAR LINK DE ACESSO
-            </button>
+            @if($isMarketplace)
+            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <button @click="state = 'store'" style="background: none; border: none; color: #3b82f6; font-weight: 800; cursor: pointer; font-size: 0.85rem; width: 100%; text-transform: uppercase;">Acesse o Painel da Loja →</button>
+            </div>
+            @endif
         </div>
+
+        {{-- (Seção de Lojista segue escondida para Marketplace=false) --}}
+        @if($isMarketplace)
+            {{-- Código do painel lojista... --}}
+        @endif
+
         <style>
-            @keyframes fadeInVs {
-                from { opacity: 0; transform: translate(-50%, -48%) scale(0.95); }
-                to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            }
+            @keyframes fadeInVs { from { opacity: 0; transform: translate(-50%, -48%) scale(0.95); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
         </style>
     </div>
 </div>

@@ -4,18 +4,31 @@ namespace App\Livewire\Marketplace;
 
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use App\Models\StoreUser;
 use App\Models\Store;
+use App\Models\CartItem;
 use App\Notifications\RecoverStoreSlug;
 
 class AuthModalLogin extends Component
 {
     // Propriedades para as duas regras
-    public $email;      // Usado para Nick ou E-mail do Player
-    public $password;   // Usada para a senha do Player
-    public $storeSlug;  // Usado para o localizador da Loja
+    public $email;
+    public $password;
+    public $storeSlug;
     public $recoverEmail;
+
+    // Declaração única das variáveis
+    public $isMarketplace = true;
+    public $loja = null;
+
+    // O Mount define o valor inicial
+    public function mount($isMarketplace = true, $loja = null)
+    {
+        $this->isMarketplace = $isMarketplace;
+        $this->loja = $loja;
+    }
 
     // REGRA 1: Autenticação do Jogador
     public function loginPlayer()
@@ -27,24 +40,32 @@ class AuthModalLogin extends Component
 
         $coluna = filter_var($this->email, FILTER_VALIDATE_EMAIL) ? 'email' : 'nickname';
 
-        // Usa o guard 'player' do seu config/auth.php
         if (Auth::guard('player')->attempt([$coluna => $this->email, 'password' => $this->password])) {
             session()->regenerate();
             $user = Auth::guard('player')->user();
-            return redirect()->route('player.wait', ['nickname' => $user->nickname]);
+
+            CartItem::where('session_id', Session::getId())
+                    ->update(['user_id' => $user->id]);
+
+            // Mantém o usuário na MESMA TELA em que ele abriu o modal (Loja ou Versus)
+            // Isso faz a página recarregar no mesmo lugar e o Dropdown do Header vai aparecer naturalmente
+            return redirect()->to(request()->header('Referer') ?? '/');
         }
 
-        throw ValidationException::withMessages(['email' => 'Credenciais inválidas na arena.']);
+        throw ValidationException::withMessages(['email' => 'Credenciais inválidas.']);
     }
 
-    // REGRA 2: Redirecionamento do Lojista (Slug)
+    // REGRA 2: Redirecionamento do Lojista
     public function redirectToStore()
     {
+        if (!$this->isMarketplace) {
+            return;
+        }
+
         $this->validate([
             'storeSlug' => 'required|min:2',
         ]);
 
-        // Redireciona para a estrutura de URL que você já utiliza
         return redirect('/loja/' . $this->storeSlug . '/login');
     }
 
@@ -53,14 +74,17 @@ class AuthModalLogin extends Component
         return view('livewire.marketplace.auth-modal-login');
     }
 
-    // REGRA 3: Recuperação de Slug da Loja
+    // REGRA 3: Recuperação de Slug
     public function recoverStoreSlug()
     {
+        if (!$this->isMarketplace) {
+            return;
+        }
+
         $this->validate([
             'recoverEmail' => 'required|email',
         ]);
 
-        // Busca o lojista pelo email usando o Model correto
         $user = StoreUser::where('email', $this->recoverEmail)->first();
 
         if (!$user) { 
@@ -68,7 +92,6 @@ class AuthModalLogin extends Component
             return;
         }
 
-        // Busca a loja atrelada a esse lojista
         $store = Store::where('owner_user_id', $user->id)->first();
 
         if (!$store) {
@@ -76,7 +99,6 @@ class AuthModalLogin extends Component
             return;
         }
 
-        // Dispara o e-mail usando o mesmo motor de notificações do seu sistema
         $user->notify(new RecoverStoreSlug($store->url_slug));
         
         session()->flash('recoverSuccess', 'Enviamos o link da sua loja para o seu e-mail!');

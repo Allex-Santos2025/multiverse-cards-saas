@@ -57,15 +57,43 @@ class SearchResults extends Component
         if ($hits->isEmpty()) return;
 
         $conceptIds           = $hits->keys()->all();
-        $estoqueVirtualNumber = 'CASE WHEN cp.type_line LIKE "%Basic Land%" THEN cp.collector_number ELSE "" END';
+        
+        // MICRO-CACHE DE ARTISTAS COM ISOLAMENTO POR CONCEITO + SET
+        $artistIndexesCache = [];
+        $siblings = DB::table('catalog_prints')
+            ->join('mtg_prints', 'catalog_prints.specific_id', '=', 'mtg_prints.id')
+            ->whereIn('catalog_prints.concept_id', $conceptIds)
+            ->where('catalog_prints.collector_number', 'REGEXP', '[a-zA-Z]')
+            ->select('catalog_prints.concept_id', 'catalog_prints.set_id', 'catalog_prints.collector_number', 'mtg_prints.artist')
+            ->orderBy('catalog_prints.collector_number', 'asc')
+            ->get();
 
-        // Busca estoque real agrupado por conceito + set + virtual_number
-        // Inclui extras e discount_percent para foil/etched/desconto
+        foreach($siblings as $sib) {
+            $cacheKey = $sib->concept_id . '_' . $sib->set_id;
+            $art = trim($sib->artist ?: 'Artista Desconhecido');
+            $cNum = strtolower(trim($sib->collector_number));
+
+            if(!isset($artistIndexesCache[$cacheKey][$art])) {
+                $artistIndexesCache[$cacheKey][$art] = [];
+            }
+            
+            if (!in_array($cNum, $artistIndexesCache[$cacheKey][$art])) {
+                $artistIndexesCache[$cacheKey][$art][] = $cNum;
+            }
+        }
+        
+        $estoqueVirtualNumber = 'CASE 
+            WHEN cp.type_line LIKE "%Basic Land%" THEN cp.collector_number 
+            WHEN s_estoque.code IN ("FEM", "ALL", "HML") AND cp.collector_number REGEXP "[a-zA-Z]" THEN cp.collector_number 
+            ELSE "" 
+        END';
+
         $stocksRaw = StockItem::selectRaw("
                 cp.concept_id,
                 cp.set_id,
+                MAX(s_estoque.code) as set_code,
                 MAX(cp.type_line) as type_line,
-                {$estoqueVirtualNumber} as virtual_number,
+                MAX({$estoqueVirtualNumber}) as virtual_number,
                 SUM(stock_items.quantity) as total_estoque,
                 MIN(CASE WHEN stock_items.quantity > 0 THEN stock_items.price END) as menor_preco,
                 MAX(stock_items.price) as ultimo_preco,
@@ -80,6 +108,7 @@ class SearchResults extends Component
                 SUBSTRING_INDEX(GROUP_CONCAT(cp.id ORDER BY stock_items.price ASC SEPARATOR ','), ',', 1) as print_id_in_stock
             ")
             ->join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
+            ->join('sets as s_estoque', 'cp.set_id', '=', 's_estoque.id')
             ->where('stock_items.store_id', $this->loja->id)
             ->whereIn('cp.concept_id', $conceptIds)
             ->when($numberFilter, fn($q) => $q->where('cp.collector_number', $numberFilter))
@@ -96,18 +125,43 @@ class SearchResults extends Component
             $isBasicLand = preg_match('/(Plains|Island|Swamp|Mountain|Forest)/i', $hit['name'])
                 || (isset($hit['type_line']) && stripos($hit['type_line'], 'Basic Land') !== false);
 
-            // ESTOQUE REAL (disponível e esgotado)
+            $vNumsInStoreBySet = [];
+
+            // 1. ESTOQUE REAL
             if ($stocksByConcept->has($cId)) {
                 foreach ($stocksByConcept->get($cId) as $row) {
                     $vNum      = $row->virtual_number;
-                    $printInfo = CatalogPrint::with('set')->find($row->print_id_in_stock);
+                    $sid       = $row->set_id;
+                    $vNumsInStoreBySet[$sid][] = (string) $vNum;
+                    
+                    $printInfo = CatalogPrint::select('catalog_prints.*', 'mtg_prints.artist')
+                                            ->leftJoin('mtg_prints', 'catalog_prints.specific_id', '=', 'mtg_prints.id')
+                                            ->with('set')
+                                            ->find($row->print_id_in_stock);
 
                     if (!$printInfo) continue;
 
                     $nomeEn = $hit['name'] ?? '';
                     $nomePt = $printInfo->printed_name ?? $hit['name_pt'] ?? $nomeEn;
+                    
+                    $isVariantSet = in_array(strtoupper($row->set_code), ['FEM', 'ALL', 'HML']);
+                    $hasLetterInNumber = preg_match('/[a-zA-Z]/', $vNum);
+                    $isArtVariant = $isVariantSet && $hasLetterInNumber && !$isBasicLand;
 
-                    if ($isBasicLand && $vNum !== '') {
+                    if ($isArtVariant && !empty($printInfo->artist)) {
+                        $cacheKey = $cId . '_' . $sid;
+                        $nomeArtistaBase = trim($printInfo->artist);
+                        $nomeArtistaFinal = $nomeArtistaBase;
+
+                        if (isset($artistIndexesCache[$cacheKey][$nomeArtistaBase]) && count($artistIndexesCache[$cacheKey][$nomeArtistaBase]) > 1) {
+                            $idx = array_search(strtolower(trim($vNum)), $artistIndexesCache[$cacheKey][$nomeArtistaBase]);
+                            if ($idx !== false) $nomeArtistaFinal .= ' ' . ($idx + 1);
+                        }
+
+                        $nomeEn .= ' (' . $nomeArtistaFinal . ')';
+                        $nomePt .= ' (' . $nomeArtistaFinal . ')';
+                        $conceptSlug = Str::slug($hit['name'] . '-' . $nomeArtistaFinal);
+                    } elseif ($isBasicLand && $vNum !== '') {
                         $nomeEn     .= ' #' . $vNum;
                         $nomePt     .= ' #' . $vNum;
                         $conceptSlug = Str::slug($hit['name']) . '-' . $vNum;
@@ -119,7 +173,6 @@ class SearchResults extends Component
                         ? (filter_var($printInfo->image_path, FILTER_VALIDATE_URL) ? $printInfo->image_path : asset($printInfo->image_path))
                         : 'https://placehold.co/250x350/eeeeee/999999?text=X';
 
-                    // Foil / Etched / Desconto
                     $extrasStr  = strtolower($row->menor_preco_extras ?? '');
                     $isEtched   = str_contains($extrasStr, 'etched');
                     $isFoil     = str_contains($extrasStr, 'foil') && !$isEtched;
@@ -149,29 +202,50 @@ class SearchResults extends Component
                 }
             }
 
-            // FANTASMAS — só para lojista
+            // 2. FANTASMAS
             if ($this->isLojista) {
                 if (!$isBasicLand) {
-                    if (!$stocksByConcept->has($cId)) {
-                        $prints   = CatalogPrint::where('concept_id', $cId)->get();
-                        $global[] = $this->generateGhostData($hit, $prints);
+                    $prints = CatalogPrint::select('catalog_prints.*', 'mtg_prints.artist', 'sets.code as set_code')
+                                            ->leftJoin('mtg_prints', 'catalog_prints.specific_id', '=', 'mtg_prints.id')
+                                            ->join('sets', 'catalog_prints.set_id', '=', 'sets.id')
+                                            ->where('concept_id', $cId)->get();
+                    
+                    $printsAgrupadosParaFantasma = [];
+                    foreach($prints as $p) {
+                        $isVar = in_array(strtoupper($p->set_code), ['FEM', 'ALL', 'HML']) && preg_match('/[a-zA-Z]/', $p->collector_number);
+                        $vId = $isVar ? $p->collector_number : 'default';
+                        $printsAgrupadosParaFantasma[$p->set_id][$vId][] = $p;
+                    }
+                    
+                    foreach($printsAgrupadosParaFantasma as $sidFantasma => $variants) {
+                        foreach($variants as $vNumFantasma => $printsDoFantasma) {
+                            $compareId = $vNumFantasma !== 'default' ? (string)$vNumFantasma : '';
+                            
+                            $inEstoque = isset($vNumsInStoreBySet[$sidFantasma]) && in_array($compareId, $vNumsInStoreBySet[$sidFantasma]);
+                            
+                            if (!$inEstoque) {
+                                $global[] = $this->generateGhostData($hit, collect($printsDoFantasma), ($vNumFantasma !== 'default' ? $vNumFantasma : null), $artistIndexesCache, $sidFantasma);
+                            }
+                        }
                     }
                 } else {
-                    $allNumbers = CatalogPrint::where('concept_id', $cId)
+                    $allNumbersBySet = CatalogPrint::where('concept_id', $cId)
                         ->when($numberFilter, fn($q) => $q->where('collector_number', $numberFilter))
-                        ->distinct()
-                        ->pluck('collector_number');
+                        ->select('collector_number', 'set_id')
+                        ->get()
+                        ->groupBy('set_id');
 
-                    $numbersInStore = $stocksByConcept->has($cId)
-                        ? $stocksByConcept->get($cId)->pluck('virtual_number')->map(fn($n) => (string) $n)->all()
-                        : [];
-
-                    foreach ($allNumbers as $num) {
-                        if (!in_array((string) $num, $numbersInStore)) {
-                            $printsDesteNumero = CatalogPrint::where('concept_id', $cId)
-                                ->where('collector_number', $num)
-                                ->get();
-                            $global[] = $this->generateGhostData($hit, $printsDesteNumero, (string) $num);
+                    foreach ($allNumbersBySet as $sidFantasma => $numbers) {
+                        foreach ($numbers->pluck('collector_number')->unique() as $num) {
+                            $inEstoque = isset($vNumsInStoreBySet[$sidFantasma]) && in_array((string)$num, $vNumsInStoreBySet[$sidFantasma]);
+                            
+                            if (!$inEstoque) {
+                                $printsDesteNumero = CatalogPrint::where('concept_id', $cId)
+                                    ->where('set_id', $sidFantasma)
+                                    ->where('collector_number', $num)
+                                    ->get();
+                                $global[] = $this->generateGhostData($hit, $printsDesteNumero, (string) $num, $artistIndexesCache, $sidFantasma);
+                            }
                         }
                     }
                 }
@@ -185,7 +259,7 @@ class SearchResults extends Component
         $this->globalResults = collect($global)->values()->all();
     }
 
-    private function generateGhostData($hit, $prints, $vNum = null): array
+    private function generateGhostData($hit, $prints, $vNum = null, $artistCache = [], $sid = null): array
     {
         $nomeEn   = $hit['name'] ?? '';
         $printEn  = $prints->filter(fn($p) => strtolower($p->language_code) === 'en' && !empty($p->image_path))->sortByDesc('id')->first();
@@ -198,7 +272,26 @@ class SearchResults extends Component
         )->sortByDesc('id')->first();
         $nomePt = $printPt->printed_name ?? $hit['name_pt'] ?? $nomeEn;
 
-        if ($vNum) {
+        $isVariantSet = in_array(strtoupper($printImg?->set_code ?? $printImg?->set?->code ?? ''), ['FEM', 'ALL', 'HML']);
+        $hasLetterInNumber = preg_match('/[a-zA-Z]/', $vNum ?? '');
+        $isArtVariant = $isVariantSet && $hasLetterInNumber;
+
+        if ($isArtVariant && !empty($printImg?->artist)) {
+            $cacheKey = ($hit['id'] ?? null) . '_' . $sid;
+            $nomeArtistaBase = trim($printImg->artist);
+            $nomeArtistaFinal = $nomeArtistaBase;
+
+            if ($sid && isset($artistCache[$cacheKey][$nomeArtistaBase]) && count($artistCache[$cacheKey][$nomeArtistaBase]) > 1) {
+                $idx = array_search(strtolower(trim($vNum ?? '')), $artistCache[$cacheKey][$nomeArtistaBase]);
+                if ($idx !== false) {
+                    $nomeArtistaFinal .= ' ' . ($idx + 1);
+                }
+            }
+
+            $displayEn   = "$nomeEn (" . $nomeArtistaFinal . ")";
+            $displayPt   = "$nomePt (" . $nomeArtistaFinal . ")";
+            $conceptSlug = Str::slug($hit['name'] . '-' . $nomeArtistaFinal);
+        } elseif ($vNum && !$isVariantSet) { 
             $displayEn   = "$nomeEn #$vNum";
             $displayPt   = "$nomePt #$vNum";
             $conceptSlug = Str::slug($hit['name']) . '-' . $vNum;
@@ -218,7 +311,6 @@ class SearchResults extends Component
             'nome_localizado' => $displayPt,
             'set_name'        => ($printImg && $printImg->set) ? $printImg->set->name : null,
             'imagem_final'    => $imagemFinal,
-            // fantasmas não têm preço nem foil definido
             'is_foil'         => false,
             'is_etched'       => false,
             'desconto'        => 0,

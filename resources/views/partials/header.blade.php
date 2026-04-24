@@ -45,8 +45,37 @@
                 </a>
             @else
                 {{-- MODO PADRÃO: Botões de Auth --}}
-                <button onclick="Livewire.dispatch('open-login-modal')" class="text-sm font-bold text-gray-300 hover:text-white transition">Entrar</button>
-                <button onclick="Livewire.dispatch('open-auth-modal')" class="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition shadow-[0_0_15px_rgba(255,255,255,0.1)] transform hover:scale-105">Criar Conta</button>
+                @auth('player')
+                    {{-- Usuário Logado --}}
+                    <div class="relative group">
+                        <button class="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+                            <div class="text-right hidden sm:block">
+                                <span class="text-[12px] font-bold uppercase text-white block leading-tight">Olá, {{ explode(' ', auth('player')->user()->name)[0] }}</span>
+                            </div>
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm uppercase text-white border border-[#ff5500]/50 shadow-[0_0_10px_rgba(255,85,0,0.2)]" 
+                                 style="background-color: #ff5500;">
+                                {{ substr(auth('player')->user()->name, 0, 1) }}
+                            </div>
+                        </button>
+                        
+                        {{-- Dropdown Dark --}}
+                        <div class="absolute right-0 top-full pt-4 hidden group-hover:block z-[100]">
+                            <div class="w-48 bg-[#111] text-white shadow-2xl rounded-xl py-2 border border-gray-800">
+                                <a href="#" class="flex items-center px-5 py-3 hover:bg-[#222] text-xs font-bold uppercase transition-colors text-gray-300 hover:text-white">
+                                    <i class="ph ph-user-circle text-lg mr-3 text-[#ff5500]"></i> Meu Perfil
+                                </a>
+                                <div class="border-t border-gray-800 my-1"></div>
+                                <a href="#" class="flex items-center px-5 py-3 hover:bg-[#222] text-xs font-bold uppercase transition-colors text-red-500">
+                                    <i class="ph ph-sign-out text-lg mr-3"></i> Sair
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    {{-- Deslogado --}}
+                    <button onclick="Livewire.dispatch('open-login-modal')" class="text-sm font-bold text-gray-300 hover:text-white transition">Entrar</button>
+                    <button onclick="Livewire.dispatch('open-auth-modal')" class="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition shadow-[0_0_15px_rgba(255,255,255,0.1)] transform hover:scale-105">Criar Conta</button>
+                @endauth
             @endif
         </div>
 

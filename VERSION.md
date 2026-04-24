@@ -526,6 +526,67 @@ STAGE vMAJOR.MINOR.PATCH
 
 ---
 
+**Versão:** `alpha v0.1.14`  
+**Data:** 20/04/2026  
+**Descrição da Versão:** Implementação estrutural do componente interativo de Carrinho Flutuante (Dropdown) no cabeçalho das lojas. Foco na criação de um fluxo de compra ágil, integrando o estado global do carrinho com o front-end através de Livewire e Alpine.js, permitindo a visualização reativa de itens e valores sem interrupção da navegação do usuário.
+
+### Funcionalidades (Engenharia de Dados & Nova Entrega):
+
+* **Componente Dinâmico de Carrinho (Dropdown Flutuante):** Criação e injeção do componente genérico de carrinho (`livewire:store.template.cart.dropdown`) no Header principal. O sistema agora mapeia os itens adicionados à sessão do usuário em tempo real, renderizando um *flyout* interativo (controlado via Alpine.js) que exibe a listagem de cartas, quantidades, subtotal e botões de *Call to Action* (CTA) diretamente na barra de navegação.
+
+### Correções e Melhorias (Patches):
+
+* **Adequação Dinâmica de Cores (White Label):** O dropdown do carrinho foi estruturado para herdar nativamente as variáveis CSS injetadas pelo motor de estilos da loja (`var(--cor-cta)`, `var(--cor-texto-header)`, etc). Isso garante que o componente respeite o contraste e a paleta exclusiva de cada lojista cliente, sem a necessidade de folhas de estilo estáticas ou duplicação de código.
+* **Isolamento de Estado (Livewire vs Alpine):** Ajuste na arquitetura do componente para evitar conflitos de re-renderização (DOM Diffing). O botão de acionamento (ícone de sacola/carrinho) e a janela do dropdown foram blindados para abrir e fechar fluidamente via micro-interações do Alpine, enquanto o Livewire gerencia apenas o tráfego de dados (adição/remoção de produtos e cálculo financeiro).
+
+---
+
+**Versão:** `alpha v0.1.15`  
+**Data:** 21/04/2026  
+**Descrição da Versão:** Criação das interfaces de autenticação para as lojas clientes (White Label) e estruturação do componente de menu de usuário (Dropdown). O desenvolvimento foi espelhado na arquitetura base do modal de autenticação do sistema Versus, visando unificar e padronizar a experiência de acesso de ponta a ponta.
+
+### Funcionalidades (Engenharia de Dados & Nova Entrega):
+
+* **Formulários de Login (White Label):** Criação dos componentes visuais e lógicos de login e registro dedicados ao ambiente individual de cada loja. A estrutura do formulário foi clonada e adaptada a partir da base sólida do sistema central (Versus TCG).
+* **Dropdown de Usuário (Header):** Estruturação inicial do menu flutuante de perfil (avatar, saudação e opções da conta) no cabeçalho das lojas, projetado para substituir o botão "Entrar" após a autenticação bem-sucedida do jogador.
+
+### Errata & Problemas Conhecidos (Bugs Mapeados):
+
+* **Falha de Redirecionamento (Fallback):** O fluxo de autenticação, ao ser concluído com sucesso, não está persistindo o usuário na tela de origem. O sistema executa um redirecionamento indesejado para uma rota de *fallback*, impedindo a ativação dinâmica e fluida do Dropdown no cabeçalho.
+* **Inconsistência de Cores e Contraste:** Conflito de herança de CSS na tela de login. O formulário importado do Versus carrega estilos *inline* rígidos (focados no tema dark original), o que quebra a legibilidade de inputs, placeholders e ícones quando submetidos ao motor de variáveis dinâmicas (cores claras/brand) das lojas White Label.
+
+------
+
+**Versão:** `alpha v0.1.16`  
+**Data:** 22/04/2026  
+**Descrição da Versão:** Expansão do ecossistema de autenticação com a implementação do Wizard de Cadastro de Jogadores dedicado ao ambiente das lojas clientes (White Label). A interface foi inteiramente modelada a partir do fluxo padrão da Versus TCG, mantendo a estrutura de múltiplos passos (Termos, Dados Pessoais, Conclusão).
+
+### Funcionalidades (Engenharia de Dados & Nova Entrega):
+
+* **Wizard de Registro de Jogadores (White Label):** Construção do formulário em etapas para captação de novos usuários diretamente pela URL do lojista. O componente compartilha a mesma base lógica (`Livewire`) do marketplace, garantindo uniformidade na validação e na injeção de dados no banco (model `PlayerUser`).
+
+### Errata & Problemas Conhecidos (Bugs Mapeados):
+
+* **Falha na Reatividade da Barra de Progresso:** O rastreador visual de etapas (linha de conexão e bolinhas numeradas) não está sincronizando com o avanço do formulário. Conflito mapeado entre o estado do Alpine.js (`x-data="{ currentStepAlpine }"`) e o ciclo de renderização do Livewire (DOM Diffing).
+* **Herança dos Bugs de Autenticação (Dia 21):** O componente recém-criado herdou os mesmos passivos técnicos da tela de login: redirecionamento incorreto para rota de *fallback* após o cadastro/login e quebra de legibilidade visual (conflito entre o CSS *inline* fixo e o motor dinâmico de cores da loja).
+
+---
+
+**Versão:** `alpha v0.1.17`  
+**Data:** 23/04/2026  
+**Descrição da Versão:** Estabilização crítica e refatoração completa dos fluxos de registro, login e navegação autenticada. Resolução definitiva do acúmulo de *bugs* visuais e lógicos herdados das versões anteriores, garantindo integridade de sessão e fluidez na interface (UI/UX) tanto no marketplace quanto nas lojas White Label.
+
+### Correções e Melhorias (Patches):
+
+* **Correção Crítica de Sessão e Redirecionamento (Guards):** O sistema agora mantém o usuário na tela de origem após o login/cadastro. Implementação do redirecionamento via cabeçalho `Referer` e ajuste global nas diretivas do Blade (`@auth('player')`), forçando os componentes do cabeçalho a validarem estritamente o porteiro correto de jogadores, ativando as áreas restritas sem ejetar o usuário.
+* **Sincronização Definitiva da Barra de Progresso (Wizards):** Remoção da dependência do Alpine.js na barra de etapas dos formulários de registro (Lojista e Jogador). A renderização das cores e opacidades agora é controlada diretamente pelo Blade (`$currentStep`), com o uso rigoroso de `wire:key` para blindar o componente contra o DOM Diffing do Livewire.
+* **Harmonização de Cores e Contraste Dinâmico:** Limpeza da injeção de CSS *inline* estático nos *inputs*. O sistema agora combina as variáveis dinâmicas do *backend* (`var(--cor-terciaria)`) com classes utilitárias do Tailwind (`placeholder-white/50`), garantindo legibilidade perfeita do texto digitado e do texto fantasma em qualquer paleta de loja.
+* **Restauração da Máscara SVG (Logo Apple):** Correção da renderização do ícone de login da Apple. A lógica de máscara CSS (`-webkit-mask-image`) foi revertida para o formato *inline*, eliminando a quebra de compilação da URL do *asset* pelo Blade.
+* **Ativação dos Ícones de Senha (Toggle de Visibilidade):** Injeção da biblioteca oficial Phosphor Icons no layout base (`app.blade.php`), reativando a renderização visual e a funcionalidade interativa (Alpine `@click`) do botão de visualizar/ocultar senha nos formulários.
+* **Implementação do Menu Flutuante (Dropdown) por Hover:** O cabeçalho foi refatorado para exibir o perfil do usuário (Avatar dinâmico, Saudação e Opções) via interação fluida de *hover* (`group-hover`), extinguindo a necessidade de cliques. O *layout* foi ramificado para respeitar a identidade visual de cada ambiente (Dropdown *Dark* com detalhes laranjas na Versus TCG e Dropdown *Clean* com cores dinâmicas nas Lojas).
+
+---
+
 ## 📜 Histórico de Versões
 
 ### `alpha v0.0.1` — 21/12/2025  

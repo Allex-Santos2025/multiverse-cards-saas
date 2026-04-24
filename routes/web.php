@@ -12,6 +12,13 @@ use App\Http\Controllers\StoreController;
 // 1. MARKETPLACE & GERAL (Rotas globais)
 Route::group([], base_path('routes/marketplace.php'));
 
+// 1.5 LOBBY DO JOGADOR (Área do Player)
+// Prefixo: /lobby
+// Middleware: auth:player
+Route::prefix('lobby')
+    ->middleware(['web', 'auth:player_user'])
+    ->group(base_path('routes/lobby.php'));
+
 
 // 2. DASHBOARD (Área Administrativa)
 // Prefixo: /loja/{slug}/dashboard

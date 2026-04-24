@@ -360,7 +360,7 @@ function stockPieChart(breakdownData) {
                     <a href="{{ route('store.dashboard.stock.history', ['slug' => $slug]) }}" class="px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-sky-500 dark:hover:text-sky-400 transition-colors">Histórico</a>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-[10px] font-medium text-slate-400">Dados consolidados em: {{ isset($snapshots) && $snapshots->isNotEmpty() ? $snapshots->first()->updated_at->format('d/m/Y H:i') : '--' }}</span>
+                    <span class="text-[10px] font-medium text-slate-400">Dados consolidados em: {{ isset($snapshots) && $snapshots->isNotEmpty() ? $snapshots->last()->updated_at->format('d/m/Y H:i') : '--' }}</span>
                     <button wire:click="refreshStockData" class="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" title="Forçar Atualização Agora">
                         <svg class="w-4 h-4" wire:loading.class="animate-spin text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                     </button>

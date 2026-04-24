@@ -46,15 +46,46 @@
 
             {{-- Ícones do Usuário e Carrinho --}}
             <div class="w-full lg:w-1/4 flex justify-center lg:justify-end items-center space-x-6 order-2 lg:order-none" style="color: var(--cor-texto-header);">
-                <a href="#" class="flex flex-col items-center hover:opacity-75 transition-opacity">
-                    <i class="ph ph-user text-2xl"></i>
-                    <span class="text-xs font-medium mt-1 uppercase">ENTRAR</span>
-                </a>
-                <a href="#" class="relative flex flex-col items-center hover:opacity-75 transition-opacity">
-                    <i class="ph ph-shopping-cart text-2xl"></i>
-                    <span class="text-xs font-medium mt-1 uppercase">CARRINHO</span>
-                    <span class="absolute -top-1 -right-2 bg-accent-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">0</span>
-                </a>
+                
+                {{-- AQUI: Bloco do Usuário Logado com Dropdown no Hover --}}
+                @auth('player')
+                    <div class="relative group">
+                        <button class="flex flex-col items-center hover:opacity-75 transition-opacity cursor-pointer" style="color: inherit;">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-sm border border-white/20" 
+                                style="background-color: var(--cor-cta); color: var(--cor-cta-txt);">
+                                {{ substr(auth('player')->user()->name, 0, 1) }}
+                            </div>
+                            <span class="text-[12px] font-bold mt-1 uppercase truncate max-w-[100px]">Olá, {{ explode(' ', auth('player')->user()->name)[0] }}</span>
+                        </button>
+                        
+                        {{-- Dropdown - Abre no Hover (group-hover) --}}
+                        {{-- O 'pt-2' cria uma ponte invisível para o mouse não perder o foco ao descer --}}
+                        <div class="absolute right-0 top-full pt-2 hidden group-hover:block z-[100]">
+                            <div class="w-44 bg-white text-gray-800 shadow-2xl rounded-xl py-2 border border-gray-100">
+                                <a href="#" class="block px-4 py-2 hover:bg-gray-50 text-[11px] font-bold uppercase transition-colors">
+                                    <i class="ph ph-user-circle mr-2"></i> Meu Perfil
+                                </a>
+                                <div class="border-t border-gray-50 my-1"></div>
+                                <a href="#" class="block px-4 py-2 hover:bg-gray-50 text-[11px] font-bold uppercase text-red-500 transition-colors">
+                                    <i class="ph ph-sign-out mr-2"></i> Sair
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <button 
+                        @click="$dispatch('open-login-modal')" 
+                        class="flex flex-col items-center hover:opacity-75 transition-opacity bg-transparent border-none cursor-pointer"
+                        style="color: inherit;"
+                    >
+                        <i class="ph ph-user text-2xl"></i>
+                        <span class="text-xs font-medium mt-1 uppercase">ENTRAR</span>
+                    </button>
+                @endauth
+                
+                {{-- Componente Livewire do Carrinho --}}
+                <livewire:store.template.cart.dropdown :loja="$loja" />
+                
             </div>
         </div>
     </div>
