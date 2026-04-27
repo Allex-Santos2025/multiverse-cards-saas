@@ -46,7 +46,17 @@
         @include('partials.header')
 
         {{-- INJEÇÃO DO MENU FUNIL (MAGIC, POKEMON, ETC) --}}
-        
+        @php
+            // Captura o jogo pela rota, pela query string do registro ou pela URL física
+            $gameSlug = request()->route('game_slug') ?? request()->query('game_slug');
+            if (!$gameSlug && request()->is('marketplace/*')) {
+                $gameSlug = request()->segment(2); 
+            }
+        @endphp
+
+        @if($gameSlug)
+            @includeIf('partials.menus.' . $gameSlug)
+        @endif
 
         <main>{{ $slot ?? '' }} @yield('content') </main>
 

@@ -4,7 +4,7 @@
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-4">
                 <span class="flex items-center"><i class="ph ph-whatsapp-logo mr-1 text-base"></i> (11) 99999-9999</span>
-                <span class="hidden sm:flex items-center"><i class="ph ph-envelope mr-1 text-base"></i> contato@{{ $loja->url_slug }}.com.br</span>
+                <span class="hidden sm:flex items-center"><i class="ph ph-envelope mr-1 text-base"></i> contato@{{ $loja->url_slug ?? 'versus' }}.com.br</span>
             </div>
             <div class="flex items-center space-x-3">
                 <a href="#" class="hover:opacity-75 transition-opacity"><i class="ph ph-instagram-logo text-lg"></i></a>
@@ -19,14 +19,12 @@
 
             {{-- Logo --}}
             <div class="w-full lg:w-1/4 flex justify-center lg:justify-start">
-                <a href="{{ route('store.view', ['slug' => $loja->url_slug]) }}" class="flex items-center hover:opacity-90 transition-opacity">
-                    @if($loja->visual && $loja->visual->logo_main)
-                        <img src="{{ asset('store_images/' . $loja->url_slug . '/' . $loja->visual->logo_main) }}" 
-                            alt="{{ $loja->name }}" 
-                            class="max-h-16">
+                <a href="{{ route('store.view', ['slug' => $loja->url_slug ?? 'versus']) }}" class="flex items-center hover:opacity-90 transition-opacity">
+                    @if(isset($loja) && $loja->visual && $loja->visual->logo_main)
+                        <img src="{{ asset('store_images/' . $loja->url_slug . '/' . $loja->visual->logo_main) }}" alt="{{ $loja->name }}" class="max-h-16">
                     @else
                         <span class="text-3xl font-black tracking-tighter uppercase" style="color: var(--cor-texto-header);">
-                            {{ $loja->name }}
+                            {{ $loja->name ?? 'Versus TCG' }}
                         </span>
                     @endif
                 </a>
@@ -35,41 +33,35 @@
             {{-- Barra de Busca --}}
             <div class="w-full lg:w-2/4 order-3 lg:order-none">
                 @php
-                    $isLojista = auth('store_user')->check() 
-                        && auth('store_user')->user()->store?->id === $loja->id;
+                    $isLojista = auth('store_user')->check() && isset($loja) && auth('store_user')->user()->store?->id === $loja->id;
                 @endphp
                 @livewire('global-search', [
-                    'storeSlug' => $loja->url_slug,
+                    'storeSlug' => $loja->url_slug ?? 'versus',
                     'isLojista' => $isLojista,
                 ])
             </div>
 
             {{-- Ícones do Usuário e Carrinho --}}
-            <div class="w-full lg:w-1/4 flex justify-center lg:justify-end items-center space-x-6 order-2 lg:order-none" style="color: var(--cor-texto-header);">
+            <div class="w-full lg:w-1/4 flex justify-center lg:justify-end items-center order-2 lg:order-none z-[100] text-gray-300" style="gap: 20px;">
                 
-                {{-- AQUI: Bloco do Usuário Logado com Dropdown no Hover --}}
+                {{-- Ícones do Usuário e Carrinho --}}
+            <div class="w-full lg:w-1/4 flex justify-center lg:justify-end items-center space-x-10 order-2 lg:order-none" style="color: var(--cor-texto-header);">
+                
+                {{-- Bloco do Usuário Logado --}}
                 @auth('player')
                     <div class="relative group">
                         <button class="flex flex-col items-center hover:opacity-75 transition-opacity cursor-pointer" style="color: inherit;">
-                            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-sm border border-white/20" 
-                                style="background-color: var(--cor-cta); color: var(--cor-cta-txt);">
-                                {{ substr(auth('player')->user()->name, 0, 1) }}
+                            <div class="relative h-9 flex items-end justify-center">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-sm border border-white/20 mb-0.5" 
+                                    style="background-color: var(--cor-cta); color: var(--cor-cta-txt);">
+                                    {{ substr(auth('player')->user()->name, 0, 1) }}
+                                </div>
                             </div>
-                            <span class="text-[12px] font-bold mt-1 uppercase truncate max-w-[100px]">Olá, {{ explode(' ', auth('player')->user()->name)[0] }}</span>
+                            <span class="text-xs font-bold mt-1.5 uppercase tracking-wider leading-none truncate max-w-[140px]">OLÁ, {{ explode(' ', auth('player')->user()->name)[0] }}</span>
                         </button>
                         
-                        {{-- Dropdown - Abre no Hover (group-hover) --}}
-                        {{-- O 'pt-2' cria uma ponte invisível para o mouse não perder o foco ao descer --}}
                         <div class="absolute right-0 top-full pt-2 hidden group-hover:block z-[100]">
-                            <div class="w-44 bg-white text-gray-800 shadow-2xl rounded-xl py-2 border border-gray-100">
-                                <a href="#" class="block px-4 py-2 hover:bg-gray-50 text-[11px] font-bold uppercase transition-colors">
-                                    <i class="ph ph-user-circle mr-2"></i> Meu Perfil
-                                </a>
-                                <div class="border-t border-gray-50 my-1"></div>
-                                <a href="#" class="block px-4 py-2 hover:bg-gray-50 text-[11px] font-bold uppercase text-red-500 transition-colors">
-                                    <i class="ph ph-sign-out mr-2"></i> Sair
-                                </a>
-                            </div>
+                            <livewire:lobby.player-dropdown :isMarketplace="false" :loja="isset($loja) ? $loja : null" />
                         </div>
                     </div>
                 @else
@@ -78,14 +70,15 @@
                         class="flex flex-col items-center hover:opacity-75 transition-opacity bg-transparent border-none cursor-pointer"
                         style="color: inherit;"
                     >
-                        <i class="ph ph-user text-2xl"></i>
-                        <span class="text-xs font-medium mt-1 uppercase">ENTRAR</span>
+                        <div class="relative h-9 flex items-end justify-center">
+                            <i class="ph ph-user text-[28px] leading-none"></i>
+                        </div>
+                        <span class="text-xs font-bold mt-1.5 uppercase tracking-wider leading-none">ENTRAR</span>
                     </button>
-                @endauth
-                
-                {{-- Componente Livewire do Carrinho --}}
-                <livewire:store.template.cart.dropdown :loja="$loja" />
-                
+                @endauth               
+                </div>                
+                {{-- Carrinho --}}
+                <livewire:store.template.cart.dropdown :loja="isset($loja) ? $loja : null" />
             </div>
         </div>
     </div>
@@ -171,7 +164,7 @@
                 @endif
 
                 <li class="relative">
-                    <a href="#" class="px-4 py-2 rounded-md transition-all duration-300 hover:scale-110 hover:bg-[var(--cor-3)] hover:text-gray-900 text-[var(--cor-3)] flex items-center gap-1 font-bold uppercase">
+                    <a href="#" class="px-4 py-2 rounded-md transition-all duration-300 hover:scale-110 hover:bg-[var(--cor-cta)] hover:text-gray-900 text-[var(--cor-3)] flex items-center gap-1 font-bold uppercase">
                         <i class="ph ph-tag-simple font-bold"></i> OFERTAS
                     </a>
                 </li>

@@ -40,19 +40,30 @@ class AuthModalLogin extends Component
 
         $coluna = filter_var($this->email, FILTER_VALIDATE_EMAIL) ? 'email' : 'nickname';
 
-        if (Auth::guard('player')->attempt([$coluna => $this->email, 'password' => $this->password])) {
-            session()->regenerate();
-            $user = Auth::guard('player')->user();
+        // 1. Capturamos o ID de visitante ANTES de logar e regenerar a sessão
+        $visitorSessionId = \Illuminate\Support\Facades\Session::getId();
 
-            CartItem::where('session_id', Session::getId())
-                    ->update(['user_id' => $user->id]);
+        if (Auth::guard('player')->attempt([$coluna => $this->email, 'password' => $this->password])) {
+            
+            // 2. O Laravel troca o ID da sessão aqui por segurança (Session Fixation)
+            session()->regenerate();
+            
+            $user = Auth::guard('player')->user();
+            $newSessionId = \Illuminate\Support\Facades\Session::getId();
+
+            // 3. Migramos os itens: associamos ao user_id E atualizamos para o novo session_id
+            // Fazemos o update do session_id para o Dropdown continuar lendo os itens sem precisar de F5
+            CartItem::where('session_id', $visitorSessionId)
+                    ->update([
+                        'user_id' => $user->id,
+                        'session_id' => $newSessionId
+                    ]);
 
             // Mantém o usuário na MESMA TELA em que ele abriu o modal (Loja ou Versus)
-            // Isso faz a página recarregar no mesmo lugar e o Dropdown do Header vai aparecer naturalmente
             return redirect()->to(request()->header('Referer') ?? '/');
         }
 
-        throw ValidationException::withMessages(['email' => 'Credenciais inválidas.']);
+        throw \Illuminate\Validation\ValidationException::withMessages(['email' => 'Credenciais inválidas.']);
     }
 
     // REGRA 2: Redirecionamento do Lojista

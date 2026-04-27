@@ -13,7 +13,8 @@ class Dropdown extends Component
     public $loja; 
     public $cartTrigger = 0; // O gatilho anti-F5!
 
-    public function mount(Store $loja)
+    // Ajuste 1: Tipagem '?Store' e '= null' para permitir que o carrinho rode no Marketplace sem quebrar
+    public function mount($loja = null)
     {
         $this->loja = $loja;
     }
@@ -29,9 +30,19 @@ class Dropdown extends Component
     {
         $sessionId = Session::getId();
         
-        $items = CartItem::with(['stockItem.catalogPrint.concept', 'stockItem.catalogPrint.set']) 
-            ->where('session_id', $sessionId)
-            ->get();
+        // Ajuste 2: Começamos a query sem finalizar o 'get()' ainda
+        $query = CartItem::with(['stockItem.catalogPrint.concept', 'stockItem.catalogPrint.set']) 
+            ->where('session_id', $sessionId);
+
+        // Se uma loja foi passada (estamos na loja do lojista), filtramos os itens pelo dono do estoque
+        if ($this->loja && $this->loja->id) {
+            $query->whereHas('stockItem', function ($q) {
+                $q->where('store_id', $this->loja->id);
+            });
+        }
+
+        // Agora sim buscamos os resultados
+        $items = $query->get();
 
         // A inteligência exata que funcionava antes
         $items->transform(function ($item) {

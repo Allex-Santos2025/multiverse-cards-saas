@@ -1,5 +1,24 @@
+@php
+    $gameSlugRoute = request()->route('game_slug');
+    $isMarketplace = !isset($loja) && ($gameSlugRoute || request()->is('marketplace/*'));
+    $activeSlug = $gameSlugRoute ?? (request()->is('marketplace/*') ? request()->segment(2) : 'magic');
+
+    $themeColor = match($activeSlug) {
+        'magic'   => '#ff5500',
+        'pokemon' => '#eab308',
+        'yugioh'  => '#3b82f6',
+        default   => '#ff5500'
+    };
+
+    $headerBgColor = isset($loja) ? 'var(--cor-1)' : $themeColor;
+    $ctaBgColor    = isset($loja) ? 'var(--cor-cta)' : $themeColor;
+    
+    $triggerClasses = $isMarketplace 
+        ? 'flex flex-col items-center text-gray-300 hover:text-white hover:opacity-100 transition-all cursor-pointer' 
+        : 'flex flex-col items-center hover:opacity-75 transition-opacity cursor-pointer';
+@endphp
+
 <div class="relative">
-    {{-- A mágica do Livewire 3: Isso força a tela a atualizar ao clicar em Adicionar --}}
     <span style="display: none;">{{ $cartTrigger }}</span>
 
     <style>
@@ -13,17 +32,22 @@
          @mouseenter="open = true" 
          @mouseleave="open = false; hoverImg = null">
         
-        <div class="flex flex-col items-center hover:opacity-75 transition-opacity cursor-pointer">
-            <div class="relative">
-                <i class="ph ph-shopping-cart text-[28px]"></i>
+        {{-- GATILHO ALINHADO COM TAMANHO ORIGINAL DA LOJA --}}
+        <div class="{{ $triggerClasses }}" style="{{ isset($loja) ? 'color: inherit;' : '' }}">
+            
+            {{-- Caixinha fixa maior (h-9) para caber o ícone de 28px --}}
+            <div class="relative h-9 flex items-end justify-center">
+                <i class="ph ph-shopping-cart text-[28px] leading-none"></i>
                 
                 @if($totalQuantity > 0)
-                    <span class="absolute -top-1.5 -right-2 w-5 h-5 flex items-center justify-center text-[10px] font-black rounded-full shadow-sm text-white" style="background-color: var(--cor-cta);">
+                    <span class="absolute -top-1 -right-2.5 flex items-center justify-center text-[10px] font-black rounded-full shadow-sm {{ $isMarketplace ? 'w-4 h-4 text-[#18181b] border border-black' : 'w-5 h-5 text-white' }}" style="background-color: {{ $ctaBgColor }}; line-height: 1;">
                         {{ $totalQuantity > 99 ? '99+' : $totalQuantity }}
                     </span>
                 @endif
             </div>
-            <span class="text-xs font-medium mt-1 uppercase">CARRINHO</span>
+            
+            {{-- Texto devolvido para text-xs (tamanho original) --}}
+            <span class="text-xs font-bold mt-1.5 uppercase tracking-wider leading-none">CARRINHO</span>
         </div>
 
         <div x-show="open" 
@@ -37,7 +61,8 @@
              style="display: none;"
              x-cloak>
             
-            <div class="p-4 text-center rounded-t-xl" style="background-color: var(--cor-1);">
+            {{-- HEADER DA JANELA DO CARRINHO COM COR DINÂMICA --}}
+            <div class="p-4 text-center rounded-t-xl" style="background-color: {{ $headerBgColor }};">
                 <h3 class="text-xs font-black text-white uppercase tracking-widest">Meu Carrinho</h3>
             </div>
 
@@ -58,7 +83,7 @@
                         
                         <div class="flex-1 min-w-0 pr-4 cursor-default">
                             <p class="text-[12px] leading-tight mb-1">
-                                <span class="font-black text-gray-900 dark:text-white" style="color: var(--cor-1);">{{ $item->quantity }}x</span>
+                                <span class="font-black text-gray-900 dark:text-white" style="color: {{ isset($loja) ? 'var(--cor-1)' : $themeColor }};">{{ $item->quantity }}x</span>
                                 <span class="font-bold text-gray-800 dark:text-gray-200 ml-1">{{ $item->nome_localizado }}</span>
                             </p>
                             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
@@ -85,10 +110,11 @@
                     </div>
                     
                     <div class="flex flex-col gap-2">
-                        <a href="#" class="block w-full py-3 text-center text-[11px] font-black uppercase tracking-widest text-white rounded-lg transition hover:opacity-95 shadow-md" style="background-color: var(--cor-cta);">
+                        {{-- BOTÃO FINALIZAR COM COR DINÂMICA --}}
+                        <a href="#" class="block w-full py-3 text-center text-[11px] font-black uppercase tracking-widest text-white rounded-lg transition hover:opacity-95 shadow-md" style="background-color: {{ $ctaBgColor }};">
                             Finalizar Pedido
                         </a>
-                        <a href="#" class="text-center text-[10px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition uppercase tracking-tighter py-1">
+                        <a href="{{ isset($loja) ? route('store.cart', ['slug' => $loja->url_slug]) : route('game.cart.index', ['game_slug' => $activeSlug]) }}" class="text-center text-[10px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition uppercase tracking-tighter py-1">
                             Ver detalhes do carrinho
                         </a>
                     </div>

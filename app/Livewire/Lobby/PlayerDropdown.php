@@ -25,11 +25,22 @@ class PlayerDropdown extends Component
 
     public function logout()
     {
-        Auth::guard('player_user')->logout();
+        Auth::guard('player')->logout();
         
-        // Limpa a memória de onde o jogador estava e joga para a home principal
-        session()->forget('contexto_loja');
-        return redirect()->to('/');
+        $currentUrl = url()->previous();
+
+        // Verifica se o usuário estava em uma área protegida (como /lobby, /perfil, /painel)
+        if (str_contains($currentUrl, '/lobby')) {
+            // Se estiver no contexto de um Lojista, expulsa para a vitrine daquela loja específica
+            if ($this->loja) {
+                return redirect()->to('/' . $this->loja->url_slug); 
+            }
+            // Se estiver no Marketplace Global, expulsa para a home principal
+            return redirect()->to('/');
+        }
+        
+        // Se for qualquer outra página pública, apenas recarrega onde ele está
+        return redirect()->to($currentUrl);
     }
 
     public function render()

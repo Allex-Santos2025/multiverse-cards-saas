@@ -587,6 +587,22 @@ STAGE vMAJOR.MINOR.PATCH
 
 ---
 
+**Versão:** `alpha v0.1.18`  
+**Data:** 27/04/2026  
+**Descrição da Versão:** Refatoração da inteligência de persistência de dados e consolidação da herança de contexto visual entre Marketplace e Lojas White Label. Esta versão foca na eliminação de atritos na jornada do usuário, garantindo que a identidade visual e o carrinho de compras permaneçam íntegros durante transições críticas de estado (Login, Logoff e Registro).
+
+### Correções e Melhorias (Patches):
+
+* **Migração Inteligente de Carrinho (Anti-Session Fixation):** Implementação de lógica de transferência de estado no ato da autenticação. Ao realizar o login, o sistema agora captura o `session_id` de visitante e migra automaticamente todos os `CartItems` para a nova sessão autenticada do `player`, vinculando o `user_id` simultaneamente. Isso elimina a "amnésia de carrinho" causada pela regeneração nativa de sessão do Laravel.
+* **Logoff com Preservação de Contexto:** Refatoração do método de saída no `PlayerDropdown`. O sistema abandonou o redirecionamento genérico para a home. Agora, ao deslogar, o usuário permanece na vitrine onde estava (Marketplace ou Loja específica). Foi implementada uma lógica de "expulsão seletiva": se o logoff ocorrer em áreas protegidas, o sistema identifica a origem e o redireciona para a home do marketplace ou para a raiz da loja correspondente, mantendo o contexto visual.
+* **Herança Visual no Wizard de Registro:** O formulário de cadastro de jogadores agora é totalmente sensível ao contexto de origem. Através da captura de query strings (`game_slug` ou `loja`), o layout base e o cabeçalho identificam se o usuário veio de um universo específico (ex: Magic, Pokémon). Isso ativa automaticamente o menu de jogo, a barra de busca temática e a paleta de cores correta, eliminando a sensação de "teletransporte" para fora da loja durante o registro.
+* **Inteligência de Rota no Header (Query String Awareness):** Atualização do cérebro lógico do `header.blade.php`. O componente foi ensinado a ler parâmetros de URL além das rotas nomeadas. Isso permitiu que o modo Marketplace (com busca e ícones de acesso rápido) seja ativado em qualquer página, incluindo o Wizard de Registro, desde que um contexto de jogo ou loja seja detectado.
+* **Navegação de Retorno Preditiva (Smart BackLink):** O botão "Voltar" do Modo Funil foi desvinculado de rotas estáticas. O sistema agora calcula dinamicamente o link de retorno: se o usuário está se registrando a partir do Marketplace de Magic, o botão o devolve para o Marketplace de Magic; se está em uma loja, devolve para a URL slug da loja.
+* **Blindagem de Erros de Variáveis (Context Sync):** Unificação da detecção de `activeSlug` entre o Modal de Login e o Header. A resolução eliminou o erro `Undefined variable` ao garantir que todos os componentes utilizem a mesma lógica nativa de inspeção de rota (`request()->route`) e query string para identificar o jogo ativo, garantindo que o link de "Criar Conta" nunca aponte para um destino nulo ou quebrado.
+* **Refatoração do Login Modal (UX Cleanup):** O modal de autenticação agora oculta automaticamente atalhos administrativos (como "Acesse o Painel da Loja") quando o usuário já está navegando dentro de um contexto de jogo específico, limpando a interface e focando a jornada estritamente na conversão do jogador.
+
+---
+
 ## 📜 Histórico de Versões
 
 ### `alpha v0.0.1` — 21/12/2025  

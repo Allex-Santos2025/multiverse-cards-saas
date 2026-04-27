@@ -26,9 +26,24 @@ Route::get('/registro/jogador', PlayerRegisterWizard::class)->name('registro.jog
 Route::get('/registro/{plan?}', Register::class)->name('register.store');
 Route::get('/eventos', Events::class)->name('events.index');
 
-Route::prefix('marketplace')->group(function () {
-    Route::get('/magic', MagicHomeMarketplace::class)->name('marketplace.magic.home');
+// REMOVIDO: A rota /carrinho solta foi deletada daqui para evitar acesso sem contexto.
+
+// GRUPO DE MARKETPLACE ESPECÍFICO
+Route::prefix('marketplace/{game_slug}')->group(function () {
+    // Home do Jogo
+    Route::get('/', function($game_slug) {
+        if($game_slug === 'magic') return app()->make(MagicHomeMarketplace::class)->__invoke();
+        abort(404);
+    })->name('marketplace.game.home');
+
+    // ROTA DO CARRINHO CONTEXTUALIZADA
+    // Agora o carrinho só abre se houver um jogo na URL (ex: /marketplace/magic/carrinho)
+    Route::get('/carrinho', \App\Livewire\Lobby\Cart\Index::class)->name('game.cart.index');
 });
+
+// Retrocompatibilidade para a rota fixa do Magic
+Route::get('marketplace/magic', MagicHomeMarketplace::class)->name('marketplace.magic.home');
+
 
 // LOGIN SOCIAL
 Route::get('auth/{provider}', [SocialController::class, 'redirectToProvider'])->name('social.login');
@@ -40,11 +55,7 @@ Route::get('/jogador/{nickname}/aguarde', function ($nickname) {
     return $user ? view('livewire.placeholder-player', ['user' => $user]) : redirect('/');
 })->name('player.wait');
 
-/*
-|--------------------------------------------------------------------------
-| VERIFICAÇÃO DE E-MAIL
-|--------------------------------------------------------------------------
-*/
+// VERIFICAÇÃO DE E-MAIL
 Route::get('/email/verify/{id}/{hash}', function (Request $request, $id, $hash) {
     $user = PlayerUser::find($id);
     if (!$user || !hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
