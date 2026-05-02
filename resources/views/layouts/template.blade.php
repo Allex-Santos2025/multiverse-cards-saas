@@ -29,7 +29,7 @@
     @livewireStyles
     @include('partials.template.styles')
 </head>
-<body class="bg-white text-gray-800 font-sans antialiased flex flex-col min-h-screen m-0 p-0">
+<body class="bg-white text-gray-800 font-sans antialiased flex flex-col min-h-screen m-0 p-0" x-data @perfil-atualizado.window="window.location.reload()">
     
     @include('partials.template.admin-bar')
 

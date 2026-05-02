@@ -29,23 +29,28 @@ class Index extends Component
     // 3. A FUNÇÃO DO BOTÃO "Atualizar Gráficos"
     public function refreshStockData()
     {
-        // A. Calcula Totais Gerais
+        // A. Calcula Totais Gerais (TRAVAS: Apenas Cartas, maior que zero, não deletadas)
         $stats = StockItem::where('store_id', $this->loja->id)
+            ->whereNotNull('catalog_print_id') // Ignora produtos selados
+            ->where('quantity', '>', 0)        // Ignora estoque zerado
+            ->whereNull('deleted_at')          // EXORCIZA as Black Lotus apagadas
             ->selectRaw('SUM(quantity) as total_qty, SUM(quantity * COALESCE(price, 0)) as total_val')
             ->first();
 
-        // B. Calcula Porcentagem por Jogo (Buscando Quantidade E Valor para o novo JS)
+        // B. Calcula Porcentagem por Jogo (Usando as mesmas travas)
         $breakdown = StockItem::join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
             ->join('catalog_concepts as cc', 'cp.concept_id', '=', 'cc.id')
             ->join('games as g', 'cc.game_id', '=', 'g.id')
             ->where('stock_items.store_id', $this->loja->id)
+            ->where('stock_items.quantity', '>', 0)
+            ->whereNull('stock_items.deleted_at') // Trava de segurança no Join
             ->selectRaw('g.name as game_name, SUM(stock_items.quantity) as qty, SUM(stock_items.quantity * COALESCE(stock_items.price, 0)) as value')
             ->groupBy('g.name')
             ->get()
             ->keyBy('game_name')
             ->toArray();
 
-        // C. Tira a fotografia de hoje FORÇANDO a gravação do array (ignora bloqueios do Model)
+        // C. Tira a fotografia de hoje FORÇANDO a gravação do array
         $snapshot = StoreStockSnapshot::firstOrNew([
             'store_id' => $this->loja->id, 
             'snapshot_date' => now()->format('Y-m-d')

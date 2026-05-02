@@ -603,6 +603,23 @@ STAGE vMAJOR.MINOR.PATCH
 
 ---
 
+**Versão:** `alpha v0.1.19`  
+**Data:** 01/05/2026  
+**Descrição da Versão:** Foco na consolidação estrutural do painel de controle do lojista (Perfil Avançado), expansão do ecossistema do jogador (Lobby) e implementação de inteligência logística nativa no carrinho (Carta Registrada). A arquitetura de banco de dados foi modernizada para suportar escalabilidade ilimitada de redes sociais e os layouts de header e footer foram integrados ao novo modelo dinâmico de dados.
+
+### Correções e Melhorias (Patches):
+
+* **Módulo Avançado de Gestão de Loja (Store Profile):** Criação e integração do painel de Perfil da Loja no dashboard gerencial utilizando Livewire. A tela agora gerencia de ponta a ponta a identificação da loja, configuração de domínio próprio (Custom Domain) e estruturação de dados fiscais (CNPJ, Razão Social e lógica de isenção de Inscrição Estadual).
+* **Inteligência Logística e Endereçamento (Auto-Fill):** Implementação de requisições assíncronas via BrasilAPI/ViaCEP direto no componente Livewire da loja. O sistema agora preenche automaticamente os campos de Rua, Bairro, Cidade e UF assim que o CEP é inserido, tanto na abertura da tela quanto na digitação de um novo código, contornando bloqueios de SSL no ambiente de desenvolvimento.
+* **Arquitetura Dinâmica de Redes Sociais:** Refatoração estrutural profunda na tabela `stores`. Remoção das colunas estáticas legadas (`facebook_url` e `instagram_url`) e criação de uma nova tabela relacional (`store_socials`). A loja agora suporta a inserção de redes sociais ilimitadas (TikTok, Discord, YouTube, LinkedIn, etc.).
+* **Conversor Preditivo de URLs Sociais:** O sistema ganhou inteligência para formatar links de redes sociais. Se o lojista inserir apenas o `@usuario`, o Blade identifica a plataforma selecionada (ex: Instagram, Twitch) e auto-completa a URL absoluta correta no front-end para evitar links quebrados.
+* **Sincronização Dinâmica de Vitrine (Header & Footer):** Os componentes globais do layout foram reescritos para consumir a nova modelagem de dados da loja ativa. Ícones do Phosphor Icons são gerados dinamicamente baseados na plataforma salva no banco, e blocos de contato e endereço físico se ocultam automaticamente caso não existam dados, mantendo a integridade do design.
+* **Ecossistema do Jogador (Lobby & Perfil Pessoal):** Entrega completa do dashboard do jogador. Implementação da gestão de "Dados Pessoais" com sistema de upload físico validado, recorte seguro na pasta raiz pública e atualização de senha. O avatar do jogador e o primeiro nome agora são lidos e renderizados ativamente no Header global do marketplace quando autenticado.
+* **Gestão Multicamadas de Endereços do Jogador:** Construção do componente de endereços no perfil do usuário, com limitação inteligente de registros máximos. Inclui a definição ativa de "Endereço Principal" (is_official) e auto-completar via BrasilAPI isolado. Se o endereço principal é excluído, o sistema promove automaticamente o registro mais antigo a oficial.
+* **Inteligência Logística no Carrinho (Carta Registrada):** Conclusão e integração do motor de Carta Registrada. Implementação de rotinas de substituição dinâmica de nomenclatura, trava do gatilho de valor base para exigência de seguro, e o cálculo dinâmico da taxa de seguro (2,5%) sendo injetado em tempo real na somatória do carrinho de compras da plataforma.
+
+---
+
 ## 📜 Histórico de Versões
 
 ### `alpha v0.0.1` — 21/12/2025  

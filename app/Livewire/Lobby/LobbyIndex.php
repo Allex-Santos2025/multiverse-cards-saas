@@ -5,6 +5,8 @@ namespace App\Livewire\Lobby;
 use Livewire\Component;
 use App\Models\Store;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\On;
 
 class LobbyIndex extends Component
 {
@@ -12,16 +14,23 @@ class LobbyIndex extends Component
     public $loja = null;
     public $isMarketplace = false;
 
+    // Dados do Player para o Aside
+    public $playerName;
+    public $playerAvatar;
+    public $playerCredit;
+
     public function mount(Request $request)
     {
-        // O Laravel busca o 'slug' independente de qual arquivo de rota chamou o componente
         $slugLoja = $request->route('slug');
         $secaoUrl = $request->route('secao');
 
-        $this->abaAtiva = $secaoUrl ?? 'dados';
+        // Define a aba inicial
+        $this->abaAtiva = $secaoUrl ?? 'dashboard';
+
+        // Busca os dados do Player logado para o Aside
+        $this->carregarDadosPlayer();
 
         if ($slugLoja) {
-            // Se tem slug, estamos no contexto de LOJA
             $this->loja = Store::with('visual')->where('url_slug', $slugLoja)->first();
             
             if (!$this->loja) {
@@ -29,7 +38,6 @@ class LobbyIndex extends Component
             }
             $this->isMarketplace = false;
         } else {
-            // Se não tem slug, estamos no MARKETPLACE
             $this->isMarketplace = true;
         }
     }
@@ -37,10 +45,18 @@ class LobbyIndex extends Component
     public function switchAba($aba)
     {
         $this->abaAtiva = $aba;
-        
-        // Opcional: Atualiza a URL sem dar refresh para manter o histórico do navegador
-        $prefix = $this->loja ? "/loja/{$this->loja->url_slug}/lobby" : "/lobby";
-        return $this->redirect("{$prefix}/{$aba}", navigate: true);
+    }
+
+    #[On('perfil-atualizado')]
+    public function carregarDadosPlayer()
+    {
+        $player = Auth::guard('player')->user();
+        if ($player) {
+            $this->playerName = $player->name;
+            // Corrigido para buscar a coluna 'avatar' exata que salvamos no DadosPessoais
+            $this->playerAvatar = $player->avatar; 
+            $this->playerCredit = $player->balance ?? 0.00; // Saldo da carteira
+        }
     }
 
     public function render()

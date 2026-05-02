@@ -8,6 +8,8 @@ use App\Livewire\Store\Dashboard\Stock\ManageInventory;
 use App\Livewire\Store\Dashboard\Stock\ManageSingleCard;
 use App\Livewire\Store\Dashboard\Stock\StockHistory; // O componente do histórico
 use App\Livewire\Store\Dashboard\Layout\VisualIdentity;
+use App\Livewire\Store\Dashboard\Operations\ShippingSettings; // Importação da nova rota de frete
+use App\Livewire\Store\Dashboard\Management\Profile; // Importação da nova rota de perfil
 
 /*
 |--------------------------------------------------------------------------
@@ -26,6 +28,11 @@ Route::name('store.dashboard.')->group(function () {
     // --- NOVA ROTA: Histórico de Estoque (Global, sem depender do jogo) ---
     Route::get('/historico-estoque', StockHistory::class)->name('stock.history');
 
+    // --- GERENCIAIS ---
+    Route::prefix('gerenciais')->name('management.')->group(function () {
+        Route::get('/perfil', Profile::class)->name('profile');
+    });
+
     // --- GRUPO DE JOGOS E ESTOQUE ---
     Route::prefix('{game_slug}')->group(function () {
         Route::prefix('estoque')->name('stock.')->group(function () {
@@ -36,6 +43,13 @@ Route::name('store.dashboard.')->group(function () {
             Route::get('/carta/{conceptSlug}', ManageSingleCard::class)->name('manage-card');
             
         });
+    });
+
+    // --- OPERAÇÕES ---
+    Route::prefix('operacoes')->name('operations.')->group(function () {
+        // Rota final: /loja/{slug}/dashboard/operacoes/envios-e-retiradas
+        // Nome final: store.dashboard.operations.shipping
+        Route::get('/envios-e-retiradas', ShippingSettings::class)->name('shipping');
     });
 
     // --- LAYOUT E APARÊNCIA ---

@@ -4,23 +4,11 @@
         {{-- Coluna 1: Sobre a Loja --}}
         <div>
             <h3 class="mb-4 tracking-tighter uppercase">
-                {{-- 
-                    1. Verificamos o visual (usando a relação que criamos)
-                    2. Se não quiser usar a relação agora, mantenha seu $loja->logo_path, 
-                    mas adicione as travas de tamanho abaixo:
-                --}}
                 @if($loja->visual && $loja->visual->logo_main)
                     <img src="{{ asset('store_images/' . $loja->url_slug . '/' . $loja->visual->logo_main) }}" 
                         alt="{{ $loja->name }}" 
-                        {{-- 
-                            AJUSTES PRÁTICOS:
-                            - h-8: Reduzi um pouco (32px). No footer fica mais elegante.
-                            - max-w-[200px]: Se a logo for muito larga, ela trava aqui e não quebra o layout.
-                            - object-left: Garante que ela alinhe com o texto abaixo.
-                        --}}
                         class="h-12 w-auto max-w-[200px] object-contain object-left brightness-0 invert opacity-80 hover:opacity-100 transition-opacity">
                 @else
-                    {{-- Seu fallback original com a cor de destaque --}}
                     <span class="text-white text-xl font-bold">
                         {{ $loja->name }} <span class="text-accent-1">TCG</span>
                     </span>
@@ -31,13 +19,33 @@
                 A sua principal loja de Card Games. Encontre as melhores cartas, acessórios e participe dos nossos torneios semanais.
             </p>
 
+            {{-- REDES SOCIAIS DINÂMICAS COM AUTO-COMPLETAR --}}
             <div class="flex space-x-3">
-                <a href="#" class="bg-white/10 p-2 rounded-full hover:bg-accent-1 transition-colors">
-                    <i class="ph ph-instagram-logo"></i>
-                </a>
-                <a href="#" class="bg-white/10 p-2 rounded-full hover:bg-accent-1 transition-colors">
-                    <i class="ph ph-facebook-logo"></i>
-                </a>
+                @if(isset($loja->socials) && $loja->socials->count() > 0)
+                    @foreach($loja->socials as $social)
+                        @php
+                            $rawUrl = $social->url;
+                            if (!str_starts_with($rawUrl, 'http')) {
+                                $clean = ltrim($rawUrl, '@/');
+                                $bases = [
+                                    'instagram' => 'https://instagram.com/',
+                                    'facebook'  => 'https://facebook.com/',
+                                    'youtube'   => 'https://youtube.com/@',
+                                    'tiktok'    => 'https://tiktok.com/@',
+                                    'twitter'   => 'https://twitter.com/',
+                                    'twitch'    => 'https://twitch.tv/',
+                                    'linkedin'  => 'https://linkedin.com/in/',
+                                ];
+                                $url = isset($bases[$social->platform]) ? $bases[$social->platform] . $clean : 'https://' . $clean;
+                            } else {
+                                $url = $rawUrl;
+                            }
+                        @endphp
+                        <a href="{{ $url }}" target="_blank" class="bg-white/10 p-2 rounded-full hover:bg-accent-1 transition-colors" title="{{ ucfirst($social->platform) }}">
+                            <i class="ph ph-{{ $social->platform }}-logo text-lg"></i>
+                        </a>
+                    @endforeach
+                @endif
             </div>
         </div>
 
@@ -64,11 +72,34 @@
         {{-- Coluna 4: Contato --}}
         <div>
             <h4 class="text-white font-bold mb-4 uppercase text-sm tracking-wider">Contato</h4>
-            <ul class="space-y-2 text-sm mb-6 text-gray-300">
-                <li class="flex items-start">
-                    <i class="ph ph-map-pin mr-2 text-accent-1 text-xl shrink-0"></i>
-                    <span>Av. Exemplo, 1234 - Loja 5<br>Centro - Cidade/UF</span>
-                </li>
+            <ul class="space-y-3 text-sm mb-6 text-gray-300">
+                
+                @if(!empty($loja->street))
+                    <li class="flex items-start">
+                        <i class="ph ph-map-pin mr-2 text-accent-1 text-xl shrink-0"></i>
+                        <span>
+                            {{ $loja->street }}, {{ $loja->number }} 
+                            @if(!empty($loja->complement)) - {{ $loja->complement }} @endif
+                            <br>
+                            {{ $loja->neighborhood }} - {{ $loja->city }}/{{ strtoupper($loja->store_state_code) }}
+                        </span>
+                    </li>
+                @endif
+
+                @if(!empty($loja->phone))
+                    <li class="flex items-center">
+                        <i class="ph ph-whatsapp-logo mr-2 text-accent-1 text-xl shrink-0"></i>
+                        <span>{{ $loja->phone }}</span>
+                    </li>
+                @endif
+
+                @if(!empty($loja->support_email))
+                    <li class="flex items-center">
+                        <i class="ph ph-envelope mr-2 text-accent-1 text-xl shrink-0"></i>
+                        <span>{{ $loja->support_email }}</span>
+                    </li>
+                @endif
+
             </ul>
             <h4 class="text-white font-bold mb-3 uppercase text-xs tracking-wider">Pague de forma segura</h4>
             <div class="flex space-x-2">

@@ -36,7 +36,7 @@
                             </a>
                         @elseif($key === 'operacoes')
                             <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Pedidos</a>
-                            <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Envios & Retiradas</a>
+                            <a href="{{ route('store.dashboard.operations.shipping', ['slug' => auth('store_user')->user()->store->url_slug]) }}" class="block px-6 py-2 text-xs font-semibold {{ request()->routeIs('store.dashboard.operations.shipping') ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300' }}">Envios & Retiradas</a>
                             <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Clientes & Créditos</a>
                             <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Caixa</a>
                         @elseif($key === 'eventos')
@@ -53,6 +53,8 @@
                             <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Integrações</a>
                             <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Institucional</a>
                         @elseif($key === 'gerenciais')
+                            <a href="{{ route('store.dashboard.management.profile', ['slug' => auth('store_user')->user()->store->url_slug]) }}" class="block px-6 py-2 text-xs font-semibold {{ request()->routeIs('store.dashboard.management.profile') ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300' }}">Perfil da Loja</a>
+                            <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Meu Perfil</a>
                             <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Minha Equipe</a>
                             <a href="#" class="block px-6 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Assinatura do Plano</a>
                         @endif
@@ -113,7 +115,7 @@
                             <a href="#" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Categorias</a>
                         @elseif($key === 'operacoes')
                             <a href="#" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Pedidos</a>
-                            <a href="#" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Envios & Retiradas</a>
+                            <a href="{{ route('store.dashboard.operations.shipping', ['slug' => auth('store_user')->user()->store->url_slug]) }}" class="block px-10 py-3 text-xs font-semibold {{ request()->routeIs('store.dashboard.operations.shipping') ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500' }}">Envios & Retiradas</a>
                             <a href="#" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Clientes & Créditos</a>
                             <a href="#" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Caixa</a>
                         @elseif($key === 'eventos')
@@ -130,6 +132,8 @@
                             <a href="#" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Integrações</a>
                             <a href="#" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Institucional</a>
                         @elseif($key === 'gerenciais')
+                            <a href="{{ route('store.dashboard.management.profile', ['slug' => auth('store_user')->user()->store->url_slug]) }}" class="block px-10 py-3 text-xs font-semibold {{ request()->routeIs('store.dashboard.management.profile') ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500' }}">Perfil da Loja</a>
+                            <a href="#" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Meu Perfil</a>
                             <a href="#" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Minha Equipe</a>
                             <a href="#" class="block px-10 py-3 text-xs font-semibold text-zinc-500">Assinatura do Plano</a>
                         @endif

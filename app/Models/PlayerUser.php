@@ -19,19 +19,21 @@ class PlayerUser extends Authenticatable implements MustVerifyEmail
     protected $guard = 'web'; 
 
     protected $fillable = [
-        'name',
-        'surname',
-        'nickname',
-        'email',
-        'password',
-        'provider_name',
-        'provider_id',
-        'avatar',
-        'email_verified_at',
-        'document_number',
-        'phone_number',
-        'birth_date',
+        'name', 
+        'surname', 
+        'nickname', 
+        'email', 
+        'password', 
+        'document_number', 
+        'id_document_number', // <--- RG liberado
+        'phone_number', 
+        'birth_date',         // <--- Data de Nascimento liberada
+        'preferred_language', 
+        'loyalty_points',
+        'data_json', 
         'is_active',
+        'balance',            // <--- Carteira liberada
+        'pix_key'             // <--- Pix liberado
     ];
 
     protected $hidden = [
@@ -53,5 +55,10 @@ class PlayerUser extends Authenticatable implements MustVerifyEmail
     public function getFullNameAttribute()
     {
         return "{$this->first_name} {$this->last_name}";
+    }
+
+    public function addresses()
+    {
+        return $this->hasMany(PlayerAddress::class, 'player_user_id');
     }
 }

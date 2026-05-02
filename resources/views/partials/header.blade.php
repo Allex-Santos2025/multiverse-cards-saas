@@ -98,9 +98,13 @@
                     <div class="relative group">
                         <button class="flex flex-col items-center text-gray-300 hover:text-white hover:opacity-100 transition-all cursor-pointer">
                             <div class="relative h-9 flex items-end justify-center">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-sm border border-white/20 bg-[#ff5500] text-[#18181b] mb-0.5">
-                                    {{ substr(auth('player')->user()->name, 0, 1) }}
-                                </div>
+                                @if(auth('player')->user()->avatar)
+                                    <img src="{{ asset(auth('player')->user()->avatar) }}" alt="Avatar" class="w-8 h-8 rounded-full object-cover shadow-sm border border-white/20 bg-[#ff5500] text-[#18181b] mb-0.5">
+                                @else
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-sm border border-white/20 bg-[#ff5500] text-[#18181b] mb-0.5">
+                                        {{ substr(auth('player')->user()->name, 0, 1) }}
+                                    </div>
+                                @endif
                             </div>
                             <span class="text-xs font-bold mt-1.5 uppercase tracking-wider leading-none truncate max-w-[120px]">OLÁ, {{ explode(' ', auth('player')->user()->name)[0] }}</span>
                         </button>

@@ -168,9 +168,17 @@
                                         <div class="mt-1 relative">
                                             <select wire:model.live="selectedShipping.{{ $storeId }}" class="w-full text-xs border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 bg-white">
                                                 <option value="">Selecione o frete...</option>
-                                                <option value="balcao">Retirada no Balcão - R$ 0,00</option>
-                                                <option value="sedex">SEDEX - R$ 24,90</option>
-                                                <option value="pac">PAC - R$ 12,50</option>
+                                                
+                                                {{-- Opções dinâmicas injetadas diretamente sem alterar o HTML --}}
+                                                @if(isset($fretesPorLoja[$storeId]))
+                                                    @foreach($fretesPorLoja[$storeId] as $chaveFrete => $dadosFrete)
+                                                        <option value="{{ $chaveFrete }}">
+                                                            {{ $dadosFrete['nome'] }} - 
+                                                            {{ $dadosFrete['valor'] == 0 ? 'R$ 0,00' : 'R$ ' . number_format($dadosFrete['valor'], 2, ',', '.') }}
+                                                        </option>
+                                                    @endforeach
+                                                @endif
+                                                
                                             </select>
                                         </div>
                                     @else

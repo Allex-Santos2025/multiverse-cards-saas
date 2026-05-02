@@ -54,6 +54,7 @@ class SyncStoreCatalogSummaries extends Command
         )
         ->where('store_id', $storeId)
         ->whereNotNull($foreignKey) // Ignora se o ID estiver vazio
+        ->whereNull('deleted_at') // GARANTIA: Ignora os itens apagados (Soft Deletes)
         ->groupBy($foreignKey)
         ->get();
 
@@ -96,6 +97,7 @@ class SyncStoreCatalogSummaries extends Command
             )
             ->where('stock_items.store_id', $storeId)
             ->whereNotNull('catalog_prints.concept_id')
+            ->whereNull('stock_items.deleted_at') // <--- A CORREÇÃO DE OURO AQUI
             ->groupBy('catalog_prints.concept_id')
             ->get();
 

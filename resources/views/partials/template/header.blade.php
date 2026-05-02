@@ -3,12 +3,44 @@
     <div class="bg-top-bar-custom text-xs py-2 px-4 transition-colors duration-300">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-4">
-                <span class="flex items-center"><i class="ph ph-whatsapp-logo mr-1 text-base"></i> (11) 99999-9999</span>
-                <span class="hidden sm:flex items-center"><i class="ph ph-envelope mr-1 text-base"></i> contato@{{ $loja->url_slug ?? 'versus' }}.com.br</span>
+                @if(!empty($loja->phone))
+                    <span class="flex items-center"><i class="ph ph-whatsapp-logo mr-1 text-base"></i> {{ $loja->phone }}</span>
+                @endif
+                
+                @if(!empty($loja->support_email))
+                    <span class="hidden sm:flex items-center"><i class="ph ph-envelope mr-1 text-base"></i> {{ $loja->support_email }}</span>
+                @else
+                    <span class="hidden sm:flex items-center"><i class="ph ph-envelope mr-1 text-base"></i> contato@{{ $loja->url_slug ?? 'versus' }}.com.br</span>
+                @endif
             </div>
+            
+            {{-- REDES SOCIAIS DINÂMICAS COM AUTO-COMPLETAR --}}
             <div class="flex items-center space-x-3">
-                <a href="#" class="hover:opacity-75 transition-opacity"><i class="ph ph-instagram-logo text-lg"></i></a>
-                <a href="#" class="hover:opacity-75 transition-opacity"><i class="ph ph-facebook-logo text-lg"></i></a>
+                @if(isset($loja->socials) && $loja->socials->count() > 0)
+                    @foreach($loja->socials as $social)
+                        @php
+                            $rawUrl = $social->url;
+                            if (!str_starts_with($rawUrl, 'http')) {
+                                $clean = ltrim($rawUrl, '@/');
+                                $bases = [
+                                    'instagram' => 'https://instagram.com/',
+                                    'facebook'  => 'https://facebook.com/',
+                                    'youtube'   => 'https://youtube.com/@',
+                                    'tiktok'    => 'https://tiktok.com/@',
+                                    'twitter'   => 'https://twitter.com/',
+                                    'twitch'    => 'https://twitch.tv/',
+                                    'linkedin'  => 'https://linkedin.com/in/',
+                                ];
+                                $url = isset($bases[$social->platform]) ? $bases[$social->platform] . $clean : 'https://' . $clean;
+                            } else {
+                                $url = $rawUrl;
+                            }
+                        @endphp
+                        <a href="{{ $url }}" target="_blank" class="hover:opacity-75 transition-opacity" title="{{ ucfirst($social->platform) }}">
+                            <i class="ph ph-{{ $social->platform }}-logo text-lg"></i>
+                        </a>
+                    @endforeach
+                @endif
             </div>
         </div>
     </div>
@@ -42,9 +74,6 @@
             </div>
 
             {{-- Ícones do Usuário e Carrinho --}}
-            <div class="w-full lg:w-1/4 flex justify-center lg:justify-end items-center order-2 lg:order-none z-[100] text-gray-300" style="gap: 20px;">
-                
-                {{-- Ícones do Usuário e Carrinho --}}
             <div class="w-full lg:w-1/4 flex justify-center lg:justify-end items-center space-x-10 order-2 lg:order-none" style="color: var(--cor-texto-header);">
                 
                 {{-- Bloco do Usuário Logado --}}
@@ -52,10 +81,14 @@
                     <div class="relative group">
                         <button class="flex flex-col items-center hover:opacity-75 transition-opacity cursor-pointer" style="color: inherit;">
                             <div class="relative h-9 flex items-end justify-center">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-sm border border-white/20 mb-0.5" 
-                                    style="background-color: var(--cor-cta); color: var(--cor-cta-txt);">
-                                    {{ substr(auth('player')->user()->name, 0, 1) }}
-                                </div>
+                                @if(auth('player')->user()->avatar)
+                                    <img src="{{ asset(auth('player')->user()->avatar) }}" alt="Avatar" class="w-8 h-8 rounded-full object-cover shadow-sm border border-white/20 mb-0.5">
+                                @else
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-sm border border-white/20 mb-0.5" 
+                                        style="background-color: var(--cor-cta); color: var(--cor-cta-txt);">
+                                        {{ substr(auth('player')->user()->name, 0, 1) }}
+                                    </div>
+                                @endif
                             </div>
                             <span class="text-xs font-bold mt-1.5 uppercase tracking-wider leading-none truncate max-w-[140px]">OLÁ, {{ explode(' ', auth('player')->user()->name)[0] }}</span>
                         </button>
@@ -76,7 +109,7 @@
                         <span class="text-xs font-bold mt-1.5 uppercase tracking-wider leading-none">ENTRAR</span>
                     </button>
                 @endauth               
-                </div>                
+                
                 {{-- Carrinho --}}
                 <livewire:store.template.cart.dropdown :loja="isset($loja) ? $loja : null" />
             </div>
@@ -293,8 +326,6 @@
                             </li>
                         @endforeach
                     @endif
-
-                    {{-- NÃO colocamos OFERTAS aqui para evitar duplicação no mobile --}}
 
                 </ul>
             </nav>

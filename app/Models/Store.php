@@ -17,13 +17,26 @@ class Store extends Model
     protected $fillable = [
         'name',
         'url_slug',
+        'use_custom_domain', // NOVO: Controle de domínio próprio
+        'domain',            // NOVO: Domínio customizado
         'slogan',
         'owner_user_id', // Corrigido de 'user_id' para 'owner_user_id' conforme seu schema
         'purchase_margin_cash',
         'purchase_margin_credit',
         'max_loyalty_discount',
         'pix_discount_rate',
+        'document',          // NOVO: CNPJ/CPF
+        'corporate_name',    // NOVO: Razão Social
+        'is_ie_exempt',      // NOVO: Isento de IE
+        'state_registration',// NOVO: Inscrição Estadual
+        'phone',             // NOVO: Telefone
+        'support_email',     // NOVO: E-mail de suporte        
         'store_zip_code',
+        'street',            // NOVO: Rua
+        'number',            // NOVO: Número
+        'complement',        // NOVO: Complemento
+        'neighborhood',      // NOVO: Bairro
+        'city',              // NOVO: Cidade
         'store_state_code',
         'is_active',
         'is_template', // Chave de modelo
@@ -41,6 +54,8 @@ class Store extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_template' => 'boolean',
+        'use_custom_domain' => 'boolean', // NOVO
+        'is_ie_exempt' => 'boolean',      // NOVO
         'purchase_margin_credit' => 'decimal:3',
         'purchase_margin_cash' => 'decimal:3',
         'max_loyalty_discount' => 'decimal:3',
@@ -74,6 +89,10 @@ class Store extends Model
     public function visual()
     {
         return $this->hasOne(StoreVisual::class);
+    }
+    public function socials(): HasMany
+    {
+        return $this->hasMany(StoreSocial::class);
     }
     // O relacionamento 'users()' que você tinha provavelmente se refere a 'owner_user_id'
     // Se 'users' se refere a outros tipos de usuários ou a uma relação muitos-para-muitos,

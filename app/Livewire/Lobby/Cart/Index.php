@@ -5,6 +5,7 @@ namespace App\Livewire\Lobby\Cart;
 use Livewire\Component;
 use App\Models\Store;
 use App\Models\CartItem;
+use App\Models\StoreShippingSetting;
 use Illuminate\Support\Facades\Session;
 
 class Index extends Component
@@ -18,6 +19,9 @@ class Index extends Component
     public $loja = null;
     public $isMarketplace = false;
 
+    // Array para guardar as configurações de frete de cada loja no carrinho
+    public $fretesPorLoja = [];
+
     public function mount($slug = null)
     {
         if ($slug) {
@@ -26,6 +30,28 @@ class Index extends Component
             $this->isMarketplace = false;
         } else {
             $this->isMarketplace = true;
+        }
+
+        // Descobre qual guard está ativo e puxa o zip_code do endereço oficial do Player
+        $playerId = null;
+        if (auth('player')->check()) { 
+            $playerId = auth('player')->id();
+        } elseif (auth()->check()) {
+            $playerId = auth()->id();
+        }
+
+        if ($playerId) {
+            $endereco = \App\Models\PlayerAddress::where('player_user_id', $playerId)
+                                ->where('is_official', true)
+                                ->first();
+
+            if (!$endereco) {
+                $endereco = \App\Models\PlayerAddress::where('player_user_id', $playerId)
+                                ->latest()
+                                ->first();
+            }
+
+            $this->cep = $endereco->zip_code ?? '';
         }
     }
 
@@ -36,7 +62,7 @@ class Index extends Component
             $estoqueMaximo = $cartItem->stockItem->quantity ?? 1;
             if ($cartItem->quantity < $estoqueMaximo) {
                 $cartItem->increment('quantity');
-                $this->dispatch('cart-updated'); // Atualiza a bolinha do header
+                $this->dispatch('cart-updated');
             }
         }
     }
@@ -66,8 +92,6 @@ class Index extends Component
             ->where('session_id', $sessionId)
             ->get();
 
-        // A MÁGICA PARA RESOLVER O VAZAMENTO:
-        // Se estivermos dentro de uma loja específica, descartamos os itens das outras lojas da coleção.
         if ($this->loja) {
             $items = $items->filter(function ($item) {
                 return ($item->stockItem->store->id ?? null) === $this->loja->id;
@@ -78,9 +102,9 @@ class Index extends Component
         $totalItems = 0;
         $subtotalGeral = 0;
         $fretesGeral = 0;
+        $lojasNoCarrinhoIds = [];
 
-        // Processamento dos itens (Lógica do Dropdown integrada)
-        $items->each(function ($item) use (&$cartByStore, &$totalItems, &$subtotalGeral) {
+        $items->each(function ($item) use (&$cartByStore, &$totalItems, &$subtotalGeral, &$lojasNoCarrinhoIds) {
             $stock = $item->stockItem;
             $print = $stock->catalogPrint ?? null;
             
@@ -105,6 +129,7 @@ class Index extends Component
             
             if (!isset($cartByStore[$storeId])) {
                 $cartByStore[$storeId] = ['store' => $store, 'items' => collect(), 'total' => 0];
+                $lojasNoCarrinhoIds[] = $storeId;
             }
 
             $cartByStore[$storeId]['items']->push($item);
@@ -113,10 +138,111 @@ class Index extends Component
             $subtotalGeral += ($item->price * $item->quantity);
         });
 
-        // Cálculo de fretes
-        foreach ($this->selectedShipping as $storeId => $tipo) {
-            if (isset($cartByStore[$storeId])) {
-                $valorFrete = ($tipo === 'sedex') ? 24.90 : (($tipo === 'pac') ? 12.50 : 0);
+        // ==============================================================
+        // CÁLCULO DE FRETES (DINÂMICO E REATIVO)
+        // ==============================================================
+        // Zera as opções para forçar o recálculo do seguro sempre que a qtd de itens mudar
+        $this->fretesPorLoja = []; 
+
+        if (!empty($lojasNoCarrinhoIds)) {
+            $regrasLojas = StoreShippingSetting::whereIn('store_id', $lojasNoCarrinhoIds)->get()->keyBy('store_id');
+            
+            foreach ($lojasNoCarrinhoIds as $idLoja) {
+                $regrasDaLoja = $regrasLojas->get($idLoja);
+                $opcoesDisponiveis = [];
+
+                if ($regrasDaLoja) {
+                    
+                    // Base de cálculo para o seguro: Valor total dinâmico dos produtos
+                    $totalProdutosLoja = $cartByStore[$idLoja]['total'] ?? 0;
+
+                    // 1. RETIRADA
+                    if ($regrasDaLoja->is_active_retirada) {
+                        $opcoesDisponiveis['retirada'] = [
+                            'nome' => $regrasDaLoja->retirada_nome_exibicao,
+                            'valor' => 0.00,
+                            'descricao' => $regrasDaLoja->retirada_instrucoes
+                        ];
+                    }
+                    
+                    // 2. CARTA REGISTRADA
+                    if ($regrasDaLoja->is_active_carta_registrada) {
+                        $valorFixoCr = (float) $regrasDaLoja->cr_valor_fixo;
+                        $valorSeguroCr = 0;
+                        
+                        if ($regrasDaLoja->cr_taxa_percentual > 0) {
+                            $valorSeguroCr = $totalProdutosLoja * ((float) $regrasDaLoja->cr_taxa_percentual / 100);
+                        }
+                        
+                        $valorFinalCr = $valorFixoCr + $valorSeguroCr;
+
+                        $nomeAmigavelCr = $regrasDaLoja->cr_nome_exibicao;
+                        if ($valorSeguroCr > 0) {
+                            $nomeAmigavelCr .= " (SEGURO: R$ " . number_format($valorSeguroCr, 2, ',', '.') . ")";
+                        }
+
+                        $textosExtrasCr = [];
+                        if ($regrasDaLoja->cr_prazo_dias > 0) {
+                            $textosExtrasCr[] = "Prazo estimado: " . $regrasDaLoja->cr_prazo_dias . " dias úteis.";
+                        }
+                        
+                        $descricaoCompostaCr = $regrasDaLoja->cr_descricao;
+                        if (!empty($textosExtrasCr)) {
+                            $descricaoCompostaCr .= " — " . implode(' ', $textosExtrasCr);
+                        }
+
+                        $opcoesDisponiveis['carta_registrada'] = [
+                            'nome' => $nomeAmigavelCr,
+                            'valor' => $valorFinalCr,
+                            'descricao' => trim($descricaoCompostaCr)
+                        ];
+                    }
+
+                    // 3. CORREIOS PAC
+                    if ($regrasDaLoja->is_active_correios && $regrasDaLoja->correios_pac) {
+                        $valorFixoPac = 25.00; // Mock temporário para a API futura
+                        $valorSeguroPac = 0;
+                        
+                        if ($regrasDaLoja->taxa_seguro_percentual > 0) {
+                            $valorSeguroPac = $totalProdutosLoja * ((float) $regrasDaLoja->taxa_seguro_percentual / 100);
+                        }
+
+                        $valorFinalPac = $valorFixoPac + $valorSeguroPac;
+
+                        $nomeAmigavelPac = $regrasDaLoja->correios_pac_nome_exibicao;
+                        if ($valorSeguroPac > 0) {
+                            $nomeAmigavelPac .= " (SEGURO: R$ " . number_format($valorSeguroPac, 2, ',', '.') . ")";
+                        }
+
+                        $textosExtrasPac = [];
+                        if ($regrasDaLoja->prazo_manuseio_dias > 0) {
+                            $textosExtrasPac[] = "+ " . $regrasDaLoja->prazo_manuseio_dias . " dia(s) de separação da loja.";
+                        }
+                        
+                        $descricaoCompostaPac = $regrasDaLoja->correios_pac_descricao;
+                        if (!empty($textosExtrasPac)) {
+                            $descricaoCompostaPac .= " " . implode(' ', $textosExtrasPac);
+                        }
+
+                        $opcoesDisponiveis['pac'] = [
+                            'nome' => $nomeAmigavelPac,
+                            'valor' => $valorFinalPac,
+                            'descricao' => trim($descricaoCompostaPac)
+                        ];
+                    }
+                }
+                
+                $this->fretesPorLoja[$idLoja] = $opcoesDisponiveis;
+            }
+        }
+
+        // ==============================================================
+        // SOMA DOS FRETES SELECIONADOS AO TOTAL
+        // ==============================================================
+        foreach ($this->selectedShipping as $storeId => $chaveFrete) {
+            if (isset($cartByStore[$storeId]) && isset($this->fretesPorLoja[$storeId][$chaveFrete])) {
+                $valorFrete = $this->fretesPorLoja[$storeId][$chaveFrete]['valor'];
+                
                 $fretesGeral += $valorFrete;
                 $cartByStore[$storeId]['total'] += $valorFrete;
             }
@@ -132,6 +258,7 @@ class Index extends Component
             'subtotalGeral' => $subtotalGeral,
             'fretesGeral' => $fretesGeral,
             'totalGeral' => $totalGeral,
+            'fretesPorLoja' => $this->fretesPorLoja
         ])->layout($layout, ['loja' => $this->loja, 'isMarketplace' => $this->isMarketplace]);
     }
 }

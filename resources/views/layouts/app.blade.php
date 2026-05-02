@@ -36,6 +36,7 @@
       x-data="{ isModalOpen: false }"
       @modal-opened.window="isModalOpen = true"
       @modal-closed.window="isModalOpen = false"
+      @perfil-atualizado.window="window.location.reload()"
       :class="{ 'overflow-hidden': isModalOpen }">
 
     {{-- TUDO o que deve ser distorcido --}}
