@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Store;
+use App\Models\StockItem;
+use App\Observers\StoreObserver;
+use App\Observers\StockItemObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \App\Models\StockItem::observe(\App\Observers\StockItemObserver::class);
+        // Observadores existentes
+        StockItem::observe(StockItemObserver::class);
+
+        // Novo observador para automação do CyberPanel
+        Store::observe(StoreObserver::class);
     }
 }

@@ -110,8 +110,8 @@
                     </div>
                     
                     <div class="flex flex-col gap-2">
-                        {{-- BOTÃO FINALIZAR COM COR DINÂMICA --}}
-                        <a href="#" class="block w-full py-3 text-center text-[11px] font-black uppercase tracking-widest text-white rounded-lg transition hover:opacity-95 shadow-md" style="background-color: {{ $ctaBgColor }};">
+                        {{-- BOTÃO FINALIZAR MODIFICADO COM A ROTA DINÂMICA --}}
+                        <a href="{{ isset($loja) ? route('store.checkout', ['slug' => $loja->url_slug]) : route('game.checkout.index', ['game_slug' => $activeSlug]) }}" class="block w-full py-3 text-center text-[11px] font-black uppercase tracking-widest text-white rounded-lg transition hover:opacity-95 shadow-md" style="background-color: {{ $ctaBgColor }};">
                             Finalizar Pedido
                         </a>
                         <a href="{{ isset($loja) ? route('store.cart', ['slug' => $loja->url_slug]) : route('game.cart.index', ['game_slug' => $activeSlug]) }}" class="text-center text-[10px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition uppercase tracking-tighter py-1">

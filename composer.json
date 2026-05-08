@@ -18,6 +18,7 @@
         "laravel/scout": "^11.1",
         "laravel/tinker": "^2.10.1",
         "meilisearch/meilisearch-php": "^1.16",
+        "phpseclib/phpseclib": "^3.0",
         "spatie/laravel-permission": "^6.21",
         "symfony/browser-kit": "^7.3",
         "symfony/css-selector": "^7.3",

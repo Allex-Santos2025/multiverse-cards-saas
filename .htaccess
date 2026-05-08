@@ -1,0 +1,17 @@
+cat: /home/versustcg.com.br/public_html/.htaccess: No such file or directory
+RewriteEngine On
+
+# 1. FORÇAR HTTPS (Garante o cadeado verde sempre)
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# 2. ESCONDER A PASTA /PUBLIC/ (Para manter a URL limpa)
+# Se a requisição não começar com /public/, joga para lá internamente
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteRule ^(.*)$ public/$1 [L]
+
+# 3. IMPEDIR ACESSO DIRETO À PASTA /PUBLIC/
+# Se o usuário digitar /public/ na mão, o servidor remove da URL
+RewriteCond %{HTTP_HOST} !^www\. [NC]
+RewriteCond %{THE_REQUEST} /public/([^\s?]*) [NC]
+RewriteRule ^ %1 [L,R=301]

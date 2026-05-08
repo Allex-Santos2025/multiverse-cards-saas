@@ -39,6 +39,8 @@ Route::prefix('marketplace/{game_slug}')->group(function () {
     // ROTA DO CARRINHO CONTEXTUALIZADA
     // Agora o carrinho só abre se houver um jogo na URL (ex: /marketplace/magic/carrinho)
     Route::get('/carrinho', \App\Livewire\Lobby\Cart\Index::class)->name('game.cart.index');
+    // ROTA DO CHECKOUT CONTEXTUALIZADA (NOVA)
+    Route::get('/checkout', \App\Livewire\Lobby\Cart\Checkout::class)->name('game.cart.checkout');
 });
 
 // Retrocompatibilidade para a rota fixa do Magic

@@ -52,17 +52,17 @@
                 </div>
 
                 @if(!$use_custom_domain)
-                    <div class="space-y-1">
+                    <div class="space-y-1" wire:key="container-slug">
                         <label class="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Link da sua Loja (Slug)</label>
                         <div class="flex">
                             <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 dark:border-slate-700 bg-gray-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 sm:text-sm">
                                 versustcg.com.br/loja/
                             </span>
-                            <input type="text" wire:model="url_slug" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-orange-500 outline-none">
+                            <input type="text" wire:model="url_slug" readonly class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-orange-500 outline-none opacity-60 cursor-not-allowed">
                         </div>
                     </div>
                 @else
-                    <div class="space-y-1">
+                    <div class="space-y-1" wire:key="container-domain">
                         <label class="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">Qual o seu domínio?</label>
                         <div class="flex">
                             <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 dark:border-slate-700 bg-gray-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 sm:text-sm">
@@ -70,6 +70,44 @@
                             </span>
                             <input type="text" wire:model="domain" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:ring-1 focus:ring-orange-500 outline-none" placeholder="www.suamarca.com.br">
                         </div>
+
+                        {{-- SEÇÃO DE GERENCIAMENTO DO DOMÍNIO ATIVO --}}
+                        @if(auth('store_user')->user()->store->domain)
+                            
+                            {{-- BOTÃO DE DESCONECTAR (Alerta Suave no Claro / Integrado no Escuro) --}}
+                            <div class="mt-4 p-4 bg-yellow-50 dark:bg-slate-900/80 border border-yellow-200 dark:border-slate-700 rounded-md flex flex-col sm:flex-row justify-between items-center gap-4">
+                                <div class="flex items-start gap-3">
+                                    <div class="mt-0.5">
+                                        <i class="ph-fill ph-warning text-yellow-600 dark:text-slate-500 text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-slate-900 dark:text-white">
+                                            Domínio Conectado: <span class="text-orange-600 dark:text-orange-500 font-bold ml-1">{{ auth('store_user')->user()->store->domain }}</span>
+                                        </p>
+                                        <p class="text-xs text-slate-700 dark:text-slate-400 mt-1">Deseja desconectar este domínio? Sua loja voltará a usar o link padrão do Versus.</p>
+                                    </div>
+                                </div>
+                                <button type="button" wire:click="desconectarDominio" wire:confirm="Tem certeza que deseja desconectar o domínio {{ auth('store_user')->user()->store->domain }}? O site atual sairá do ar imediatamente." class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-xs transition-colors whitespace-nowrap flex-shrink-0 shadow-sm">
+                                    <i class="ph-bold ph-trash mr-1"></i> Desconectar
+                                </button>
+                            </div>
+
+                            {{-- AVISO TEMPORÁRIO DE SSL (Some automaticamente após 15 minutos) --}}
+                            @if(auth('store_user')->user()->store->updated_at && auth('store_user')->user()->store->updated_at->diffInMinutes(now()) < 15)
+                                <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/50 rounded-md flex items-start gap-3 shadow-sm">
+                                    <div class="mt-0.5">
+                                        <i class="ph-fill ph-info text-blue-500 text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-blue-800 dark:text-blue-300">Certificado de Segurança em Processamento</p>
+                                        <p class="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                                            Seu domínio já está conectado! O cadeado verde (SSL) é gerado automaticamente pelo servidor, mas pode levar <strong>entre 5 e 15 minutos</strong> para ser ativado. É normal que o site apareça como "Não seguro" nos primeiros minutos.
+                                        </p>
+                                    </div>
+                                </div>
+                            @endif
+                            
+                        @endif
                     </div>
                 @endif
             </div>

@@ -620,6 +620,21 @@ STAGE vMAJOR.MINOR.PATCH
 
 ---
 
+**Versão:** `alpha v0.1.20`  
+**Data:** 08/05/2026  
+**Descrição da Versão:** Foco na construção do fluxo completo de transação comercial e finalização de pedidos (Checkout), estabelecimento da arquitetura de banco de dados para o split de pagamentos do marketplace, e implementação do histórico de compras do jogador. Além disso, o motor de rotas foi refatorado para suportar o ecossistema de domínios próprios das lojas.
+
+### Correções e Melhorias (Patches):
+
+* **Arquitetura de Transações e Split de Pagamento:** Modelagem e criação das tabelas fundamentais de conversão (`orders`, `order_items`, `order_shippings`). O banco de dados agora suporta o registro atomizado de pedidos do marketplace, separando logicamente os itens por loja, "congelando" o valor da carta no momento da compra e preparando a estrutura base para a cobrança da taxa da plataforma (Platform Fee vs. Store Amount).
+* **Motor de Checkout e Integração de Endereços:** Desenvolvimento do componente `Checkout` em Livewire. Implementação de fluxo fluido que reaproveita o endereço preferencial do jogador (com lógica de "Efeito Bumerangue" para cadastro de novos endereços sem perda de contexto da sessão) e consolidação do subtotal do carrinho.
+* **Inteligência de Fretes e Motor dos Correios:** Expansão do cálculo dinâmico de fretes no Checkout. O sistema agora lê as regras ativas de cada loja (`store_shipping_settings`) e injeta no select as opções habilitadas, incluindo o ecossistema Correios (PAC, Sedex, Sedex 10, Mini Envios e Impresso Módico), calculando automaticamente a taxa de seguro baseada no valor dos produtos e somando prazos de manuseio.
+* **Gateway de Pagamento (Mercado Pago):** Estruturação do `MercadoPagoService` para geração dinâmica de PIX (QR Code em Base64 e Código Copia e Cola) atrelado à criação da Order, com tratamento de estado de pagamento e transações assíncronas do banco de dados (DB Transactions) para garantir integridade.
+* **Dashboard do Jogador (Meus Pedidos):** Criação da interface de histórico de compras no Lobby do jogador. O painel exibe pedidos consolidados e agrupa as cartas por loja usando componentes expansíveis (Alpine.js). O visual integra o fallback inteligente de identidade das lojas, consumindo o logo retangular, o avatar ou gerando um ícone customizado com as iniciais e a cor primária dinâmica vinda do banco de dados.
+* **Refatoração de Rotas (Custom Domain):** Atualização do motor de roteamento para suportar o acesso transparente de domínios próprios injetados no ecossistema Versus TCG, permitindo que a navegação e o carrinho operem isoladamente mantendo o contexto visual e lógico da loja ativa.
+
+---
+
 ## 📜 Histórico de Versões
 
 ### `alpha v0.0.1` — 21/12/2025  

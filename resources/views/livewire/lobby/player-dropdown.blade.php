@@ -13,27 +13,45 @@
         </h3>
     </div>
 
+    @php
+        // Lógica limpa para definir o nome da rota com base no contexto (Loja, Jogo ou Global)
+        $routeName = request()->routeIs('store.*') ? 'store.lobby.index' : (request()->routeIs('game.*') ? 'game.lobby.index' : 'lobby.index');
+        
+        // Resgata os slugs com segurança
+        $currentSlug = isset($loja) ? $loja->url_slug : request()->route('slug');
+        $currentGame = request()->route('game_slug');
+
+        // Montador automático de parâmetros
+        $params = function($secao = null) use ($currentSlug, $currentGame) {
+            $p = [];
+            if ($secao) $p['secao'] = $secao;
+            if ($currentSlug) $p['slug'] = $currentSlug;
+            if ($currentGame) $p['game_slug'] = $currentGame;
+            return $p;
+        };
+    @endphp
+
     <nav class="flex flex-col gap-1 p-2">
-        <a href="{{ isset($loja) ? route('store.lobby.index', ['slug' => $loja->url_slug]) : (request()->route('game_slug') ? route('game.lobby.index', ['game_slug' => request()->route('game_slug')]) : route('lobby.index')) }}" class="flex items-center gap-3 px-3 py-2 rounded-lg {{ $isMarketplace ? 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-zinc-800' : 'text-[#18181b] hover:bg-zinc-100' }} transition-colors" style="font-size: 0.85rem; font-weight: 700;">
+        <a href="{{ route($routeName, $params(null)) }}" class="flex items-center gap-3 px-3 py-2 rounded-lg {{ $isMarketplace ? 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-zinc-800' : 'text-[#18181b] hover:bg-zinc-100' }} transition-colors" style="font-size: 0.85rem; font-weight: 700;">
             <i class="ph ph-user text-lg opacity-70"></i> Meu Perfil
         </a>
         
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg {{ $isMarketplace ? 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-zinc-800' : 'text-[#18181b] hover:bg-zinc-100' }} transition-colors" style="font-size: 0.85rem; font-weight: 700;">
+        <a href="{{ route($routeName, $params('creditos')) }}" class="flex items-center justify-between px-3 py-2 rounded-lg {{ $isMarketplace ? 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-zinc-800' : 'text-[#18181b] hover:bg-zinc-100' }} transition-colors" style="font-size: 0.85rem; font-weight: 700;">
             <div class="flex items-center gap-3">
                 <i class="ph ph-wallet text-lg opacity-70"></i> Meus Créditos
             </div>
             <span style="font-size: 0.7rem; font-weight: 900; opacity: 0.6;">R$ 0,00</span>
         </a>
 
-        <a href="{{ route('lobby.index', ['secao' => 'compras']) }}" class="flex items-center gap-3 px-3 py-2 rounded-lg {{ $isMarketplace ? 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-zinc-800' : 'text-[#18181b] hover:bg-zinc-100' }} transition-colors" style="font-size: 0.85rem; font-weight: 700;">
+        <a href="{{ route($routeName, $params('compras')) }}" class="flex items-center gap-3 px-3 py-2 rounded-lg {{ $isMarketplace ? 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-zinc-800' : 'text-[#18181b] hover:bg-zinc-100' }} transition-colors" style="font-size: 0.85rem; font-weight: 700;">
             <i class="ph ph-shopping-bag text-lg opacity-70"></i> Meus Pedidos
         </a>
 
-        <a href="{{ route('lobby.index', ['secao' => 'colecoes']) }}" class="flex items-center gap-3 px-3 py-2 rounded-lg {{ $isMarketplace ? 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-zinc-800' : 'text-[#18181b] hover:bg-zinc-100' }} transition-colors" style="font-size: 0.85rem; font-weight: 700;">
+        <a href="{{ route($routeName, $params('colecoes')) }}" class="flex items-center gap-3 px-3 py-2 rounded-lg {{ $isMarketplace ? 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-zinc-800' : 'text-[#18181b] hover:bg-zinc-100' }} transition-colors" style="font-size: 0.85rem; font-weight: 700;">
             <i class="ph ph-cards text-lg opacity-70"></i> Minha Coleção
         </a>
 
-        <a href="{{ route('lobby.index', ['secao' => 'decks']) }}" class="flex items-center gap-3 px-3 py-2 rounded-lg {{ $isMarketplace ? 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-zinc-800' : 'text-[#18181b] hover:bg-zinc-100' }} transition-colors" style="font-size: 0.85rem; font-weight: 700;">
+        <a href="{{ route($routeName, $params('decks')) }}" class="flex items-center gap-3 px-3 py-2 rounded-lg {{ $isMarketplace ? 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-zinc-800' : 'text-[#18181b] hover:bg-zinc-100' }} transition-colors" style="font-size: 0.85rem; font-weight: 700;">
             <i class="ph ph-stack text-lg opacity-70"></i> Meus Decks
         </a>
     </nav>

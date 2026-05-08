@@ -4,6 +4,7 @@ namespace App\Livewire\Store\Dashboard\Management;
 
 use Livewire\Component;
 use Illuminate\Support\Facades\Http;
+use App\Services\CyberPanelService;
 
 class Profile extends Component
 {
@@ -143,11 +144,13 @@ class Profile extends Component
             return;
         }
 
+        // LÓGICA DE PROTEÇÃO DO SLUG E DO DOMÍNIO
+        $domainToSave = $this->use_custom_domain ? $this->domain : $store->domain;
+
         $store->update([
             'name' => $this->name,
-            'url_slug' => $this->url_slug,
             'use_custom_domain' => $this->use_custom_domain,
-            'domain' => $this->domain,
+            'domain' => $domainToSave,
             'document' => $this->document,
             'corporate_name' => $this->corporate_name,
             'is_ie_exempt' => $this->is_ie_exempt,
@@ -164,7 +167,6 @@ class Profile extends Component
         ]);
 
         // --- SALVANDO AS REDES SOCIAIS ---
-        // Apaga as antigas e insere as novas limpas (evita links em branco)
         $store->socials()->delete();
         
         $validSocials = array_filter($this->socials, function ($social) {
@@ -176,7 +178,54 @@ class Profile extends Component
         }
         // ---------------------------------
 
+        // --- GATILHO DA AUTOMAÇÃO CYBERPANEL ---
+        if ($this->use_custom_domain && !empty($this->domain)) {
+            try {
+                $cyberPanel = new CyberPanelService();
+                $cyberPanel->automatizarDominioLoja($this->domain);
+                
+                session()->flash('message', 'Domínio salvo com sucesso! O servidor já está configurando o seu site e o certificado SSL ficará ativo em até 15 minutos.');
+                return; 
+            } catch (\Exception $e) {
+                session()->flash('error', 'Dados salvos, mas houve uma falha ao conectar com o servidor: ' . $e->getMessage());
+                return;
+            }
+        }
+        // ---------------------------------------
+
         session()->flash('message', 'Dados da loja atualizados com sucesso!');
+    }
+
+    public function desconectarDominio()
+    {
+        $store = auth('store_user')->user()->store;
+        $dominioAntigo = $store->domain;
+
+        if (!$dominioAntigo) {
+            session()->flash('error', 'Nenhum domínio para desconectar.');
+            return;
+        }
+
+        try {
+            $cyberPanel = new CyberPanelService();
+            $apagouNoServidor = $cyberPanel->removerDominioLoja($dominioAntigo);
+
+            if ($apagouNoServidor) {
+                $store->update([
+                    'domain' => null,
+                    'use_custom_domain' => false
+                ]);
+
+                $this->domain = '';
+                $this->use_custom_domain = false;
+
+                session()->flash('message', 'Domínio desconectado com sucesso! A loja voltou para o link padrão do Versus.');
+            } else {
+                session()->flash('error', 'Falha ao remover o domínio do servidor. Tente novamente mais tarde.');
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'Ocorreu um erro ao tentar remover o domínio: ' . $e->getMessage());
+        }
     }
 
     public function render()

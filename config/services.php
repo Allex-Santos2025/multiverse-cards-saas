@@ -61,4 +61,11 @@ return [
         'redirect' => env('APP_URL') . '/auth/microsoft/callback',
     ],
 
+    'cyberpanel' => [
+    'url'         => env('CYBERPANEL_URL'),
+    'admin'       => env('CYBERPANEL_ADMIN'),
+    'pass'        => env('CYBERPANEL_PASS'),
+    'main_domain' => env('CYBERPANEL_MAIN_DOMAIN'),
+],
+
 ];

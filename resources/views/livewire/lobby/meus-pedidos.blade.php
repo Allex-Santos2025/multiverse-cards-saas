@@ -33,13 +33,35 @@
                     
                     {{-- 1. Loja e Info Básica --}}
                     <div class="flex items-center gap-3 min-w-[220px]">
-                        <div class="w-10 h-10 rounded-lg {{ $pedido['loja_cor'] }} text-white flex items-center justify-center font-black text-[8px] uppercase shadow-sm shrink-0">
-                            {{ $pedido['loja_sigla'] }}
-                        </div>
-                        <div>
-                            <h3 class="font-black text-slate-900 text-sm leading-tight">{{ $pedido['loja'] }}</h3>
-                            <p class="text-[10px] font-medium text-slate-400 mt-0.5">Pedido {{ $pedido['codigo'] }} • {{ $pedido['data'] }}</p>
-                        </div>
+                        @if(!empty($pedido['loja_avatar']))
+                            {{-- CONDIÇÃO 1: Tem Avatar Quadrado (Mostra ele + Nome) --}}
+                            <div class="w-10 h-10 rounded-lg shadow-sm shrink-0 overflow-hidden border border-slate-100 bg-white">
+                                <img src="{{ $pedido['loja_avatar'] }}" alt="{{ $pedido['loja'] }}" class="w-full h-full object-contain p-0.5">
+                            </div>
+                            <div>
+                                <h3 class="font-black text-slate-900 text-sm leading-tight">{{ $pedido['loja'] }}</h3>
+                                <p class="text-[10px] font-medium text-slate-400 mt-0.5">Pedido {{ $pedido['codigo'] }} • {{ $pedido['data'] }}</p>
+                            </div>
+
+                        @elseif(!empty($pedido['loja_logo']))
+                            {{-- CONDIÇÃO 2: Só tem Logo Retangular (Esconde o Nome) --}}
+                            <div class="h-10 shrink-0 overflow-hidden flex items-center justify-start">
+                                <img src="{{ $pedido['loja_logo'] }}" alt="{{ $pedido['loja'] }}" class="h-full object-contain max-w-[140px]">
+                            </div>
+                            <div class="flex flex-col justify-center ml-2">
+                                <p class="text-[10px] font-medium text-slate-400 mt-0.5">Pedido {{ $pedido['codigo'] }} • {{ $pedido['data'] }}</p>
+                            </div>
+
+                        @else
+                            {{-- FALLBACK: Não tem imagem (Mostra cor da loja + Iniciais + Nome) --}}
+                            <div class="w-10 h-10 rounded-lg text-white flex items-center justify-center font-black text-[10px] uppercase shadow-sm shrink-0" style="background-color: {{ $pedido['loja_cor_hex'] }}">
+                                {{ $pedido['loja_sigla'] }}
+                            </div>
+                            <div>
+                                <h3 class="font-black text-slate-900 text-sm leading-tight">{{ $pedido['loja'] }}</h3>
+                                <p class="text-[10px] font-medium text-slate-400 mt-0.5">Pedido {{ $pedido['codigo'] }} • {{ $pedido['data'] }}</p>
+                            </div>
+                        @endif
                     </div>
 
                     {{-- 2. Barra de Progresso e Status (CENTRALIZADA COMO NO PRINT) --}}

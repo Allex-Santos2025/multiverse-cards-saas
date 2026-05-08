@@ -9,6 +9,7 @@ use App\Livewire\Store\Template\Catalog\SetPage;
 use App\Livewire\Store\Template\Catalog\SinglePage;
 use App\Livewire\Store\Template\Catalog\ProductPage;
 use App\Livewire\Lobby\Cart\Index as CartIndex;
+use App\Livewire\Lobby\Cart\Checkout;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,6 +45,8 @@ Route::get('/aguarde', function ($slug) {
 
 // ROTA DO CARRINHO DA LOJA (Mantida aqui conforme solicitado)
 Route::get('/carrinho', CartIndex::class)->name('store.cart');
+// ROTA DO CHECKOUT DA LOJA (NOVA)
+Route::get('/checkout', Checkout::class)->name('store.checkout');
 
 // 2. ROTA RAIZ DA LOJA
 Route::get('/', Home::class)->name('store.view');

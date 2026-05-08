@@ -154,6 +154,12 @@ class Enderecos extends Component
 
         $this->showForm = false;
         $this->carregarEnderecos();
+
+        // EFEITO BUMERANGUE: Se veio do Checkout, devolve o jogador para lá
+        if (session()->has('redirect_after_address')) {
+            $url = session()->pull('redirect_after_address');
+            return redirect()->to($url);
+        }
     }
 
     public function tornarOficial($id)
@@ -184,6 +190,13 @@ class Enderecos extends Component
     public function cancelar()
     {
         $this->showForm = false;
+        $this->resetForm();
+
+        // Se ele desistir de cadastrar e tiver vindo do Checkout, também volta para lá
+        if (session()->has('redirect_after_address')) {
+            $url = session()->pull('redirect_after_address');
+            return redirect()->to($url);
+        }
     }
 
     private function resetForm()
