@@ -433,7 +433,7 @@ class Checkout extends Component
                 'gateway_transaction_id' => 'SIMULADO_' . strtoupper(uniqid()),
             ]);
 
-            // 2. ITENS DO PEDIDO (ORDERITEM)
+            // 2. ITENS DO PEDIDO (ORDERITEM) E BAIXA NO ESTOQUE
             foreach ($this->cartByStore as $storeId => $dadosLoja) {
                 foreach ($dadosLoja['items'] as $cartItem) {
                     
@@ -456,6 +456,19 @@ class Checkout extends Component
                         'unit_price' => $cartItem->price,
                         'quantity' => $cartItem->quantity,
                     ]);
+
+                    // ==========================================
+                    // BAIXA NO ESTOQUE (NOVIDADE)
+                    // ==========================================
+                    $estoqueDb = \App\Models\StockItem::find($cartItem->stock_item_id);
+                    if ($estoqueDb) {
+                        $novaQuantidade = $estoqueDb->quantity - $cartItem->quantity;
+                        $estoqueDb->update([
+                            // max(0, X) impede que a quantidade fique negativa caso haja corrida de compra
+                            'quantity' => max(0, $novaQuantidade) 
+                        ]);
+                    }
+                    // ==========================================
                 }
 
                 // 3. REGISTRO DO FRETE POR LOJA (ORDERSHIPPING)

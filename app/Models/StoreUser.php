@@ -34,6 +34,7 @@ class StoreUser extends Authenticatable implements MustVerifyEmail // Importante
         'id_document_number',
         'social_name',
         'company_phone',
+        'session_expires_at',
     ];
 
     /**
@@ -54,7 +55,8 @@ class StoreUser extends Authenticatable implements MustVerifyEmail // Importante
     protected $casts = [
         'email_verified_at' => 'datetime', // Adicionado para tratar como data/hora
         'password' => 'hashed', // Adicionado para hash automático no Laravel 12
-        'is_active' => 'boolean', // Já existia, mas bom confirmar
+        'is_active' => 'boolean',
+        'session_expires_at' => 'datetime',
     ];
 
     /**

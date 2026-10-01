@@ -3,97 +3,113 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Services\ScryfallApi;
 use Illuminate\Support\Facades\DB;
-use JsonMachine\Items;
+use Illuminate\Support\Facades\Http;
 
 class SyncMtgPrices extends Command
 {
     protected $signature = 'mtg:sync-prices';
-    protected $description = 'Sincroniza os preços mundiais usando o ScryfallApi Service';
+    protected $description = 'Sincroniza os preços mundiais usando o Scryfall Bulk Data (JSONL)';
 
     public function handle()
     {
-        $this->info('Configurando conexão com o Scryfall via Banco de Dados...');
-
-        // 1. Localiza as configurações usando o nome correto da coluna: url_slug
-        $game = DB::table('games')->where('url_slug', 'magic')->first();
-
-        if (!$game) {
-            $this->error('Jogo com url_slug "magic" não encontrado na tabela games.');
-            return;
-        }
-
-        // 2. Instancia o seu Service com as colunas reais: api_url, rate_limit_ms e url_slug
-        $scryfall = new ScryfallApi(
-            $game->api_url, 
-            $game->rate_limit_ms ?? 100, 
-            $game->id, 
-            $game->url_slug
-        );
-
-        $this->info('Consultando metadados de preços...');
+        $this->info('Consultando metadados de preços diretamente na API...');
         
-        // Chamada ao método que adicionamos ao seu Service
-        $bulkData = $scryfall->getBulkDataInfo('default_cards');
+        $response = Http::withHeaders([
+            'User-Agent' => 'VersusTCG-App/1.0',
+            'Accept'     => 'application/json'
+        ])->get('https://api.scryfall.com/bulk-data/all_cards');
 
-        if (!$bulkData || !isset($bulkData['download_uri'])) {
-            $this->error('Não foi possível obter o link de download. Verifique a conexão com a API.');
+        if (!$response->successful()) {
+            $this->error("Falha ao buscar metadados na API do Scryfall: {$response->status()}");
             return;
         }
 
-        $downloadUri = $bulkData['download_uri'];
-        $tempPath = storage_path('app/scryfall_default_cards.json');
+        $bulkData = $response->json();
+        $downloadUri = $bulkData['jsonl_download_uri'] ?? $bulkData['download_uri'] ?? null;
 
-        $this->info('Iniciando download do arquivo Bulk Data...');
+        if (!$downloadUri) {
+            $this->error('Não foi possível obter o link de download na resposta da API.');
+            return;
+        }
 
-        // 3. Download via CURL com bypass de SSL para o terminal
-        $fp = fopen($tempPath, 'w+');
+        $tempGzPath = storage_path('app/scryfall_all_cards.jsonl.gz');
+        $tempJsonlPath = storage_path('app/scryfall_all_cards.jsonl');
+
+        $this->info('Iniciando download do arquivo compactado (Isso pode demorar um pouco)...');
+
+        $fp = fopen($tempGzPath, 'w+');
         $ch = curl_init($downloadUri);
         curl_setopt($ch, CURLOPT_FILE, $fp);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
-        curl_setopt($ch, CURLOPT_USERAGENT, 'multiverse-cards-saas/1.0');
+        curl_setopt($ch, CURLOPT_USERAGENT, 'VersusTCG-App/1.0');
         curl_exec($ch);
         curl_close($ch);
         fclose($fp);
 
-        $this->info('Download concluído. Iniciando sincronização com mtg_prints...');
+        $this->info('Download concluído. Descompactando arquivo...');
 
-        // 4. Processamento via JsonMachine
-        $cards = Items::fromFile($tempPath);
+        $gz = gzopen($tempGzPath, 'rb');
+        $jsonl = fopen($tempJsonlPath, 'w');
+        
+        while (!gzeof($gz)) {
+            fwrite($jsonl, gzread($gz, 4096 * 8));
+        }
+        
+        gzclose($gz);
+        fclose($jsonl);
+
+        if (file_exists($tempGzPath)) {
+            unlink($tempGzPath);
+        }
+
+        $this->info('Descompactação concluída. Iniciando sincronização com mtg_prints...');
+
+        // Leitura otimizada linha por linha nativa do PHP (Perfeita para JSONL)
+        $handle = fopen($tempJsonlPath, 'r');
         $count = 0;
         $updated = 0;
 
-        DB::beginTransaction();
+        if ($handle) {
+            DB::beginTransaction();
 
-        foreach ($cards as $card) {
-            $count++;
+            while (($line = fgets($handle)) !== false) {
+                $line = trim($line);
+                if (empty($line)) continue;
 
-            if (isset($card->id) && isset($card->prices)) {
-                $affected = DB::table('mtg_prints')
-                    ->where('api_id', $card->id)
-                    ->update([
-                        'prices' => json_encode($card->prices),
-                        'updated_at' => now(),
-                    ]);
+                $card = json_decode($line, true);
+                $count++;
 
-                if ($affected) {
-                    $updated++;
+                $cardId = $card['id'] ?? null;
+                $cardPrices = $card['prices'] ?? null;
+
+                if ($cardId && $cardPrices) {
+                    $affected = DB::table('mtg_prints')
+                        ->where('api_id', $cardId)
+                        ->update([
+                            'prices' => json_encode($cardPrices),
+                            'updated_at' => now(),
+                        ]);
+
+                    if ($affected) {
+                    	$updated++;
+                    }
+                }
+
+                if ($count % 1000 === 0) {
+                    DB::commit();
+                    DB::beginTransaction();
+                    $this->line("Processados: {$count} | Atualizados no banco: {$updated}");
                 }
             }
 
-            if ($count % 1000 === 0) {
-                DB::commit();
-                DB::beginTransaction();
-                $this->line("Processados: {$count} | Atualizados no banco: {$updated}");
-            }
+            DB::commit();
+            fclose($handle);
         }
-
-        DB::commit();
         
-        if (file_exists($tempPath)) {
-            unlink($tempPath);
+        if (file_exists($tempJsonlPath)) {
+            unlink($tempJsonlPath);
         }
 
         $this->info("Sincronização Finalizada!");

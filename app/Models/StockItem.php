@@ -84,4 +84,5 @@ class StockItem extends Model
     {
         return $this->catalogPrint->concept ?? null;
     }
+    
 }

@@ -8,6 +8,7 @@ use App\Http\Middleware\AuthenticateStoreUserOptional;
 use App\Http\Middleware\TrackStoreContext;
 use App\Http\Middleware\DomainMiddleware;
 use App\Http\Middleware\HideSlugFromUrl; // <-- Importação do novo limpador
+use App\Http\Middleware\CheckStoreUserSessionExpired;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             TrackStoreContext::class,
             DomainMiddleware::class,
             HideSlugFromUrl::class, // <-- Ele entra aqui para limpar o HTML final
+            CheckStoreUserSessionExpired::class,
         ]);
 
         $middleware->alias([

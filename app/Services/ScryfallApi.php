@@ -52,15 +52,14 @@ class ScryfallApi
     {
         Log::info("Buscando sets na API: {$this->baseUrl}/sets");
 
-        // 1. Busca os dados da API do Scryfall
-        $response = Http::timeout(30)->get("{$this->baseUrl}/sets");
+        // 1. Busca os dados da API do Scryfall usando o método que já possui os cabeçalhos
+        $json = $this->getAllSets();
 
-        if ($response->failed()) {
-            Log::error("Falha ao buscar sets do Scryfall: " . $response->status());
+        if (!$json) {
+            Log::error("Falha ao buscar sets do Scryfall: Resposta vazia ou bloqueada.");
             return;
         }
 
-        $json = $response->json();
         // Scryfall retorna a lista dentro da chave 'data'
         $sets = $json['data'] ?? [];
 
@@ -114,8 +113,9 @@ class ScryfallApi
             $safeCode = strtolower($setCode);
             
             // Caminho relativo para salvar no banco (para usar no asset())
-            // Ex: card_images/magic/lea/lea.svg
-            $relativePath = "card_images/{$this->gameSlug}/{$safeCode}/{$safeCode}.svg";
+            // Ex: card_images/Magic/lea/lea.svg
+            $gameFolder = ucfirst($this->gameSlug);
+            $relativePath = "card_images/{$gameFolder}/{$safeCode}/{$safeCode}.svg";
             
             // Caminho absoluto do sistema para salvar o arquivo
             $fullPath = public_path($relativePath);
@@ -125,14 +125,16 @@ class ScryfallApi
                 return $relativePath;
             }
 
-            // 2. Garante que a pasta existe (card_images/magic/lea)
+            // 2. Garante que a pasta existe (card_images/Magic/lea)
             $directory = dirname($fullPath);
             if (!File::exists($directory)) {
                 File::makeDirectory($directory, 0755, true);
             }
 
-            // 3. Baixa o arquivo
-            $response = Http::timeout(10)->get($url);
+            // 3. Baixa o arquivo forçando o User-Agent
+            $response = Http::withHeaders([
+                'User-Agent' => $this->userAgent
+            ])->timeout(10)->get($url);
 
             if ($response->successful()) {
                 // 4. Salva o conteúdo no arquivo

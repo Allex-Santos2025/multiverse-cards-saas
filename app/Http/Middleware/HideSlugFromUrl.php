@@ -10,6 +10,10 @@ class HideSlugFromUrl
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->is('livewire/*')) {
+            return $next($request);
+        }
+
         $response = $next($request);
         $host = $request->getHost();
         $mainDomain = env('APP_URL_DOMAIN', 'versustcg.com.br');

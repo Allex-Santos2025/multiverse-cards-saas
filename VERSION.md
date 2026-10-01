@@ -635,6 +635,33 @@ STAGE vMAJOR.MINOR.PATCH
 
 ---
 
+# 🚀 Atualizações da Plataforma — Versão 0.1.21
+**Data de Lançamento:** 01/10/2026
+
+Olá, Lojista! Preparamos uma nova rodada de melhorias com foco direto na estabilidade do seu dia a dia e na experiência de compra dos seus clientes. Confira o que mudou:
+
+---
+
+### 🔑 Sessão Conectada por 30 Dias (Sem Quedas e Sem Erro 419)
+Agora você pode navegar, cadastrar cartas e gerenciar sua loja com muito mais tranquilidade:
+* **Login Estável de 30 Dias:** Você não será mais deslogado repentinamente por inatividade enquanto estiver trabalhando.
+* **Liberdade na Vitrine:** A sua autenticação agora é reconhecida tanto no Painel Administrativo quanto direto na vitrine da sua loja. Você pode navegar pelo catálogo para cadastrar ou conferir estoque sem perder o acesso.
+* **Fim dos Erros de Página Expirada:** Aprimoramos o armazenamento das sessões, reduzindo drasticamente falhas de envio de formulário ou telas de erro ao salvar alterações.
+
+---
+
+### 🧭 Navegação Fluida e Resolução Multi-Tenant de Domínios
+* **Transição Ágil na Barra do Lojista:** O botão superior da barra administrativa agora reconhece perfeitamente o endereço próprio da sua loja. Ao clicar para voltar ao **Painel de Controle**, você é direcionado sem inconsistências de rota entre a visão do cliente e a gestão interna.
+* **Fim do Erro 404 no Detalhe das Novidades:** Corrigido o roteamento interno de parâmetros no módulo de changelogs (`novidades.show`). Agora tanto os lojistas com domínio próprio personalizado quanto as lojas acessando pelo domínio principal da Versus TCG navegam pelos comunicados e atualizações completas sem bloqueios ou falhas de página não encontrada.
+
+---
+
+### 📦 Sincronização e Busca de Cartas Aprimoradas
+* **Busca Mais Precisa na Vitrine:** Ajustamos o motor de pesquisa da loja para garantir que seus clientes encontrem cartas, variações e edições com muito mais agilidade e sem falhas nos filtros.
+* **Atualização de Catálogo e Cotações:** Os dados de novas coleções, atributos das cartas e valores de mercado foram otimizados no servidor, garantindo sincronização consistente para o seu controle de preços.
+
+---
+
 ## 📜 Histórico de Versões
 
 ### `alpha v0.0.1` — 21/12/2025  

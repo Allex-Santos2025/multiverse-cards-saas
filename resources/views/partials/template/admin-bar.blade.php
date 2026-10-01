@@ -38,8 +38,8 @@
                     <span class="text-gray-600">|</span>
                 @endif
 
-                {{-- Botão Fixo: Voltar pro Painel --}}
-                <a href="{{ url('/loja/' . $loja->url_slug . '/dashboard') }}" class="hover:text-white flex items-center transition-colors">
+                {{-- Botão Fixo: Voltar pro Painel adaptado para subdomínio e domínio principal --}}
+                <a href="{{ route('store.dashboard', ['slug' => $loja->url_slug]) }}" class="hover:text-white flex items-center transition-colors">
                     <i class="ph ph-gauge mr-1 text-base"></i> Painel de Controle
                 </a>
             </div>

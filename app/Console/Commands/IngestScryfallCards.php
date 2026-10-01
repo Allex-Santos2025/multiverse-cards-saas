@@ -235,7 +235,9 @@ class IngestScryfallCards extends Command
                 $cardData['collector_number'] ?? '0',
                 $cardData['lang'] ?? 'en'
             );
-            if ($localPathLarge) $imagesDownloaded++;
+            if ($localPathLarge) {
+                $imagesDownloaded++;
+            }
         }
 
         return [
@@ -260,17 +262,30 @@ class IngestScryfallCards extends Command
         $relativePath = "card_images/Magic/{$setCode}/{$lang}/{$fileName}";
         $fullPath = public_path($relativePath);
 
-        if (File::exists($fullPath)) return $relativePath;
+        // 1. Se já existe fisicamente no disco, retorna o caminho
+        if (File::exists($fullPath)) {
+            return $relativePath;
+        }
 
         try {
-            $response = Http::timeout(30)->get($url);
+            // 2. Envia User-Agent para a CDN do Scryfall não dar 403 Forbidden
+            $response = Http::withHeaders([
+                'User-Agent' => 'VersusTCG/1.0 (https://versustcg.com.br; contato@versustcg.com.br)',
+                'Accept'     => 'image/jpeg,image/*,*/*'
+            ])->timeout(30)->get($url);
+
             if ($response->successful()) {
                 File::ensureDirectoryExists(dirname($fullPath));
                 File::put($fullPath, $response->body());
-                usleep(150000); 
+                usleep(150000); // 150ms de cortesia exigidos pela API do Scryfall
                 return $relativePath;
+            } else {
+                Log::channel('ingest')->warning("Falha HTTP {$response->status()} ao baixar imagem: {$url}");
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::channel('ingest')->error("Erro ao baixar imagem {$fileName}: " . $e->getMessage());
+        }
+
         return null;
     }
 

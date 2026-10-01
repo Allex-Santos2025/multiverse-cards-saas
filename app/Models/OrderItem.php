@@ -19,4 +19,9 @@ class OrderItem extends Model
     {
         return $this->belongsTo(Store::class);
     }
+
+    public function stockItem()
+    {
+        return $this->belongsTo(StockItem::class, 'stock_item_id');
+    }
 }

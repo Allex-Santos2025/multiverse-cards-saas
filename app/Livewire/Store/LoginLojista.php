@@ -55,8 +55,13 @@ class LoginLojista extends Component
         // Mantém o 'true' para o Laravel segurar o cookie, mas a nossa regra é quem vai mandar no tempo real
         if (Auth::guard('store_user')->attempt($credenciais, true)) {
             
-            // Define a validade da sessão em 30 dias corridos
-            session(['auth_expires_at' => now()->addDays(30)]);
+            /** @var StoreUser $user */
+            $user = Auth::guard('store_user')->user();
+            
+            // Grava a trava física de 30 dias corridos diretamente no banco de dados
+            $user->update([
+                'session_expires_at' => now()->addDays(30)
+            ]);
 
             return redirect()->route('store.dashboard', ['slug' => $this->slug]);
         }
