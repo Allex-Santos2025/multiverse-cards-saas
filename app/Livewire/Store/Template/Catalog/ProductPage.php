@@ -4,6 +4,7 @@ namespace App\Livewire\Store\Template\Catalog;
 
 use Livewire\Component;
 use App\Models\Store;
+use App\Services\GamePresenters\GamePresenterFactory;
 use App\Models\Game;
 use App\Models\Catalog\CatalogConcept;
 use App\Models\Catalog\CatalogPrint;
@@ -15,7 +16,7 @@ class ProductPage extends Component
 {
     public $slug, $gameSlug, $conceptSlug;
     public $loja, $game, $concept, $nomeLocalizado;
-    public $allPrints, $priceStats, $activePrintId, $activeStockId, $activeImage;
+    public $prints, $allPrints, $priceStats, $activePrintId, $activeStockId, $activeImage;
 
     public $displayList = []; 
     public $stockByPrint; 
@@ -31,197 +32,16 @@ class ProductPage extends Component
         $this->loja = Store::where('url_slug', $slug)->firstOrFail();
         $this->game = Game::where('url_slug', $gameSlug)->firstOrFail();
 
-        // ---------------------------------------------------------
-        // 1) DETECTA SE O SLUG É DE TERRENO BÁSICO: plains-292 etc.
-        // ---------------------------------------------------------
-        $isBasicLandSlug = preg_match(
-            '/^(plains|island|swamp|mountain|forest)-(\d+)$/',
-            $conceptSlug,
-            $matches
-        );
+        // 1) RESOLUÇÃO DE DADOS DELEGADA AO PRESENTER DO JOGO
+        $gameDriver = GamePresenterFactory::make($this->game->id);
+        $resolved = $gameDriver->resolveProductData($conceptSlug);
 
-        $basicLandCollectorNumber = $isBasicLandSlug ? $matches[2] : null;
-
-        if ($isBasicLandSlug) {
-            // =====================================================
-            // CASO 1: TERRENO BÁSICO COM NÚMERO
-            // =====================================================
-            $basicTypeSlug        = $matches[1];
-            $collectorNumber      = $matches[2];
-            $basicTypeMap = [
-                'plains'   => 'Plains',
-                'island'   => 'Island',
-                'swamp'    => 'Swamp',
-                'mountain' => 'Mountain',
-                'forest'   => 'Forest',
-            ];
-            $englishBasicTypeName = $basicTypeMap[$basicTypeSlug] ?? null;
-
-            if (!$englishBasicTypeName) {
-                abort(404, 'Tipo de terreno básico inválido no slug.');
-            }
-
-            $prints = CatalogPrint::query()
-                ->where('collector_number', $collectorNumber)
-                ->where('type_line', 'LIKE', '%Basic Land%')
-                ->where('type_line', 'LIKE', '%' . $englishBasicTypeName . '%')
-                ->whereHas('set', function ($q) {
-                    $q->where('game_id', $this->game->id);
-                })
-                ->with(['concept', 'set', 'concept.prints'])
-                ->get();
-
-            if ($prints->isEmpty()) {
-                abort(404, 'Terreno básico não encontrado com este número.');
-            }
-
-            $this->prints = $prints;
-            $baseConcept = $prints->first()->concept;
-            $displayEnglishName = sprintf('%s (#%s)', $englishBasicTypeName, $collectorNumber);
-
-            $globalPtName = $prints->first()->concept->prints
-                ->firstWhere(fn ($print) => in_array($print->language_code, ['pt', 'PT', 'pt-br', 'pt-BR']))
-                ?->printed_name;
-
-            $displayPtName = $globalPtName
-                ? sprintf('%s (#%s)', $globalPtName, $collectorNumber)
-                : $displayEnglishName;
-
-            $this->concept = (object)[
-                'id'        => $baseConcept->id,
-                'name'      => $displayEnglishName,
-                'slug'      => $conceptSlug,
-                'game'      => $this->game,
-                'specific'  => $baseConcept->specific,
-                'type_line' => $prints->first()->type_line,
-            ];
-
-            $activePrint = $prints->firstWhere('language_code', 'en') ?? $prints->first();
-            $this->activePrintId = $activePrint->id;
-            $this->activeImage   = asset($activePrint->image_path);
-            $this->cardDetails   = DB::table('mtg_prints')->where('id', $activePrint->specific_id)->first();
-            $this->nomeLocalizado = $displayPtName;
-
-        } else {
-            // =====================================================
-            // CASO 2: CARTA NORMAL & VARIANTES DE ARTE (BLINDADO)
-            // =====================================================
-            
-            // 1. TENTA CORRESPONDÊNCIA EXATA (Ignorando o sufixo de 4 caracteres gerado pelo sistema)
-            // Usamos os 4 underlines '____' para garantir que pegamos exatamente o sufixo
-            $conceptFound = CatalogConcept::where('game_id', $this->game->id)
-                ->where('slug', 'like', $conceptSlug . '-____')
-                ->with(['specific', 'prints', 'prints.set'])
-                ->first();
-
-            // 2. BUSCA PROGRESSIVA (Para variantes de arte tipo: combat-medic-artista)
-            if (!$conceptFound) {
-                $parts = explode('-', $conceptSlug);
-                array_pop($parts); 
-                
-                while (count($parts) > 0) {
-                    $testSlug = implode('-', $parts);
-                    
-                    $conceptFound = CatalogConcept::where('game_id', $this->game->id)
-                        ->where('slug', 'like', $testSlug . '-____')
-                        ->with(['specific', 'prints', 'prints.set'])
-                        ->first();
-                        
-                    if ($conceptFound) break;
-                    
-                    array_pop($parts);
-                }
-            }
-
-            if (!$conceptFound) {
-                abort(404, 'Carta não encontrada no catálogo.');
-            }
-
-            $this->concept = $conceptFound;
-            $allConceptPrints = $this->concept->prints;
-
-            // 1. Puxando os artistas da matriz mtg_prints
-            $specificIds = $allConceptPrints->pluck('specific_id')->filter()->unique();
-            $mtgPrintsData = DB::table('mtg_prints')->whereIn('id', $specificIds)->get()->keyBy('id');
-
-            // 2. Classificando cada print e gerando o seu slug virtual
-            $variantCounts = [];
-            foreach ($allConceptPrints as $print) {
-                $printMtgData = $mtgPrintsData->get($print->specific_id);
-                $art = $printMtgData->artist ?? 'Artista Desconhecido';
-                $setCode = strtoupper($print->set->code ?? '');
-                
-                if (in_array($setCode, ['FEM', 'ALL', 'HML']) && preg_match('/[a-zA-Z]/', $print->collector_number)) {
-                    if (!isset($variantCounts[$art])) $variantCounts[$art] = [];
-                    $variantCounts[$art][] = $print->collector_number;
-                }
-            }
-            
-            foreach($variantCounts as $art => $nums) {
-                sort($variantCounts[$art]);
-            }
-
-            foreach ($allConceptPrints as $print) {
-                $printMtgData = $mtgPrintsData->get($print->specific_id);
-                $rawArtist = $printMtgData->artist ?? 'Artista Desconhecido';
-                $nomeArtista = $rawArtist;
-
-                $englishName = $this->concept->name;
-                $setCode = strtoupper($print->set->code ?? '');
-                $isVariantSet = in_array($setCode, ['FEM', 'ALL', 'HML']);
-                $hasLetterInNumber = preg_match('/[a-zA-Z]/', $print->collector_number);
-                $isBasicLand = str_contains($print->type_line ?? '', 'Basic Land');
-
-                if ($isVariantSet && $hasLetterInNumber && !$isBasicLand) {
-                    if (isset($variantCounts[$rawArtist]) && count($variantCounts[$rawArtist]) > 1) {
-                        $idx = array_search($print->collector_number, $variantCounts[$rawArtist]);
-                        if ($idx !== false) {
-                            $nomeArtista .= ' ' . ($idx + 1);
-                        }
-                    }
-                    
-                    $print->artist = $nomeArtista; 
-                    $virtualSlug = Str::slug($englishName . '-' . $nomeArtista);
-                    $print->is_art_variant = true;
-                } else {
-                    $print->artist = $rawArtist;
-                    $virtualSlug = $this->conceptSlug; // Mantém a URL amigável que o usuário clicou
-                    $print->is_art_variant = false;
-                }
-                
-                $print->virtual_slug = $virtualSlug;
-            }
-
-            // 3. ISOLANDO O PRODUTO
-            $matchingPrints = $allConceptPrints->filter(fn($p) => $p->virtual_slug === $conceptSlug);
-
-            // 4. REDIRECIONAMENTO AUTOMÁTICO (Variantes de arte)
-            if ($matchingPrints->isEmpty() && $allConceptPrints->isNotEmpty()) {
-                $primeiroSlugValido = $allConceptPrints->first()->virtual_slug;
-                
-                $newUrl = preg_replace('/' . preg_quote($conceptSlug, '/') . '$/', $primeiroSlugValido, request()->url());
-                return redirect()->to($newUrl);
-            }
-
-            $this->prints = $matchingPrints;
-
-            // 5. Configurando o Título na Tela (PT/EN)
-            $printPt = $this->prints->firstWhere(fn($p) => in_array($p->language_code, ['pt', 'pt-br', 'pt-BR']) && !empty($p->printed_name));
-            $baseName = $printPt ? $printPt->printed_name : $this->concept->name;
-
-            $primeiroPrint = $this->prints->first();
-            if ($primeiroPrint && $primeiroPrint->is_art_variant) {
-                $this->nomeLocalizado = $baseName . ' (' . $primeiroPrint->artist . ')';
-            } else {
-                $this->nomeLocalizado = $baseName;
-            }
-
-            // Define a print ativa (preferência EN)
-            $activePrint = $this->prints->firstWhere('language_code', 'en') ?? $this->prints->first();
-            $this->activePrintId = $activePrint->id;
-            $this->activeImage   = asset($activePrint->image_path);
-            $this->cardDetails   = $mtgPrintsData->get($activePrint->specific_id);
-        }
+        $this->concept        = $resolved['concept'];
+        $this->prints         = $resolved['prints'];
+        $this->activePrintId  = $resolved['activePrint']?->id;
+        $this->activeImage    = asset($resolved['activePrint']?->image_path ?? '');
+        $this->cardDetails    = $resolved['cardDetails'];
+        $this->nomeLocalizado = $resolved['nomeLocalizado'];
 
         // ============================================================
         // 2) ESTOQUE E LISTAGEM (COMUM PARA TERRENOS E CARTAS NORMAIS)
@@ -333,7 +153,12 @@ class ProductPage extends Component
         }
 
         $this->activeImage = asset($currentPrint->image_path);
-        $this->cardDetails = DB::table('mtg_prints')->where('id', $currentPrint->specific_id)->first();
+        $specificTable = match($this->game->url_slug) {
+            'pokemon' => 'pk_prints',
+            'battle-scenes' => 'bs_prints',
+            default => 'mtg_prints',
+        };
+        $this->cardDetails = DB::table($specificTable)->where('id', $currentPrint->specific_id)->first();
 
         $isFoil   = false;
         $isEtched = false;
@@ -390,24 +215,46 @@ class ProductPage extends Component
         }
 
         $precoMedioBrl = 0;
-        $mtgData = DB::table('mtg_prints')->where('id', $pricePrintId)->first();
+        $specificTable = match($this->game->url_slug) {
+            'pokemon' => 'pk_prints',
+            'battle-scenes' => 'bs_prints',
+            default => 'mtg_prints',
+        };
+        $mtgData = DB::table($specificTable)->where('id', $pricePrintId)->first();
 
-        if ($mtgData && !empty($mtgData->prices)) {
-            $pricesArray = is_string($mtgData->prices)
-                ? json_decode($mtgData->prices, true)
-                : (array)$mtgData->prices;
+        if ($mtgData) {
+            if ($this->game->url_slug === 'pokemon') {
+                $usd = null;
+                if (!empty($mtgData->tcgplayer)) {
+                    $tcg = is_string($mtgData->tcgplayer) ? json_decode($mtgData->tcgplayer, true) : (array)$mtgData->tcgplayer;
+                    $tcgPrices = $tcg['prices'] ?? $tcg;
 
-            if (is_array($pricesArray)) {
-                if ($isEtched) {
-                    $usd = $pricesArray['usd_etched'] ?? null;
-                } elseif ($isFoil) {
-                    $usd = $pricesArray['usd_foil'] ?? null;
-                } else {
-                    $usd = $pricesArray['usd'] ?? null;
+                    $normal = $tcgPrices['normal']['marketPrice'] ?? $tcgPrices['normal']['market'] ?? $tcgPrices['normal']['midPrice'] ?? null;
+                    $holo   = $tcgPrices['holofoil']['marketPrice'] ?? $tcgPrices['holofoil']['market'] ?? $tcgPrices['reverseHolofoil']['marketPrice'] ?? $tcgPrices['unlimitedHolofoil']['marketPrice'] ?? null;
+
+                    $usd = ($isFoil && $holo) ? $holo : ($normal ?? $holo);
                 }
 
                 if ($usd > 0) {
                     $precoMedioBrl = (float) $usd * $cotacaoDolar;
+                }
+            } elseif (!empty($mtgData->prices)) {
+                $pricesArray = is_string($mtgData->prices)
+                    ? json_decode($mtgData->prices, true)
+                    : (array)$mtgData->prices;
+
+                if (is_array($pricesArray)) {
+                    if ($isEtched) {
+                        $usd = $pricesArray['usd_etched'] ?? null;
+                    } elseif ($isFoil) {
+                        $usd = $pricesArray['usd_foil'] ?? null;
+                    } else {
+                        $usd = $pricesArray['usd'] ?? null;
+                    }
+
+                    if ($usd > 0) {
+                        $precoMedioBrl = (float) $usd * $cotacaoDolar;
+                    }
                 }
             }
         }
@@ -426,7 +273,12 @@ class ProductPage extends Component
     public function render()
     {
         if (!$this->cardDetails && $this->concept?->specific?->id) {
-            $this->cardDetails = DB::table('mtg_prints')->where('id', $this->concept->specific->id)->first();
+            $specificTable = match($this->game->url_slug) {
+            'pokemon' => 'pk_prints',
+            'battle-scenes' => 'bs_prints',
+            default => 'mtg_prints',
+        };
+            $this->cardDetails = DB::table($specificTable)->where('id', $this->concept->specific->id)->first();
         }
 
         $currentSetId    = null;
@@ -500,7 +352,7 @@ class ProductPage extends Component
                 ->joinSub($estoqueAgrupado, 'estoque', function ($join) {
                     $join->on('catalog_prints.concept_id', '=', 'estoque.concept_id');
                 })
-                ->leftJoin('mtg_prints as mtg', 'catalog_prints.specific_id', '=', 'mtg.id')
+                ->leftJoin(($this->game->url_slug === 'pokemon' ? 'pk_prints' : 'mtg_prints') . ' as mtg', 'catalog_prints.specific_id', '=', 'mtg.id')
                 ->with(['concept'])
                 ->inRandomOrder()
                 ->limit(10)
@@ -564,6 +416,7 @@ class ProductPage extends Component
             'cardsAssociados'  => $cardsAssociados,
             'totalAssociados'  => $totalAssociados,
             'printAtivo'       => $this->allPrints?->get($this->activePrintId),
+            'presenter'        => GamePresenterFactory::make($this->game->id, $this->concept, $this->allPrints?->get($this->activePrintId), $this->nomeLocalizado),
         ])->layout('layouts.template', ['loja' => $this->loja]);
     }
 }

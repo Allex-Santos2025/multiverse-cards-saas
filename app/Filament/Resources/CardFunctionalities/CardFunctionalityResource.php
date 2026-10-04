@@ -25,6 +25,9 @@ use Filament\Schemas\Schema; // V4: CORRETO
 
 class CardFunctionalityResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+    public static function canAccess(): bool { return false; }
+
     protected static ?string $model = CardFunctionality::class;
 
     public static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';

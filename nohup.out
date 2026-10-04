@@ -1,0 +1,36 @@
+--- INGESTÃO POKÉMON TCG MULTI-IDIOMA (TCGdex) ---
+Ordem de ingestão dos idiomas: en, pt, es, de, fr, it
+Iniciando do primeiro Set.
+Encontrados 212 Sets para processar.
+
+=======================================================
+Processando Set: [PFL] Phantasmal Flames (API ID: me2)
+=======================================================
+   -> [en] Erro de conexão: HTTP request returned status code 404:
+{"type":"https://tcgdex.dev/errors/not-found","title":"The resource you are trying to reach does not exists","status":40 (truncated...)
+
+   -> [pt] Erro de conexão: HTTP request returned status code 404:
+{"type":"https://tcgdex.dev/errors/not-found","title":"The resource you are trying to reach does not exists","status":40 (truncated...)
+
+   -> [es] Erro de conexão: HTTP request returned status code 404:
+{"type":"https://tcgdex.dev/errors/not-found","title":"The resource you are trying to reach does not exists","status":40 (truncated...)
+
+   -> [de] Erro de conexão: HTTP request returned status code 404:
+{"type":"https://tcgdex.dev/errors/not-found","title":"The resource you are trying to reach does not exists","status":40 (truncated...)
+
+   -> [fr] Erro de conexão: HTTP request returned status code 404:
+{"type":"https://tcgdex.dev/errors/not-found","title":"The resource you are trying to reach does not exists","status":40 (truncated...)
+
+   -> [it] Erro de conexão: HTTP request returned status code 404:
+{"type":"https://tcgdex.dev/errors/not-found","title":"The resource you are trying to reach does not exists","status":40 (truncated...)
+
+
+=======================================================
+Processando Set: [MEG] Mega Evolution (API ID: me1)
+=======================================================
+   -> [en] Erro de conexão: HTTP request returned status code 404:
+{"type":"https://tcgdex.dev/errors/not-found","title":"The resource you are trying to reach does not exists","status":40 (truncated...)
+
+   -> [pt] Erro de conexão: HTTP request returned status code 404:
+{"type":"https://tcgdex.dev/errors/not-found","title":"The resource you are trying to reach does not exists","status":40 (truncated...)
+

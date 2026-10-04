@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Filament\Schemas\Schema; // V4: CORRETO - Usando sua estrutura personalizada
 use Filament\Forms; 
-use Filament\Forms\Get; 
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Section; 
 
 class CatalogConceptResource extends Resource
 {
@@ -60,51 +61,61 @@ class CatalogConceptResource extends Resource
     {
         return $schema
             ->schema([
-                Forms\Components\Grid::make(1)->schema([
-                    // Seleção de Jogo
-                    Forms\Components\Select::make('game_id')
-                        ->label('Jogo')
-                        ->relationship('game', 'name')
-                        ->required()
-                        ->live() 
-                        ->disabled(), 
-                ]),
+                // Seleção de Jogo
+                Forms\Components\Select::make('game_id')
+                    ->label('Jogo')
+                    ->relationship('game', 'name')
+                    ->required()
+                    ->live()
+                    ->disabled(),
 
-                Forms\Components\Group::make()
+                Section::make('Informações Básicas')
                     ->schema([
-                        Forms\Components\Section::make('Informações Básicas')
-                            ->schema([
-                                Forms\Components\TextInput::make('name')
-                                    ->label('Nome Principal')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->columnSpanFull(),
-                            ]),
+                        Forms\Components\TextInput::make('name')
+                            ->label('Nome Principal')
+                            ->required()
+                            ->maxLength(255)
+                            ->columnSpanFull(),
                     ]),
 
                 // SEÇÃO MAGIC: THE GATHERING (ID 1)
-                Forms\Components\Section::make('Detalhes Magic')
+                Section::make('Detalhes Magic')
                     ->relationship('specific') 
                     ->schema([
                         Forms\Components\TextInput::make('mtg_mana_cost')->label('Custo de Mana'),
                         Forms\Components\TextInput::make('mtg_type_line')->label('Tipo'),
                         Forms\Components\Textarea::make('mtg_rules_text')->label('Texto de Regras')->rows(4),
                     ])
-                    ->visible(fn (Get $get) => $get('game_id') == 1 || optional($schema->getRecord())->game_id == 1),
+                    ->visible(fn ($get) => $get('game_id') == 1 || optional($schema->getRecord())->game_id == 1),
 
                 // SEÇÃO POKÉMON TCG (ID 2)
-                Forms\Components\Section::make('Detalhes Pokémon')
+                Section::make('Detalhes Pokémon')
                     ->relationship('specific') 
                     ->schema([
-                        Forms\Components\Grid::make(3)->schema([
-                            Forms\Components\TextInput::make('hp')->label('HP'),
-                            Forms\Components\TextInput::make('supertype')->label('Tipo Principal'),
-                            Forms\Components\TextInput::make('level')->label('Level'),
-                        ]),
+                        Forms\Components\TextInput::make('hp')->label('HP'),
+                        Forms\Components\TextInput::make('supertype')->label('Tipo Principal'),
+                        Forms\Components\TextInput::make('level')->label('Level'),
                         Forms\Components\TagsInput::make('types')->label('Tipos'),
                         Forms\Components\TagsInput::make('subtypes')->label('Subtipos'),
                     ])
-                    ->visible(fn (Get $get) => $get('game_id') == 2 || optional($schema->getRecord())->game_id == 2),
+                    ->visible(fn ($get) => $get('game_id') == 2 || optional($schema->getRecord())->game_id == 2),
+
+                // SEÇÃO BATTLE SCENES (ID 4)
+                Section::make('Detalhes Battle Scenes')
+                    ->relationship('specific')
+                    ->schema([
+                        Forms\Components\TextInput::make('alter_ego')->label('Alter Ego'),
+                        Forms\Components\TextInput::make('type_line')->label('Tipo / Subtipo'),
+                        Forms\Components\TextInput::make('affiliation')->label('Afiliação'),
+                        Forms\Components\TextInput::make('power')->label('Energia'),
+                        Forms\Components\TextInput::make('toughness')->label('Escudo'),
+                        Forms\Components\TextInput::make('cost')->label('Custo'),
+                        Forms\Components\Textarea::make('rules_text')
+                            ->label('Texto de Regras')
+                            ->rows(4)
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn ($record, $get) => ($record?->game_id ?? $get('game_id')) == 4),
             ]);
     }
 
@@ -219,5 +230,12 @@ class CatalogConceptResource extends Resource
             }
         }
         return $html;
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            RelationManagers\PrintsRelationManager::class,
+        ];
     }
 }

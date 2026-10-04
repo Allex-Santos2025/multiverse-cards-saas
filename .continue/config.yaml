@@ -1,0 +1,1 @@
+systemMessage: "Ao refatorar, mexa APENAS no trecho ou arquivo explicitamente solicitado. Sob nenhuma circunstância você deve fazer limpezas de estilo, formatação padrão, remoção de classes CSS ou otimizações automáticas, especialmente em views Blade, pois isso quebra o projeto. Responda e altere apenas o escopo pedido."

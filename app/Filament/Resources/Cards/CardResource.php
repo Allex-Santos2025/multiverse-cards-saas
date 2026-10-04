@@ -31,6 +31,9 @@ use Filament\Actions\DeleteBulkAction; // <-- ADICIONADO
 
 class CardResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+    public static function canAccess(): bool { return false; }
+
     protected static ?string $model = Card::class;
 
     // ***** CORREÇÃO FINAL: Substituindo Propriedades por Funções (V4) *****

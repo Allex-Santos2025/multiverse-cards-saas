@@ -44,6 +44,7 @@ class ManageSingleCard extends Component
     public $currentPrintImage;
 
     public $isFoilSelected = false;
+    public $targetNumber = null;
 
     public function mount($slug, $game_slug, $conceptSlug)
     {
@@ -109,10 +110,33 @@ class ManageSingleCard extends Component
             // 2) LÓGICA PARA CARTA NORMAL & VARIANTES DE ARTE (BLINDADO)
             // =====================================================
             
-            // Tenta achar com o sufixo de 4 caracteres exato
+            // 1. Em Pokémon, se vier o padrão {slug}-{num}-{total} ou {slug}-{num}, limpa para achar o conceito
+            $searchSlug = $conceptSlug;
+            if ($this->game->url_slug === 'pokemon') {
+                if (preg_match('/^(.*?)-(\d+[a-zA-Z]?)-(\d+)$/', $conceptSlug, $m)) {
+                    $searchSlug = $m[1];
+                    $this->targetNumber = $m[2];
+                } elseif (preg_match('/^(.*?)-(\d+[a-zA-Z]?)$/', $conceptSlug, $m)) {
+                    $searchSlug = $m[1];
+                    $this->targetNumber = $m[2];
+                }
+            }
+
+            // 1.1 Tenta correspondência direta exata
             $conceptFound = CatalogConcept::where('game_id', $this->game->id)
-                ->where('slug', 'like', $conceptSlug . '-____')
+                ->where(function ($q) use ($searchSlug, $conceptSlug) {
+                    $q->where('slug', $searchSlug)
+                      ->orWhere('slug', $conceptSlug)
+                      ->orWhere('name', 'like', str_replace('-', ' ', $searchSlug));
+                })
                 ->with('prints.set')->first();
+
+            // 1.1 Se não achar, tenta com o sufixo de 4 caracteres (Padrão MTG)
+            if (!$conceptFound) {
+                $conceptFound = CatalogConcept::where('game_id', $this->game->id)
+                    ->where('slug', 'like', $conceptSlug . '-____')
+                    ->with('prints.set')->first();
+            }
 
             // Busca progressiva para variantes de arte (se não achou o base)
             if (!$conceptFound) {
@@ -132,17 +156,18 @@ class ManageSingleCard extends Component
             if (!$conceptFound) abort(404, 'Carta não encontrada no catálogo.');
             $this->concept = $conceptFound;
 
+            $specificTable = $this->game->url_slug === 'pokemon' ? 'pk_prints' : 'mtg_prints';
             $allConceptPrints = $this->concept->prints;
             $specificIds = $allConceptPrints->pluck('specific_id')->filter()->unique();
-            $mtgPrintsData = DB::table('mtg_prints')->whereIn('id', $specificIds)->get()->keyBy('id');
+            $mtgPrintsData = DB::table($specificTable)->whereIn('id', $specificIds)->get()->keyBy('id');
 
             // --- LÓGICA DE CONTADOR DE ARTISTAS COM ISOLAMENTO POR SET ---
             $artistIndexesCache = [];
             $siblings = DB::table('catalog_prints')
-                ->join('mtg_prints', 'catalog_prints.specific_id', '=', 'mtg_prints.id')
+                ->join($specificTable, 'catalog_prints.specific_id', '=', $specificTable . '.id')
                 ->where('catalog_prints.concept_id', $this->concept->id)
                 ->where('catalog_prints.collector_number', 'REGEXP', '[a-zA-Z]')
-                ->select('catalog_prints.collector_number', 'catalog_prints.set_id', 'mtg_prints.artist')
+                ->select('catalog_prints.collector_number', 'catalog_prints.set_id', $specificTable . '.artist')
                 ->orderBy('catalog_prints.collector_number', 'asc')
                 ->get();
             
@@ -315,17 +340,26 @@ class ManageSingleCard extends Component
             ->where('language_code', 'en')
             ->first() ?? $currentPrint;
 
-        $mtgData = DB::table('mtg_prints')->where('id', $englishPrint->specific_id)->first();
+        $specificTable = $this->game->url_slug === 'pokemon' ? 'pk_prints' : 'mtg_prints';
+        $mtgData = DB::table($specificTable)->where('id', $englishPrint->specific_id)->first();
         $usd = 0;
         $extrasLower = array_map('strtolower', $this->selectedExtras);
         $isEtched = in_array('etched', $extrasLower) || in_array('foil_etched', $extrasLower); 
         $isFoil = in_array('foil', $extrasLower);
 
-        if ($mtgData && !empty($mtgData->prices)) {
-            $pricesArray = is_string($mtgData->prices) ? json_decode($mtgData->prices, true) : (array)$mtgData->prices;
-            if ($isEtched) { $usd = $pricesArray['usd_etched'] ?? 0; }
-            elseif ($isFoil) { $usd = $pricesArray['usd_foil'] ?? 0; }
-            else { $usd = $pricesArray['usd'] ?? 0; }
+        if ($mtgData) {
+            if ($this->game->url_slug === 'pokemon' && !empty($mtgData->tcgplayer)) {
+                $tcgData = is_string($mtgData->tcgplayer) ? json_decode($mtgData->tcgplayer, true) : (array)$mtgData->tcgplayer;
+                $pSub = $tcgData['prices'] ?? [];
+                $normalPrice = $pSub['normal']['market'] ?? $pSub['normal']['mid'] ?? null;
+                $foilPrice   = $pSub['holofoil']['market'] ?? $pSub['reverseHolofoil']['market'] ?? null;
+                $usd = ($isFoil && $foilPrice) ? $foilPrice : ($normalPrice ?? $foilPrice ?? 0);
+            } elseif (!empty($mtgData->prices)) {
+                $pricesArray = is_string($mtgData->prices) ? json_decode($mtgData->prices, true) : (array)$mtgData->prices;
+                if ($isEtched) { $usd = $pricesArray['usd_etched'] ?? 0; }
+                elseif ($isFoil) { $usd = $pricesArray['usd_foil'] ?? 0; }
+                else { $usd = $pricesArray['usd'] ?? 0; }
+            }
         }
 
         $this->marketPrices['mid'] = (float)$usd * 5.50;
@@ -435,6 +469,8 @@ class ManageSingleCard extends Component
             $conceptPrints = $conceptPrints->where('collector_number', $this->basicNumber);
         } elseif ($this->isArtVariant && !empty($this->validPrintIds)) {
             $conceptPrints = $conceptPrints->whereIn('id', $this->validPrintIds);
+        } elseif ($this->game->url_slug === 'pokemon' && $this->targetNumber) {
+            $conceptPrints = $conceptPrints->where('collector_number', (string) $this->targetNumber);
         }
         
         $printIds = $conceptPrints->pluck('id')->toArray();

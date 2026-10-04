@@ -104,89 +104,43 @@
                     </div>
                 </div>
 
-                {{-- 3. Bloco de Regras / Texto --}}
-            @if($gameDetails)
+                {{-- 3. Bloco de Regras / Texto (Agnostico via Presenter) --}}
+            @php
+                $rulesHtml = $presenter->getRulesHtml();
+                $flavorText = $presenter->getFlavorText();
+            @endphp
+
+            @if(!empty($rulesHtml))
                 <div class="bg-white border-l-4 border-gray-300 rounded-r-lg p-3 text-xs leading-relaxed shadow-sm">
-                    @php
-                        // Pega a tradução (printed_text). Se não tiver, usa a regra em inglês (oracle_text)
-                        $textoFinal = $gameDetails->printed_text ?? $concept->specific->oracle_text ?? '';
+                    {!! $rulesHtml !!}
 
-                        $oracleHtml = preg_replace_callback('/\{([^}]+)\}/', function($matches) {
-                            $val = strtolower(str_replace('/', '', $matches[1]));
-                            return '<i class="ms ms-' . $val . ' ms-cost text-xs" style="filter: drop-shadow(-1px 1px 0px rgba(0,0,0,0.6));"></i>';
-                        }, $textoFinal);
-                    @endphp
-
-                    <p class="mb-2 text-gray-800 font-medium">{!! nl2br($oracleHtml) !!}</p>
-
-                    {{-- Flavor Text (Texto ilustrativo) --}}
-                    @if(!empty($gameDetails->flavor_text))
+                    @if(!empty($flavorText))
                         <div class="border-t border-gray-100 mt-2 pt-2">
                             <p class="text-gray-500 italic text-[10px] leading-snug">
-                                "{{ $gameDetails->flavor_text }}"
+                                "{{ $flavorText }}"
                             </p>
                         </div>
                     @endif
                 </div>
             @endif
 
-                {{-- 4. Bloco de Atributos Técnicos (Encolhido) --}}
+                {{-- 4. Bloco de Atributos Tecnicos (Agnostico via Presenter) --}}
+                @php
+                    $technicalAttrs = $presenter->getTechnicalAttributes();
+                @endphp
+
+                @if(!empty($technicalAttrs))
                 <div class="bg-white border border-gray-200 rounded-lg p-3 text-xs shadow-sm">
                     <div class="grid grid-cols-2 gap-y-3 gap-x-3">
-                        @if($gameDetails)
-
-                            {{-- Custo de Mana (Mecânica = Concept) --}}
-                            @if(isset($concept->specific->mana_cost))
-                            <div>
-                                <span class="block text-[10px] font-bold uppercase mb-0.5 text-gray-500">Custo de Mana</span> 
-                                <span class="flex items-center gap-0.5 font-bold text-gray-900">
-                                    @php
-                                        $manaCostHtml = preg_replace_callback('/\{([^}]+)\}/', function($matches) {
-                                            $val = strtolower(str_replace('/', '', $matches[1]));
-                                            return '<i class="ms ms-' . $val . ' ms-cost text-base" style="filter: drop-shadow(-1px 1px 0px rgba(0,0,0,0.6));"></i>';
-                                        }, $concept->specific->mana_cost);
-                                    @endphp
-                                    {!! $manaCostHtml !!}
-                                </span>
+                        @foreach($technicalAttrs as $attr)
+                            <div class="{{ ($attr['cols'] ?? 1) === 2 ? 'col-span-2' : '' }}">
+                                <span class="block text-[10px] font-bold uppercase mb-0.5 text-gray-500">{{ $attr['label'] }}</span>
+                                <span class="text-gray-900 font-semibold">{!! $attr['value'] !!}</span>
                             </div>
-                            @endif
-
-                            {{-- Tipo (Tradução = Print. Fallback = Concept) --}}
-                            <div>
-                                <span class="block text-[10px] font-bold uppercase mb-0.5 text-gray-500">Tipo</span> 
-                                <span class="text-gray-900 font-medium">{{ $gameDetails->printed_type_line ?? $concept->specific->type_line ?? '--' }}</span>
-                            </div>
-
-                            {{-- Artista (Físico = Print) --}}
-                            @if(isset($gameDetails->artist))
-                            <div>
-                                <span class="block text-[10px] font-bold uppercase mb-0.5 text-gray-500">Artista</span> 
-                                <span class="text-gray-900 font-bold italic">{{ $gameDetails->artist }}</span>
-                            </div>
-                            @endif
-
-                            {{-- Poder e Resistência (Mecânica = Concept) --}}
-                            @if(isset($concept->specific->power) && isset($concept->specific->toughness))
-                            <div>
-                                <span class="block text-[10px] font-bold uppercase mb-0.5 text-gray-500">Poder / Resistência</span> 
-                                <span class="text-gray-900 font-black text-sm">
-                                    {{ $concept->specific->power }} / {{ $concept->specific->toughness }}
-                                </span>
-                            </div>
-                            @endif
-
-                            {{-- Lealdade (Mecânica = Concept) --}}
-                            @if(isset($concept->specific->loyalty))
-                            <div>
-                                <span class="block text-[10px] font-bold uppercase mb-0.5 text-gray-500">Lealdade</span> 
-                                <span class="text-gray-900 font-black text-sm">
-                                    {{ $concept->specific->loyalty }}
-                                </span>
-                            </div>
-                            @endif
-                        @endif
+                        @endforeach
                     </div>
                 </div>
+                @endif
             </div>
 
             {{-- Coluna Direita: MERCADO E VARIAÇÕES --}}
@@ -196,18 +150,14 @@
                 <div class="mb-6 flex justify-between items-start">
                     <div class="mb-2 border-b border-gray-200/50 dark:border-slate-700/50 pb-4 w-full mr-4">
 
-                        {{-- Regra exata: PT no topo (se houver e for diferente), EN embaixo. Caso contrário, só EN --}}
-                        @if($nomeLocalizado && $nomeLocalizado !== $concept->name)
-                            <h1 class="text-3xl font-black italic uppercase tracking-tight" style="color: var(--cor-secundaria);">
-                                {{ $nomeLocalizado }}
-                            </h1>
+                        {{-- Titulo Agnostico via GamePresenter --}}
+                        <h1 class="text-3xl font-black italic uppercase tracking-tight" style="color: var(--cor-secundaria);">
+                            {{ $presenter->getPrimaryTitle() }}
+                        </h1>
+                        @if($presenter->hasSecondaryTitle())
                             <h2 class="text-xl font-bold uppercase opacity-60 mt-1" style="color: var(--cor-texto-principal);">
-                                {{ $concept->name }}
+                                {{ $presenter->getSecondaryTitle() }}
                             </h2>
-                        @else
-                            <h1 class="text-3xl font-black italic uppercase tracking-tight" style="color: var(--cor-secundaria);">
-                                {{ $concept->name }}
-                            </h1>
                         @endif
 
                     </div>

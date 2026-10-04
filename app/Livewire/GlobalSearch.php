@@ -120,15 +120,8 @@ class GlobalSearch extends Component
 
         $groupedPrints = [];
         foreach ($printsReais as $p) {
-            $isBasicLand = stripos($p->type_line ?? '', 'Basic Land') !== false;
-            $isVariantSet = in_array(strtoupper($p->set_code), ['FEM', 'ALL', 'HML']);
-            $hasLetterInNumber = preg_match('/[a-zA-Z]/', $p->collector_number);
-            
-            if ($isBasicLand || ($isVariantSet && $hasLetterInNumber)) {
-                $vNum = $p->collector_number;
-            } else {
-                $vNum = '';
-            }
+            $pres = \App\Services\GamePresenters\GamePresenterFactory::make($p->concept->game_id ?? 1);
+            $vNum = $pres->getPrintVariantKey($p);
             $groupedPrints[$p->concept_id][$vNum][] = $p;
         }
 
@@ -148,54 +141,43 @@ class GlobalSearch extends Component
                     $vNumsInStoreBySet[$sid][] = (string) $vNum;
 
                     $concept     = $firstPrint->concept;
-                    $isBasicLand = stripos($firstPrint->type_line ?? '', 'Basic Land') !== false;
-                    
-                    $isVariantSet = in_array(strtoupper($firstPrint->set_code), ['FEM', 'ALL', 'HML']);
-                    $hasLetterInNumber = preg_match('/[a-zA-Z]/', $vNum);
-                    $isArtVariant = $isVariantSet && $hasLetterInNumber && !$isBasicLand;
+                    $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($concept->game_id ?? 1);
 
                     $printPt = $printsCol->first(fn($p) =>
                         in_array(strtolower($p->language_code), ['pt', 'pt-br', 'pt_br']) &&
                         !empty(trim($p->printed_name ?? ''))
                     );
 
-                    $nomeEn = $concept->name ?? '';
-                    $nomePt = $printPt->printed_name ?? ($hit['name_pt'] ?? $nomeEn);
+                    $nomeEnBase = $concept->name ?? '';
+                    $nomePtBase = $printPt->printed_name ?? ($hit['name_pt'] ?? $nomeEnBase);
 
-                    $printImg    = $printsCol->first(fn($p) => !empty($p->image_url) || !empty($p->image_path)) ?? $firstPrint;
-                    $imagemBruta = $printImg->image_url ?? $printImg->image_path ?? null;
-                    $imagemFinal = $imagemBruta
-                        ? (filter_var($imagemBruta, FILTER_VALIDATE_URL) ? $imagemBruta : asset($imagemBruta))
-                        : 'https://placehold.co/250x350/eeeeee/999999?text=X';
+                    $isBasicLand = stripos($firstPrint->type_line ?? '', 'Basic Land') !== false;
+                    $isVariantSet = in_array(strtoupper($firstPrint->set_code ?? ($firstPrint->set->code ?? '')), ['FEM', 'ALL', 'HML']);
+                    $hasLetterInNumber = preg_match('/[a-zA-Z]/', (string)$vNum);
+                    $isArtVariant = $isVariantSet && $hasLetterInNumber && !$isBasicLand;
 
+                    $extraArtista = null;
                     if ($isArtVariant && !empty($firstPrint->artist)) {
                         $cacheKey = $cId . '_' . $sid;
                         $nomeArtistaBase = trim($firstPrint->artist);
                         $nomeArtistaFinal = $nomeArtistaBase;
-
                         if (isset($artistIndexesCache[$cacheKey][$nomeArtistaBase]) && count($artistIndexesCache[$cacheKey][$nomeArtistaBase]) > 1) {
                             $idx = array_search(strtolower(trim($vNum)), $artistIndexesCache[$cacheKey][$nomeArtistaBase]);
                             if ($idx !== false) $nomeArtistaFinal .= ' ' . ($idx + 1);
                         }
-
-                        $nomeEn .= ' (' . $nomeArtistaFinal . ')';
-                        $nomePt .= ' (' . $nomeArtistaFinal . ')';
-                        $conceptSlug = Str::slug(($concept->name ?? $nomeEn) . '-' . $nomeArtistaFinal);
-                    } elseif ($isBasicLand && $vNum !== '') {
-                        $nomeEn .= ' #' . $vNum;
-                        $nomePt .= ' #' . $vNum;
-                        $tiposBasicos   = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
-                        $tipoEncontrado = null;
-                        foreach ($tiposBasicos as $tipo) {
-                            if (stripos($firstPrint->type_line, $tipo) !== false) {
-                                $tipoEncontrado = $tipo;
-                                break;
-                            }
-                        }
-                        $conceptSlug = Str::slug($tipoEncontrado ?: $concept->name) . '-' . $vNum;
-                    } else {
-                        $conceptSlug = $this->cleanSlug($concept->slug ?? Str::slug($concept->name));
+                        $extraArtista = $nomeArtistaFinal;
                     }
+
+                    $titles = $presenter->buildDisplayTitles($nomeEnBase, $nomePtBase, $firstPrint, ($vNum !== '' ? $vNum : null), $extraArtista);
+                    $nomeEn = $titles['en'];
+                    $nomePt = $titles['pt'];
+                    $conceptSlug = $presenter->buildProductSlug($concept, $firstPrint, ($vNum !== '' ? $vNum : null), $extraArtista);
+
+                    $printImg = $printsCol->first(fn($p) => !empty($p->image_url) || !empty($p->image_path)) ?? $firstPrint;
+                    $imagemBruta = $printImg->image_url ?? $printImg->image_path ?? null;
+                    $imagemFinal = $imagemBruta
+                        ? (filter_var($imagemBruta, FILTER_VALIDATE_URL) ? $imagemBruta : asset($imagemBruta))
+                        : 'https://placehold.co/250x350/eeeeee/999999?text=X';
 
                     $menorPrecoItem = $printsCol->sortBy('stock_price')->first();
                     $extrasStr      = strtolower($menorPrecoItem->stock_extras ?? '');
@@ -228,54 +210,20 @@ class GlobalSearch extends Component
 
             // 2. FANTASMAS (SÓ LOJISTA)
             if ($this->isLojista) {
-                $isBasicLand = preg_match('/^(Plains|Island|Swamp|Mountain|Forest)$/i', $hit['name'] ?? '');
+                $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($hit['game_id'] ?? 1);
+                $printsAgrupados = $presenter->groupGhostPrints($cId, $hit['name'] ?? null, $numberFilter);
 
-                if (!$isBasicLand) {
-                    $prints = CatalogPrint::select('catalog_prints.*', 'mtg_prints.artist', 'sets.code as set_code')
-                                            ->leftJoin('mtg_prints', 'catalog_prints.specific_id', '=', 'mtg_prints.id')
-                                            ->join('sets', 'catalog_prints.set_id', '=', 'sets.id')
-                                            ->where('concept_id', $cId)->get();
-                    
-                    $printsAgrupadosParaFantasma = [];
-                    foreach($prints as $p) {
-                        $isVar = in_array(strtoupper($p->set_code), ['FEM', 'ALL', 'HML']) && preg_match('/[a-zA-Z]/', $p->collector_number);
-                        $vId = $isVar ? $p->collector_number : 'default';
-                        $printsAgrupadosParaFantasma[$p->set_id][$vId][] = $p;
-                    }
-                    
-                    foreach($printsAgrupadosParaFantasma as $sidFantasma => $variants) {
-                        foreach($variants as $vNumFantasma => $printsDoFantasma) {
-                            $compareId = $vNumFantasma !== 'default' ? (string)$vNumFantasma : '';
-                            $inEstoque = isset($vNumsInStoreBySet[$sidFantasma]) && in_array($compareId, $vNumsInStoreBySet[$sidFantasma]);
-                            
-                            if (!$inEstoque) {
-                                 $globalResults[] = $this->generateGhostData($hit, collect($printsDoFantasma), ($vNumFantasma !== 'default' ? $vNumFantasma : null), $games, $artistIndexesCache, $sidFantasma);
-                            }
-                        }
-                    }
-                } else {
-                    $allNumbersBySet = CatalogPrint::where('concept_id', $cId)
-                        ->when($numberFilter, fn($q) => $q->where('collector_number', $numberFilter))
-                        ->select('collector_number', 'set_id')
-                        ->get()
-                        ->groupBy('set_id');
+                foreach ($printsAgrupados as $sidFantasma => $variants) {
+                    foreach ($variants as $vNumFantasma => $printsDoFantasma) {
+                        $compareId = $vNumFantasma !== 'default' ? (string)$vNumFantasma : '';
+                        $inEstoque = isset($vNumsInStoreBySet[$sidFantasma]) && in_array($compareId, $vNumsInStoreBySet[$sidFantasma]);
 
-                    foreach ($allNumbersBySet as $sidFantasma => $numbers) {
-                        foreach ($numbers->pluck('collector_number')->unique() as $num) {
-                            $inEstoque = isset($vNumsInStoreBySet[$sidFantasma]) && in_array((string)$num, $vNumsInStoreBySet[$sidFantasma]);
-                            
-                            if (!$inEstoque) {
-                                $printsDesteNumero = CatalogPrint::where('concept_id', $cId)
-                                    ->where('set_id', $sidFantasma)
-                                    ->where('collector_number', $num)
-                                    ->get();
-                                $globalResults[] = $this->generateGhostData($hit, $printsDesteNumero, (string) $num, $games, $artistIndexesCache, $sidFantasma);
-                            }
+                        if (!$inEstoque) {
+                            $globalResults[] = $this->generateGhostData($hit, collect($printsDoFantasma), ($vNumFantasma !== 'default' ? $vNumFantasma : null), $games, $artistIndexesCache, $sidFantasma);
                         }
                     }
                 }
             }
-        }
 
         $termNormalized = mb_strtolower($termToSearch ?? $term);
 
@@ -292,6 +240,7 @@ class GlobalSearch extends Component
             )->values()->all();
 
         $this->results = collect($estoqueSorted)->merge($globalSorted)->take(8)->all();
+    }
     }
 
     private function generateGhostData($hit, $prints, $vNum = null, $games = [], $artistCache = [], $sid = null): array
@@ -311,28 +260,23 @@ class GlobalSearch extends Component
         $hasLetterInNumber = preg_match('/[a-zA-Z]/', $vNum ?? '');
         $isArtVariant = $isVariantSet && $hasLetterInNumber;
 
+        $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($hit['game_id'] ?? 1);
+        $extraArtista = null;
         if ($isArtVariant && !empty($printImg?->artist)) {
             $cacheKey = ($hit['id'] ?? null) . '_' . $sid;
             $nomeArtistaBase = trim($printImg->artist);
             $nomeArtistaFinal = $nomeArtistaBase;
-
             if ($sid && isset($artistCache[$cacheKey][$nomeArtistaBase]) && count($artistCache[$cacheKey][$nomeArtistaBase]) > 1) {
                 $idx = array_search(strtolower(trim($vNum ?? '')), $artistCache[$cacheKey][$nomeArtistaBase]);
                 if ($idx !== false) $nomeArtistaFinal .= ' ' . ($idx + 1);
             }
-
-            $displayEn   = "$nomeEn (" . $nomeArtistaFinal . ")";
-            $displayPt   = "$nomePt (" . $nomeArtistaFinal . ")";
-            $conceptSlug = Str::slug($hit['name'] . '-' . $nomeArtistaFinal);
-        } elseif ($vNum && !$isVariantSet) { 
-            $displayEn   = "$nomeEn #$vNum";
-            $displayPt   = "$nomePt #$vNum";
-            $conceptSlug = Str::slug($hit['name']) . '-' . $vNum;
-        } else {
-            $displayEn   = $nomeEn;
-            $displayPt   = $nomePt;
-            $conceptSlug = preg_replace('/-[a-f0-9]{4}$/', '', $hit['slug'] ?? Str::slug($nomeEn));
+            $extraArtista = $nomeArtistaFinal;
         }
+
+        $titles = $presenter->buildDisplayTitles($nomeEn, $nomePt, $printImg, $vNum, $extraArtista);
+        $displayEn = $titles['en'];
+        $displayPt = $titles['pt'];
+        $conceptSlug = $presenter->buildProductSlug($hit, $printImg, $vNum, $extraArtista);
 
         $imagemFinal = $printImg && $printImg->image_path
             ? (filter_var($printImg->image_path, FILTER_VALIDATE_URL) ? $printImg->image_path : asset($printImg->image_path))

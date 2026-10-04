@@ -16,11 +16,14 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\ImageColumn;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Get;
 use App\Models\Set; // Importamos o Set padrão
 use App\Models\Catalog\CatalogPrint; // Importamos o novo Model de Print
 use Illuminate\Database\Eloquent\Model;
+use Filament\Tables;
+use Filament\Forms;
+
 
 class PrintsRelationManager extends RelationManager
 {
@@ -33,12 +36,24 @@ class PrintsRelationManager extends RelationManager
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // O campo 'game_id' está no Model CatalogPrint, e o nome do TCG está no Model Game.
-        // O ownerRecord é o CatalogConcept.
-        $data['game_id'] = $this->ownerRecord->game_id; 
-        
-        // Se o seu CatalogPrint tiver campos diretos (como language_code), eles devem ser tratados aqui.
-        
+        $gameId = (int) ($this->ownerRecord->game_id ?? 0);
+        $data['concept_id'] = $this->ownerRecord->id;
+
+        // Associa o Model polimórfico correto baseado no jogo do Concept
+        if ($gameId === 1) {
+            $specific = \App\Models\Games\Magic\MtgPrint::create();
+            $data['specific_type'] = \App\Models\Games\Magic\MtgPrint::class;
+            $data['specific_id'] = $specific->id;
+        } elseif ($gameId === 2) {
+            $specific = \App\Models\Games\Pokemon\PkPrint::create();
+            $data['specific_type'] = \App\Models\Games\Pokemon\PkPrint::class;
+            $data['specific_id'] = $specific->id;
+        } elseif ($gameId === 4) {
+            $specific = \App\Models\Games\BattleScenes\BsPrint::create();
+            $data['specific_type'] = \App\Models\Games\BattleScenes\BsPrint::class;
+            $data['specific_id'] = $specific->id;
+        }
+
         return $data;
     }
 
@@ -47,47 +62,75 @@ class PrintsRelationManager extends RelationManager
      */
     public function form(Schema $schema): Schema
     {
-        // Pega o nome do TCG do Conceito Pai
-        $tcgName = $this->ownerRecord->game->name ?? 'N/A';
-        $gameId = $this->ownerRecord->game_id;
+        $gameId = (int) ($this->ownerRecord->game_id ?? 0);
 
         return $schema
             ->schema([
-                // Campo Set ID (Obrigatório)
                 Forms\Components\Select::make('set_id')
                     ->label('Coleção (Set)')
-                    ->relationship('set', 'name')
+                    ->relationship('set', 'name', fn ($query) => $query->where('game_id', $gameId))
                     ->searchable()
+                    ->preload()
                     ->required()
                     ->columnSpanFull(),
 
-                // --- DADOS ESPECÍFICOS: PK Print / MTG Print ---
-                // Aplicamos a lógica dinâmica diretamente na relação 'specific'
-                
+                Forms\Components\FileUpload::make('image_path')
+                    ->label('Imagem da Carta')
+                    ->image()
+                    ->disk('public_root') // ou configurado para apontar para a pasta public do Laravel
+                    ->directory(function (Get $get, $record) {
+                        // Identifica o jogo
+                        $gameName = match ((int) ($this->ownerRecord->game_id ?? 0)) {
+                            1 => 'Magic',
+                            2 => 'Pokemon',
+                            4 => 'BattleScenes',
+                            default => 'Outros',
+                        };
+
+                        // Identifica o código do set (ex: BSAQ, 2XM, etc.)
+                        $setId = $get('set_id') ?? $record?->set_id;
+                        $setCode = \App\Models\Set::find($setId)?->code ?? 'Geral';
+
+                        // Identifica o idioma (pt, en, etc.)
+                        $lang = $get('language_code') ?? $get('specific.language_code') ?? $record?->language_code ?? 'pt';
+
+                        return "card_imagem/{$gameName}/{$setCode}/{$lang}";
+                    })
+                    ->columnSpanFull(),
+
                 // Magic: The Gathering (ID 1)
-                Section::make('Detalhes Impressão Magic')
-                    ->relationship('specific') // Edita mtg_prints
+                Section::make('Detalhes da Impressão (Magic)')
+                    ->relationship('specific')
                     ->visible(fn () => $gameId === 1)
                     ->schema([
-                        TextInput::make('mtg_printed_name')->label('Nome Impresso'),
-                        TextInput::make('mtg_language_code')->label('Idioma (ex: en)')->required()->default('en'),
-                        TextInput::make('mtg_rarity')->label('Raridade')->required(),
-                        TextInput::make('mtg_collection_number')->label('Nº Coleção')->required(),
-                        TextInput::make('mtg_artist')->label('Artista'),
+                        TextInput::make('printed_name')->label('Nome Impresso (em Português / Idioma do Card)'),
+                        TextInput::make('language_code')->label('Código do Idioma')->default('pt')->required(),
+                        TextInput::make('collector_number')->label('Nº da Coleção')->required(),
+                        TextInput::make('rarity')->label('Raridade')->required(),
+                        TextInput::make('artist')->label('Artista'),
                     ]),
 
                 // Pokémon TCG (ID 2)
-                Section::make('Detalhes Impressão Pokémon')
-                    ->relationship('specific') // Edita pk_prints
+                Section::make('Detalhes da Impressão (Pokémon)')
+                    ->relationship('specific')
                     ->visible(fn () => $gameId === 2)
                     ->schema([
-                        TextInput::make('number')->label('Nº Coleção')->required(),
+                        TextInput::make('number')->label('Nº da Coleção')->required(),
                         TextInput::make('rarity')->label('Raridade')->required(),
                         TextInput::make('artist')->label('Artista'),
-                        TextInput::make('language_code')->label('Idioma (ex: en)')->required()->default('en'),
+                        TextInput::make('language_code')->label('Código do Idioma')->default('pt')->required(),
                     ]),
-                
-                // TODO: Adicionar outros 6 TCGs aqui...
+
+                // Battle Scenes (ID 4)
+                Section::make('Detalhes da Impressão (Battle Scenes)')
+                    ->relationship('specific')
+                    ->visible(fn () => $gameId === 4)
+                    ->schema([
+                        TextInput::make('number')->label('Nº da Coleção'),
+                        TextInput::make('rarity')->label('Raridade')->required(),
+                        TextInput::make('artist')->label('Artista'),
+                        TextInput::make('language_code')->label('Código do Idioma')->default('pt')->required(),
+                    ]),
             ]);
     }
 
@@ -140,16 +183,15 @@ class PrintsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

@@ -640,25 +640,52 @@ STAGE vMAJOR.MINOR.PATCH
 
 Olá, Lojista! Preparamos uma nova rodada de melhorias com foco direto na estabilidade do seu dia a dia e na experiência de compra dos seus clientes. Confira o que mudou:
 
----
-
 ### 🔑 Sessão Conectada por 30 Dias (Sem Quedas e Sem Erro 419)
 Agora você pode navegar, cadastrar cartas e gerenciar sua loja com muito mais tranquilidade:
 * **Login Estável de 30 Dias:** Você não será mais deslogado repentinamente por inatividade enquanto estiver trabalhando.
 * **Liberdade na Vitrine:** A sua autenticação agora é reconhecida tanto no Painel Administrativo quanto direto na vitrine da sua loja. Você pode navegar pelo catálogo para cadastrar ou conferir estoque sem perder o acesso.
 * **Fim dos Erros de Página Expirada:** Aprimoramos o armazenamento das sessões, reduzindo drasticamente falhas de envio de formulário ou telas de erro ao salvar alterações.
 
----
-
 ### 🧭 Navegação Fluida e Resolução Multi-Tenant de Domínios
 * **Transição Ágil na Barra do Lojista:** O botão superior da barra administrativa agora reconhece perfeitamente o endereço próprio da sua loja. Ao clicar para voltar ao **Painel de Controle**, você é direcionado sem inconsistências de rota entre a visão do cliente e a gestão interna.
 * **Fim do Erro 404 no Detalhe das Novidades:** Corrigido o roteamento interno de parâmetros no módulo de changelogs (`novidades.show`). Agora tanto os lojistas com domínio próprio personalizado quanto as lojas acessando pelo domínio principal da Versus TCG navegam pelos comunicados e atualizações completas sem bloqueios ou falhas de página não encontrada.
 
----
-
 ### 📦 Sincronização e Busca de Cartas Aprimoradas
 * **Busca Mais Precisa na Vitrine:** Ajustamos o motor de pesquisa da loja para garantir que seus clientes encontrem cartas, variações e edições com muito mais agilidade e sem falhas nos filtros.
 * **Atualização de Catálogo e Cotações:** Os dados de novas coleções, atributos das cartas e valores de mercado foram otimizados no servidor, garantindo sincronização consistente para o seu controle de preços.
+
+---
+
+**Versão:** `alpha v0.1.22`  
+**Data:** 03/10/2026  
+**Descrição da Versão:** Consolidação da Arquitetura Multi-TCG Agnóstica e Desacoplada. Refatoração profunda na exibição e catalogação com o isolamento de regras por `GamePresenter`, expansão do catálogo para **Magic: The Gathering**, **Battle Scenes** e **Pokémon TCG**, e restauração dos fluxos de criação/edição manual de cartas.
+
+### Arquitetura de Dados & Desacoplamento (GamePresenters):
+* **Contrato Central Unificado (`GamePresenterInterface`):** Expansão do contrato de interface com a adição dos métodos essenciais `getRulesHtml(): string`, `getFlavorText(): ?string` e `getTechnicalAttributes(): array`.
+* **Blade e Controllers 100% Agnósticos:** Eliminação completa de condicionais de jogos (`@if($gameSlug === 'pokemon')`, `@elseif(...)`) da Blade `product-page.blade.php`. A interface gráfica foi transformada em um esqueleto fixo e desacoplado que apenas consome o `$presenter` injetado, permitindo a expansão para dezenas de novos jogos futuros sem alterar uma única linha de visão.
+* **Resolução Dinâmica de Tabelas de Impressões (`ProductPage.php`):** Substituição de condicionais binárias fixas por `match($this->game->url_slug)` dinâmico, roteando corretamente entre `mtg_prints`, `pk_prints` e `bs_prints` sem misturar identificadores de conceitos polimórficos (`specific_id`).
+
+### Implementação dos Presenters por Jogo:
+* **MagicPresenter:**
+  - Renderização automatizada de textos de regras e *Oracle Text*, convertendo notações de custo (ex: `{T}`, `{B}`, `{2/U}`) em ícones estilizados com fontes vetoriais nativas.
+  - Mapeamento dinâmico de atributos físicos: Custo de Mana com ícones, Linha de Tipo, Artista, Poder/Resistência e Lealdade.
+* **BattleScenesPresenter:**
+  - Extração e renderização das regras do card (`rules_text`), preservando quebras de linha de ações, habilidades e suportes.
+  - Mapeamento técnico de atributos exclusivos de Battle Scenes: Alter Ego (com largura dupla na grid), Tipo, Afiliação, Energia / Escudo e Ilustrador.
+* **PokemonPresenter:**
+  - Renderização rica de cards mecânicos: Habilidades (*Abilities/Powers*) com badges temáticas e ataques estruturados com custos de energia entre colchetes, nome em destaque, efeito descritivo e dano numérico alinhado à direita.
+  - Mapeamento de atributos técnicos: Pontos de Saúde (HP), Tipos Elementais, Supertipo, Estágios de Evolução/Subtipos, Fraqueza calculada e Custo de Recuo.
+  - Correção no motor de ingestão (`IngestPokemonCards.php`) para capturar tanto o campo `effect` (Trainers, Apoiadores, Itens e Energias Especiais) quanto `description` (Pokédex/Flavor text), garantindo que cartas sem ataques exibam seus textos de regras completos.
+
+### Gestão e Cadastro Manual de Cartas (Painel Administrativo):
+* **Restauração da Edição e Criação Manual de Cartas:** Recuperação e blindagem dos formulários de cadastro individual no painel administrativo para permitir a criação manual de cartas, expansões promocionais e produtos não indexados pelas APIs externas.
+* **Correção de Divergências de APIs:** Ajuste nos validadores de persistência de dados para viabilizar a edição manual corretiva de metadados, textos de regras e imagens ausentes ou corrompidas de pacotes de dados de terceiros.
+* **Suporte Nativo a Battle Scenes:** Como o ecossistema de Battle Scenes não dispõe de APIs públicas ativas de catálogo, a modelagem manual foi estabelecida como base operacional para inclusão, revisão técnica e upload de scans de coleções clássicas do jogo.
+
+### Errata & Problemas Conhecidos (Backlog de Débito Técnico):
+* **Roteamento de Sets na `SetPage`:** A página de expansões (`SetPage`) renderiza as cartas da coleção corretamente, porém os links individuais (`href`) ainda apontam para o conceito geral ou primeira impressão (`base1`), ao invés do print específico pertencente àquele set ativo. O componente será refatorado para utilizar os novos métodos dos Presenters.
+* **Dependência de Busca Manual de Imagens em Lote:** Determinadas coleções legadas e cards promocionais ainda dependem de scripts de busca secundária ou upload manual de imagens em virtude de ausência de scans em alta resolução em provedores automatizados.
+* **Cards Especiais de Battle Scenes sem Scans Nativos:** Cartas exclusivas de Battle Scenes continuam demandando a inserção assistida e o mapeamento manual de ilustrações e textos no banco de dados.
 
 ---
 

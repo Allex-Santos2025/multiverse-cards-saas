@@ -166,7 +166,7 @@ class SearchResults extends Component
                         $nomePt     .= ' #' . $vNum;
                         $conceptSlug = Str::slug($hit['name']) . '-' . $vNum;
                     } else {
-                        $conceptSlug = $this->cleanSlug($hit['slug'] ?? Str::slug($nomeEn));
+                        $conceptSlug = $this->cleanSlug($hit['slug'] ?? Str::slug($nomeEn), $this->game->id ?? 1, $hit['name'] ?? null);
                     }
 
                     $imagemFinal = $printInfo->image_path
@@ -298,7 +298,7 @@ class SearchResults extends Component
         } else {
             $displayEn   = $nomeEn;
             $displayPt   = $nomePt;
-            $conceptSlug = $this->cleanSlug($hit['slug'] ?? Str::slug($nomeEn));
+            $conceptSlug = $this->cleanSlug($hit['slug'] ?? Str::slug($nomeEn), $this->game->id ?? 1, $hit['name'] ?? null);
         }
 
         $imagemFinal = $printImg && $printImg->image_path
@@ -326,9 +326,10 @@ class SearchResults extends Component
         ];
     }
 
-    private function cleanSlug(string $slug): string
+    private function cleanSlug(string $slug, int $gameId = 1, ?string $name = null): string
     {
-        return preg_replace('/-[a-f0-9]{4}$/', '', $slug);
+        $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($gameId);
+        return $presenter->formatPublicSlug($slug, $name);
     }
 
     public function render()

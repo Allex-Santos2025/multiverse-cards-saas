@@ -43,14 +43,36 @@
     {{-- BARRA DE ABAS SUPERIOR --}}
     <div class="pt-3 px-6 bg-gray-200 dark:bg-[#0b1222] shrink-0 flex items-end gap-1 transition-colors duration-300 overflow-x-auto no-scrollbar flex-nowrap">
         @php
-            $activeName = ($gameSlug == 'magic') ? 'Magic: The Gathering' : 'Pokémon TCG';
-            $inactiveSlug = ($gameSlug == 'magic') ? 'pokemon' : 'magic';
-            $inactiveName = ($gameSlug == 'magic') ? 'Pokémon TCG' : 'Magic: The Gathering';
+            $currentStore = auth('store_user')->check() ? auth('store_user')->user()->store : null;
+            $activeMenus = $currentStore 
+                ? $currentStore->gameMenus()->where('is_active', true)->with('game')->get() 
+                : \App\Models\Store::where('url_slug', $slug)->first()?->gameMenus()->where('is_active', true)->with('game')->get() ?? collect();
+            
+            $renderedCount = 0;
         @endphp
-        
-        <a href="{{ route('store.dashboard.stock.index', ['slug' => $slug, 'game_slug' => $gameSlug]) }}" wire:navigate class="compact-tab active flex-shrink-0 min-w-[150px] font-black uppercase text-[11px] tracking-wider shadow-[0_-4px_10px_rgba(0,0,0,0.1)]">{{ $activeName }}</a>
-        <a href="{{ route('store.dashboard.stock.index', ['slug' => $slug, 'game_slug' => $inactiveSlug]) }}" wire:navigate class="compact-tab inactive flex-shrink-0 opacity-70 hover:opacity-100 transition-opacity">{{ $inactiveName }}</a>
-        @for ($i = 0; $i < 8; $i++) <button type="button" class="compact-tab inactive flex-shrink-0 w-16 flex items-center justify-center cursor-not-allowed opacity-30" disabled><i class="ph ph-lock-simple text-sm"></i></button> @endfor
+
+        @foreach ($activeMenus as $menu)
+            @if ($menu->game)
+                @php
+                    $isTabActive = ($menu->game->url_slug === $gameSlug);
+                    $renderedCount++;
+                @endphp
+                <a href="{{ route('store.dashboard.stock.index', ['slug' => $slug, 'game_slug' => $menu->game->url_slug]) }}" 
+                   wire:navigate 
+                   class="compact-tab {{ $isTabActive ? 'active min-w-[150px] font-black uppercase text-[11px] tracking-wider shadow-[0_-4px_10px_rgba(0,0,0,0.1)]' : 'inactive min-w-[150px] font-black uppercase text-[11px] tracking-wider opacity-70 hover:opacity-100 transition-opacity' }}">
+                    {{ $menu->game->name }}
+                </a>
+            @endif
+        @endforeach
+
+        @php
+            $remainingSlots = max(0, 10 - $renderedCount);
+        @endphp
+        @for ($i = 0; $i < $remainingSlots; $i++)
+            <button type="button" class="compact-tab inactive flex-shrink-0 w-16 flex items-center justify-center cursor-not-allowed opacity-30" disabled>
+                <i class="ph ph-lock-simple text-sm"></i>
+            </button>
+        @endfor
     </div>
 
     {{-- AREA PRINCIPAL --}}

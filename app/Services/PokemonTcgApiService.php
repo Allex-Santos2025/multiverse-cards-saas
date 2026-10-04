@@ -12,7 +12,8 @@ class PokemonTcgApiService
     protected int $rateLimitMs;
     protected int $gameId; 
     
-    protected string $baseUrl = 'https://api.pokemontcg.io/v2';
+    // TCGdex API v2 - Rota em Português para o Game 2
+    protected string $baseUrl = 'https://api.tcgdex.net/v2';
     protected float $lastRequestTime = 0;
     protected string $userAgent = 'multiverse-cards-saas/1.0';
 
@@ -22,7 +23,7 @@ class PokemonTcgApiService
         $this->rateLimitMs = $rateLimitMs;
         $this->gameId = $gameId;
 
-        Log::info("PokemonTcgApiService instanciado. GameID: {$gameId} | Rate: {$rateLimitMs}ms");
+        Log::info("PokemonTcgApiService instanciado (TCGdex). GameID: {$gameId} | Rate: {$rateLimitMs}ms");
     }
 
     public function runIngestionJob(): void
@@ -37,82 +38,73 @@ class PokemonTcgApiService
 
     protected function ingestSets(): void
     {
-        $page = 1;
-        $pageSize = 250;
-        $hasMore = true;
+        // Define o locale de acordo com o jogo (Game 2 = pt, Game 9 = ja)
+        $locale = ($this->gameId === 9) ? 'ja' : 'pt';
         
-        Log::info("Iniciando sincronização de Sets...");
+        Log::info("Iniciando sincronização de Sets via TCGdex (locale: {$locale})...");
 
-        while ($hasMore) {
-            Log::info("Requisitando página {$page} de Sets (tamanho: {$pageSize})...");
+        $setsList = $this->makeRequest("/{$locale}/sets");
 
-            $data = $this->makeRequest('/sets', [
-                'page' => $page,
-                'pageSize' => $pageSize,
-                'orderBy' => '-releaseDate'
-            ]);
+        if (!$setsList || !is_array($setsList)) {
+            Log::error("Falha crítica: A API TCGdex não retornou a lista de sets para o idioma {$locale}. Abortando.");
+            return;
+        }
 
-            if (!$data) {
-                Log::error("Falha crítica: A API não retornou dados para a página {$page}. Abortando.");
-                break;
-            }
+        $count = count($setsList);
+        Log::info("Encontrados {$count} sets na TCGdex. Processando...");
 
-            if (empty($data['data'])) {
-                Log::warning("A API retornou uma lista vazia de dados na página {$page}. Finalizando paginação.");
-                break;
-            }
+        $processed = 0;
+        foreach ($setsList as $apiSet) {
+            $this->upsertSet($apiSet, $locale);
+            $processed++;
 
-            $count = count($data['data']);
-            Log::info("Encontrados {$count} sets na página {$page}. Processando...");
-
-            foreach ($data['data'] as $apiSet) {
-                $this->upsertSet($apiSet);
-            }
-
-            $totalCount = $data['totalCount'] ?? 0;
-            $currentCount = ($page - 1) * $pageSize + $count;
-
-            Log::info("Progresso: {$currentCount} / {$totalCount} sets processados.");
-
-            if ($currentCount >= $totalCount || $count < $pageSize) {
-                $hasMore = false;
-            } else {
-                $page++;
+            if ($processed % 25 === 0 || $processed === $count) {
+                Log::info("Progresso: {$processed} / {$count} sets sincronizados.");
             }
         }
+
+        echo "\n [TCGdex] {$processed}/{$count} sets processados com sucesso. \n";
     }
 
-    protected function upsertSet(array $apiSet): void
+    protected function upsertSet(array $apiSet, string $locale = 'pt'): void
     {
         try {
-            // LÓGICA DE CÓDIGOS AJUSTADA (DATA HEALING):
-            // 1. 'mtg_scryfall_id' armazena o ID Técnico (swsh1)
-            // 2. 'code' armazena o Código Visual (SSH)
-            
-            $displayCode = $apiSet['ptcgoCode'] ?? $apiSet['id']; // Ex: 'SSH'
-            $technicalId = $apiSet['id']; // Ex: 'swsh1'
+            $technicalId = $apiSet['id']; // Ex: 'swsh3', 'base1'
+            $displayCode = strtoupper($apiSet['id']);
+
+            $totalCards = 0;
+            if (isset($apiSet['cardCount']['total'])) {
+                $totalCards = (int) $apiSet['cardCount']['total'];
+            } elseif (isset($apiSet['total'])) {
+                $totalCards = (int) $apiSet['total'];
+            }
+
+            $icon = $apiSet['logo'] ?? $apiSet['symbol'] ?? null;
 
             $setData = [
                 'name'         => $apiSet['name'],
-                'card_count'   => $apiSet['total'] ?? 0,
-                'set_type'     => $apiSet['series'] ?? 'Expansion', 
-                'digital'      => 0, 
-                'foil_only'    => 0, 
-                'is_fanmade'   => 0, 
-                'released_at'  => $apiSet['releaseDate'] ?? null,
-                'icon_svg_uri' => $apiSet['images']['logo'] ?? null, 
+                'card_count'   => $totalCards,
+                'set_type'     => 'Expansion',
+                'digital'      => 0,
+                'foil_only'    => 0,
+                'is_fanmade'   => 0,
+                'icon_svg_uri' => $icon,
                 'updated_at'   => now(),
             ];
 
-            // ESTRATÉGIA DE CURA: 
-            // Resolve o erro 'Duplicate entry' procurando por qualquer um dos identificadores existentes.
-
-            // 1. Tenta achar pelo ID Técnico (o mais seguro)
+            // 1. Tenta achar pelo api_id (ID Técnico)
             $set = Set::where('game_id', $this->gameId)
                       ->where('api_id', $technicalId)
                       ->first();
 
-            // 2. Se não achou, tenta achar pelo Código Visual (evita colisão de chave única)
+            // 2. Se não achou pelo api_id, tenta pelo code existente
+            if (!$set) {
+                $set = Set::where('game_id', $this->gameId)
+                          ->where('code', $technicalId)
+                          ->first();
+            }
+
+            // 3. Fallback adicional para displayCode
             if (!$set) {
                 $set = Set::where('game_id', $this->gameId)
                           ->where('code', $displayCode)
@@ -120,18 +112,16 @@ class PokemonTcgApiService
             }
 
             if ($set) {
-                // Se encontrou (por qualquer método), ATUALIZA unificando os dados
-                // Isso garante que registros antigos ganhem o mtg_scryfall_id correto
+                // Atualiza sem duplicar
                 $set->update(array_merge($setData, [
-                    'code' => $displayCode,
-                    'api_id' => $technicalId
+                    'api_id' => $technicalId,
                 ]));
             } else {
-                // Se não existe de jeito nenhum, CRIA
+                // Cria se não existir
                 Set::create(array_merge($setData, [
                     'game_id' => $this->gameId,
-                    'code' => $displayCode,
-                    'api_id' => $technicalId
+                    'code'    => $displayCode,
+                    'api_id'  => $technicalId,
                 ]));
             }
 
@@ -149,20 +139,20 @@ class PokemonTcgApiService
 
         try {
             $response = Http::withHeaders([
-                'X-Api-Key' => $this->apiKey,
                 'User-Agent' => $this->userAgent,
+                'Accept'     => 'application/json',
             ])->timeout(60)->get($fullUrl, $queryParams);
 
             if ($response->successful()) {
                 return $response->json();
             }
 
-            Log::error("Erro HTTP API Pokemon ({$response->status()}) para {$fullUrl}: " . $response->body());
+            Log::error("Erro HTTP API TCGdex ({$response->status()}) para {$fullUrl}: " . $response->body());
             echo "\n [API ERRO] {$response->status()} - Veja logs. \n";
             return null;
 
         } catch (\Throwable $t) {
-            Log::error("Erro Crítico de Conexão API Pokemon: " . $t->getMessage());
+            Log::error("Erro Crítico de Conexão API TCGdex: " . $t->getMessage());
             return null;
         }
     }

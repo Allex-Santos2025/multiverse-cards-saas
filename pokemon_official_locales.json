@@ -1,0 +1,366 @@
+{
+    "2011bw": [
+        "en"
+    ],
+    "2012bw": [
+        "en"
+    ],
+    "2014xy": [
+        "en"
+    ],
+    "2015xy": [
+        "en"
+    ],
+    "2016xy": [
+        "en"
+    ],
+    "2017sm": [
+        "en"
+    ],
+    "2018sm": [
+        "en"
+    ],
+    "2019sm": [
+        "en"
+    ],
+    "2021swsh": [
+        "en",
+        "pt"
+    ],
+    "2022swsh": [
+        "en",
+        "pt"
+    ],
+    "2023sv": [
+        "en",
+        "pt"
+    ],
+    "2024sv": [
+        "en",
+        "pt"
+    ],
+    "a3a": [
+        "en"
+    ],
+    "a3b": [
+        "en"
+    ],
+    "a4": [
+        "en"
+    ],
+    "b1": [
+        "en"
+    ],
+    "base5": [
+        "en",
+        "pt",
+        "fr",
+        "de",
+        "it"
+    ],
+    "basep": [
+        "en"
+    ],
+    "bog": [
+        "en"
+    ],
+    "bwp": [
+        "en"
+    ],
+    "dp4": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "dp5": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "dp6": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "dp7": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "dpp": [
+        "en"
+    ],
+    "ecard1": [
+        "en"
+    ],
+    "ecard2": [
+        "en"
+    ],
+    "ecard3": [
+        "en"
+    ],
+    "ex11": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "ex12": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "ex13": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "ex14": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "ex15": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "ex16": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "ex2": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "ex3": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "ex4": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "ex5": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "ex5.5": [
+        "en"
+    ],
+    "ex6": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "exu": [
+        "en"
+    ],
+    "fut2020": [
+        "en",
+        "pt"
+    ],
+    "gym1": [
+        "en"
+    ],
+    "gym2": [
+        "en"
+    ],
+    "hgssp": [
+        "en"
+    ],
+    "jumbo": [
+        "en"
+    ],
+    "lc": [
+        "en"
+    ],
+    "mfb": [
+        "en"
+    ],
+    "miscp": [
+        "en"
+    ],
+    "neo1": [
+        "en",
+        "pt",
+        "fr",
+        "de",
+        "it"
+    ],
+    "neo2": [
+        "en",
+        "pt",
+        "fr",
+        "de",
+        "it"
+    ],
+    "neo3": [
+        "en"
+    ],
+    "neo4": [
+        "en"
+    ],
+    "np": [
+        "en"
+    ],
+    "pl1": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "pl2": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "pl3": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "pl4": [
+        "en",
+        "fr",
+        "de",
+        "it"
+    ],
+    "pop1": [
+        "en"
+    ],
+    "pop2": [
+        "en"
+    ],
+    "pop3": [
+        "en"
+    ],
+    "pop4": [
+        "en"
+    ],
+    "pop5": [
+        "en"
+    ],
+    "pop6": [
+        "en"
+    ],
+    "pop7": [
+        "en"
+    ],
+    "pop8": [
+        "en"
+    ],
+    "pop9": [
+        "en"
+    ],
+    "rc": [
+        "en",
+        "pt"
+    ],
+    "ru1": [
+        "en"
+    ],
+    "si1": [
+        "en"
+    ],
+    "sp": [
+        "en"
+    ],
+    "tk-bw-e": [
+        "en"
+    ],
+    "tk-bw-z": [
+        "en"
+    ],
+    "tk-dp-l": [
+        "en"
+    ],
+    "tk-dp-m": [
+        "en"
+    ],
+    "tk-ex-latia": [
+        "en"
+    ],
+    "tk-ex-latio": [
+        "en"
+    ],
+    "tk-ex-m": [
+        "en"
+    ],
+    "tk-ex-p": [
+        "en"
+    ],
+    "tk-hs-g": [
+        "en"
+    ],
+    "tk-hs-r": [
+        "en"
+    ],
+    "tk-sm-l": [
+        "en",
+        "pt"
+    ],
+    "tk-sm-r": [
+        "en",
+        "pt"
+    ],
+    "tk-xy-b": [
+        "en"
+    ],
+    "tk-xy-latia": [
+        "en"
+    ],
+    "tk-xy-latio": [
+        "en"
+    ],
+    "tk-xy-n": [
+        "en"
+    ],
+    "tk-xy-p": [
+        "en",
+        "pt"
+    ],
+    "tk-xy-su": [
+        "en",
+        "pt"
+    ],
+    "tk-xy-sy": [
+        "en"
+    ],
+    "tk-xy-w": [
+        "en",
+        "pt"
+    ],
+    "wp": [
+        "en"
+    ],
+    "xya": [
+        "en",
+        "pt"
+    ],
+    "xyp": [
+        "en",
+        "pt"
+    ]
+}
