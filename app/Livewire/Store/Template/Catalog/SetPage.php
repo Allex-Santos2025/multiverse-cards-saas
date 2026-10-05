@@ -69,9 +69,7 @@ class SetPage extends Component
                 ->where('language_code', $mainLanguage)
                 ->where('printed_name', 'NOT LIKE', 'A-%');
 
-            if ($this->set->card_count > 0) {
-                $queryIds->whereRaw('CAST(collector_number AS UNSIGNED) <= ?', [$this->set->card_count]);
-            }
+            // Removido filtro restritivo de card_count
 
             if ($this->cor !== 'todas') {
                 if ($this->cor === 'A') {
@@ -121,7 +119,7 @@ class SetPage extends Component
                 ->leftJoinSub($estoqueSubquery, 'estoque', fn($join) => $join->on('catalog_prints.collector_number', '=', 'estoque.collector_number'));
 
             if ($this->raridade !== 'todas') $query->where('catalog_prints.rarity', $this->raridade); 
-            if ($this->com_estoque) $query->where('total_estoque', '>', 0);
+            if ($this->com_estoque) $query->where('estoque.total_estoque', '>', 0);
 
             switch ($this->sortOrder) {
                 case 'price_asc': $query->orderByRaw('estoque.menor_preco IS NULL')->orderBy('estoque.menor_preco', 'asc'); break;

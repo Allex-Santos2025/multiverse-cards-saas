@@ -55,5 +55,5 @@ Route::get('/', Home::class)->name('store.view');
 Route::get('/{gameSlug}/sets', SetList::class)->name('store.catalog.sets');
 Route::get('/{gameSlug}/sets/{setCode}', SetPage::class)->name('store.catalog.set');
 Route::get('/{gameSlug}/card/{conceptSlug}', ProductPage::class)->name('store.catalog.product');
-Route::get('/{gameSlug}/busca', \App\Livewire\Store\Template\Catalog\SearchResults::class)->name('store.catalog.search');
+Route::get('/busca', \App\Livewire\Store\Template\Catalog\SearchResults::class)->name('store.catalog.search');
 Route::get('/{gameSlug}/singles', SinglePage::class)->name('store.catalog.singles');

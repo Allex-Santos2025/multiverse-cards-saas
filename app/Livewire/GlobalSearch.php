@@ -39,12 +39,12 @@ class GlobalSearch extends Component
         $term = trim($this->query);
         if (mb_strlen($term) < 2) return;
 
-        $this->redirect(
-            route('store.catalog.search', [
-                'slug'     => $this->storeSlug,
-                'gameSlug' => 'magic',
-            ]) . '?q=' . urlencode($term)
-        );
+        $params = ['q' => $term];
+        if (!empty($this->storeSlug)) {
+            $params['slug'] = $this->storeSlug;
+        }
+
+        $this->redirect(route('store.catalog.search', $params));
     }
 
     private function loadResults(string $term): void

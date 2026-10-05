@@ -689,6 +689,26 @@ Agora você pode navegar, cadastrar cartas e gerenciar sua loja com muito mais t
 
 ---
 
+**Versão:** `alpha v0.1.23`  
+**Data:** 04/10/2026  
+**Descrição da Versão:** Refatoração da Arquitetura de Busca Global Multi-TCG, Desacoplamento de Rotas da Vitrine e Correção Estrutural na Renderização de Coleções e Filtros de Estoque (`SetPage`).
+
+### Motor de Busca Global Multi-TCG (`SearchResults` & `GlobalSearch`):
+* **Roteamento Global Agnóstico (`/busca`):** Desacoplamento da rota `store.catalog.search` da dependência mandatória de `{gameSlug}`. A busca foi unificada em `/busca?q=termo`, tornando o campo de pesquisa do cabeçalho uma ferramenta universal capaz de varrer simultaneamente todo o acervo da plataforma (Magic: The Gathering, Pokémon TCG, Battle Scenes e futuros jogos como Yu-Gi-Oh!).
+* **Compatibilidade com Domínios Próprios (Custom Domains):** Correção do redirecionamento no componente `GlobalSearch`. Substituição da concatenação manual de query strings por parâmetros nomeados no helper `route()`. Essa correção eliminou a duplicação de delimitadores (`?slug=...?...`), prevenindo que a consulta chegasse vazia (`RESULTADOS PARA ""`) em domínios personalizados de lojistas.
+* **Agrupamento Automático e Dinâmico por Jogo (`resultsByGame`):** O componente `SearchResults` foi reescrito para abandonar listas lineares misturadas. Os resultados agora são segregados por `game_id` com base no catálogo oficial (`games`), renderizando blocos visuais independentes com título do TCG, badges temáticas e contagem de itens por modalidade.
+* **Segregação de Perfis (Cliente vs. Lojista):**
+  - **Clientes / Visitantes:** Visualizam uma vitrine limpa contendo estritamente os produtos cadastrados pela loja (itens com estoque positivo e itens cadastrados esgotados).
+  - **Lojista Autenticado:** Mantém acesso à grade dupla contendo o inventário cadastrado somado ao catálogo global ("Cards Fantasmas"), permitindo a rápida identificação de produtos para precificação e cadastro em lote.
+* **Desacoplamento de Joins Específicos:** Remoção de `join('mtg_prints')` rígidos no processamento de artistas e ilustrações da busca. O carregamento de metadados agora opera de forma polimórfica e condicional, evitando que buscas por Pokémon ou Battle Scenes falhem ou omitam registros.
+* **Correção de Layout em Componente de Página Inteira:** Resolução da exceção `MissingLayoutException` com a vinculação explícita de `->layout('layouts.template', ['loja' => $this->loja])` no método `render()`, assegurando herança íntegra do tema, cabeçalho e variáveis CSS da loja ativa.
+
+### Catálogo de Coleções (`SetPage.php`):
+* **Eliminação da Trava Restritiva de `card_count`:** Remoção do filtro de numeração `collector_number <= card_count`. Esse teto numérico descartava silenciosamente cartas promocionais, variantes de arte, cards de pré-lançamento e estampas com sufixos alfanuméricos (como `204p`, `133s`, Buy-a-Box) cujo identificador excedia a contagem básica de colecionador registrada para o set. A exibição agora reflete 100% dos prints legítimos vinculados ao `set_id`.
+* **Correção de Cláusula SQL no Filtro "Com Estoque":** Correção da condição `if ($this->com_estoque)` de `$query->where('total_estoque', '>', 0)` para `$query->where('estoque.total_estoque', '>', 0)`. Como `total_estoque` era um alias computado no `SELECT` via `COALESCE()`, o MariaDB/MySQL descartava os resultados em cláusulas `WHERE` convencionais; o redirecionamento para a coluna da subquery derivada restaurou o funcionamento exato da filtragem de itens disponíveis.
+
+---
+
 ## 📜 Histórico de Versões
 
 ### `alpha v0.0.1` — 21/12/2025  
