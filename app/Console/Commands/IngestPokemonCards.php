@@ -170,14 +170,20 @@ class IngestPokemonCards extends Command
             $cards = $setData['cards'];
         }
 
-        // Se o idioma local nao tiver cartas na API, aplica a Garantia de Matriz
+        // Se a API retornou 404 (setData é null), o set NÃO existe fisicamente/oficialmente neste idioma!
+        if ($setData === null) {
+            $this->line("   -> [{$locale}] Coleção não lançada/inexistente neste idioma (404). Pulando.");
+            return;
+        }
+
+        // Se o set existe na API (200 OK) mas a API não cadastrou as cartas ainda, aplica a Garantia de Matriz
         if (empty($cards)) {
             if ($locale === 'en') {
                 $this->warn("   -> [en] Set sem cartas na API TCGdex.");
                 return;
             }
 
-            $this->warn("   -> [{$locale}] API sem cartas locais. Aplicando Garantia de Matriz...");
+            $this->warn("   -> [{$locale}] Set oficial confirmado, mas API sem cartas locais cadastradas. Aplicando Garantia de Matriz...");
             $this->syncLocaleFromCanonicalMatrix($set, $locale);
             return;
         }
@@ -291,15 +297,19 @@ class IngestPokemonCards extends Command
                 // 1. CONCEITO BASE
                 $catalogConcept = null;
 
-                if (isset($this->conceptIdCache[$cardName])) {
-                    $catalogConcept = CatalogConcept::find($this->conceptIdCache[$cardName]);
+                $cardApiId = (string) ($data['id'] ?? '');
+                $conceptSlug = Str::slug($cardName . '-' . $cardApiId);
+
+                if ($cardApiId && isset($this->conceptIdCache[$cardApiId])) {
+                    $catalogConcept = CatalogConcept::find($this->conceptIdCache[$cardApiId]);
                 }
 
-                if (!$catalogConcept) {
+                if (!$catalogConcept && $conceptSlug) {
                     $catalogConcept = CatalogConcept::where('game_id', $this->game->id)
-                        ->where('name', $cardName)
+                        ->where('slug', $conceptSlug)
                         ->first();
                 }
+
 
                 if (!$catalogConcept) {
                     $types = $data['types'] ?? [];
@@ -340,7 +350,7 @@ class IngestPokemonCards extends Command
                     ]);
                 }
 
-                $this->conceptIdCache[$cardName] = $catalogConcept->id;
+                $this->conceptIdCache[$cardApiId ?: $cardName] = $catalogConcept->id;
 
                 // 2. IMAGEM COM FALLBACK AUTOMATICO PARA MATRIZ EN
                 $rawImageUrl = $data['image'] ?? null;
@@ -407,6 +417,7 @@ class IngestPokemonCards extends Command
                     ]);
                 } else {
                     $catalogPrint->update([
+                        'concept_id'   => $catalogConcept->id,
                         'printed_name' => $cardName,
                         'image_path'   => $localPath ?? $catalogPrint->image_path,
                     ]);

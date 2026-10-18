@@ -709,6 +709,37 @@ Agora você pode navegar, cadastrar cartas e gerenciar sua loja com muito mais t
 
 ---
 
+**Versão:** `alpha v0.4.40`  
+**Data:** 18/10/2026  
+**Descrição da Versão:** Expansão massiva do ecossistema Multi-TCG com o salto de 2 para 5 jogos suportados (**Yu-Gi-Oh!**, **One Piece Card Game** e **Battle Scenes**), implementação do módulo completo de Gestão Operacional de Pedidos no Painel do Lojista, automação de avaliações via Google Reviews e refatoração profunda na integridade de contagem de coleções e resolução de conceitos virtuais de Pokémon TCG.
+
+### Expansão de Catálogo & Novos Jogos (Multi-TCG Core):
+* **Integração de Novos Card Games:** Expansão do catálogo global para suporte a 5 modalidades de TCGs simultâneas:
+  - **Yu-Gi-Oh!:** Modelagem de atributos específicos de monstros (Nível/Rank, Atributo, Tipo de Monstro, Escala de Pêndulo), Magias e Armadilhas, com regras de agrupamento de conceitos e estampas físicas.
+  - **One Piece Card Game:** Estruturação de dados técnicos voltados à mecânica oficial da Bandai, cobrindo Líderes, Personagens, Eventos, Estágios, valores de Custo, Poder e atributos de combate (Slash, Strike, etc.).
+  - **Marvel Battle Scenes:** Criação de migrações (`create_battle_scenes_tables`) e models específicos (`BsConcept`, `BsPrint`), estruturando habilidades, afiliações, suportes e textos originais da franquia.
+
+### Arquitetura de Apresentação e Resolução de Produtos (`PokemonPresenter`):
+* **Sincronização com a Numeração Oficial Impressa (`cardCount.official`):** Refatoração no serviço de ingestão `PokemonTcgApiService.php` para priorizar a contagem oficial da coleção base em detrimento do total com cartas secretas e ilustrações especiais. Atualização em massa da coluna `card_count` na tabela `sets`, garantindo que a numeração exibida reflita a realidade estampada na carta física (ex: `#123/094` em vez de `#123/130`).
+* **Resolução de Conflitos e Colisões de Slugs Canônicos:** Correção na montagem dos conceitos virtuais do catálogo para desmembrar cartas homônimas com mesmo número de coletor em coleções distintas (resolução do caso *Switch* de *Fogo Fantasmagórico / ME02* colidindo com *Switch* de *Base Set 2*).
+* **Blindagem de Fallback em Matching Prints:** Remoção da brecha condicional relaxada (`$setTotal === 0`) que capturava cartas modernas indevidamente quando coleções tinham totais não normalizados, assegurando busca estrita por correspondência de coleção.
+* **Set como Critério Mestre de Desempate:** Implementação do suporte a parâmetros explícitos de coleção (`?set=`, `request('set')`) na resolução de produtos, garantindo que cliques vindos da página da coleção (`SetPage`) ou de buscas sempre carreguem a estampa física correta sem depender exclusivamente de contagens de cartas.
+* **Correções em Coleções Clássicas:** Ajuste nas estruturas de contagem e tratamento de metadados em coleções históricas (como *Gym Heroes* e expansões base).
+
+### Painel do Lojista: Gestão Operacional de Pedidos (Orders Core):
+* **Módulo de Listagem de Pedidos (`orders-index.blade.php`):** Implementação da interface administrativa completa para consulta de pedidos da loja, contendo filtragem por status operacional (Pendente, Pago, Enviado, Cancelado), busca por cliente e totalizadores financeiros consolidados.
+* **Navegação SPA Fluida em Tabelas:** Injeção de navegação instantânea via Livewire (`@click="Livewire.navigate(...)"`) em cada linha (`<tr>`) das tabelas de pedidos, eliminando recarregamentos de página (Full Refresh) e tornando a operação diária do lojista extremamente ágil.
+* **Interface de Detalhes do Pedido (`orders-show.blade.php`):** Criação da visão aprofundada do pedido contendo dados de faturamento, endereço de entrega completo com dados sanitizados, grid de itens adquiridos (com idioma, conservação e extras preservados), cálculo de frete e controle de transição de status de envio.
+* **Padronização no Dashboard Principal (`index.blade.php`):** Conexão da tabela de pedidos recentes da página inicial da loja com a nova rota de detalhes, unificando a experiência de navegação interna.
+
+### Automações, Background Jobs & Rotas:
+* **Sincronização Automatizada de Avaliações (Google Reviews):** Criação e validação do comando Artisan `google:fetch-reviews`, responsável por consultar a API do Google e atualizar os depoimentos e notas dos clientes no banco de dados da loja.
+* **Configuração de Rotinas Agendadas (Cron):** Estruturação das tarefas periódicas no servidor Linux/CyberPanel para execução automatizada e silenciosa das rotinas de catálogo e avaliações.
+* **Tratamento de Caracteres Especiais e Pontuação em Slugs:** Higienização de strings em queries do catálogo para prevenir falhas de sintaxe SQL em nomes que contêm apóstrofos, hifens compostos ou pontuações específicas de coleções de TCG.
+* **Manutenções e Correções Menores:** Diversos refinamentos de performance em queries do Eloquent, correções cosméticas de espaçamento e alinhamento em blades e ajustes menores de estabilidade não mapeados individualmente.
+
+---
+
 ## 📜 Histórico de Versões
 
 ### `alpha v0.0.1` — 21/12/2025  

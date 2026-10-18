@@ -12,6 +12,7 @@ use App\Models\StockItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Enums\StockExtra;
+use App\Services\GamePresenters\GamePresenterFactory;
 
 class ManageSingleCard extends Component
 {
@@ -110,26 +111,55 @@ class ManageSingleCard extends Component
             // 2) LÓGICA PARA CARTA NORMAL & VARIANTES DE ARTE (BLINDADO)
             // =====================================================
             
-            // 1. Em Pokémon, se vier o padrão {slug}-{num}-{total} ou {slug}-{num}, limpa para achar o conceito
+            // 1. Em Pokémon, resolve diretamente pelo padrão {slug}-{num}-{total} ou {slug}-{num}
             $searchSlug = $conceptSlug;
+            $conceptFound = null;
+
             if ($this->game->url_slug === 'pokemon') {
                 if (preg_match('/^(.*?)-(\d+[a-zA-Z]?)-(\d+)$/', $conceptSlug, $m)) {
                     $searchSlug = $m[1];
                     $this->targetNumber = $m[2];
+                    $setCardCount = (int)$m[3];
+
+                    // Localiza o print exato da coleção pelo collector_number, total do set e slug/nome
+                    $resolvedPrint = CatalogPrint::where('collector_number', $this->targetNumber)
+                        ->whereHas('set', fn($q) => $q->where('game_id', $this->game->id)->where('card_count', $setCardCount))
+                        ->whereHas('concept', fn($q) => $q->where('game_id', $this->game->id)->where(function($sq) use ($searchSlug) {
+                            $sq->where('slug', 'like', "%{$searchSlug}%")->orWhere('name', 'like', str_replace('-', ' ', $searchSlug));
+                        }))
+                        ->with(['concept.prints.set', 'set'])
+                        ->first();
+
+                    if ($resolvedPrint) {
+                        $conceptFound = $resolvedPrint->concept;
+                    }
                 } elseif (preg_match('/^(.*?)-(\d+[a-zA-Z]?)$/', $conceptSlug, $m)) {
                     $searchSlug = $m[1];
                     $this->targetNumber = $m[2];
+
+                    $resolvedPrint = CatalogPrint::where('collector_number', $this->targetNumber)
+                        ->whereHas('concept', fn($q) => $q->where('game_id', $this->game->id)->where(function($sq) use ($searchSlug) {
+                            $sq->where('slug', 'like', "%{$searchSlug}%")->orWhere('name', 'like', str_replace('-', ' ', $searchSlug));
+                        }))
+                        ->with(['concept.prints.set', 'set'])
+                        ->first();
+
+                    if ($resolvedPrint) {
+                        $conceptFound = $resolvedPrint->concept;
+                    }
                 }
             }
 
-            // 1.1 Tenta correspondência direta exata
-            $conceptFound = CatalogConcept::where('game_id', $this->game->id)
-                ->where(function ($q) use ($searchSlug, $conceptSlug) {
-                    $q->where('slug', $searchSlug)
-                      ->orWhere('slug', $conceptSlug)
-                      ->orWhere('name', 'like', str_replace('-', ' ', $searchSlug));
-                })
-                ->with('prints.set')->first();
+            // 1.1 Se não achou (ou não for Pokémon), tenta correspondência direta pelo slug/nome
+            if (!$conceptFound) {
+                $conceptFound = CatalogConcept::where('game_id', $this->game->id)
+                    ->where(function ($q) use ($searchSlug, $conceptSlug) {
+                        $q->where('slug', $searchSlug)
+                          ->orWhere('slug', $conceptSlug)
+                          ->orWhere('name', 'like', str_replace('-', ' ', $searchSlug));
+                    })
+                    ->with('prints.set')->first();
+            }
 
             // 1.1 Se não achar, tenta com o sufixo de 4 caracteres (Padrão MTG)
             if (!$conceptFound) {
@@ -239,9 +269,10 @@ class ManageSingleCard extends Component
         }
 
         try {
-            $this->availableExtras = StockExtra::options();
+            $presenter = GamePresenterFactory::make($this->game->id);
+            $this->availableExtras = $presenter->getAvailableStockExtras();
         } catch (\Throwable $e) {
-            $this->availableExtras = ['foil' => 'Foil', 'etched' => 'Etched', 'promo' => 'Promo'];
+            $this->availableExtras = StockExtra::options();
         }
 
         $initialPrints = $this->concept->prints;
@@ -280,9 +311,32 @@ class ManageSingleCard extends Component
     {
         if ($this->isEditing) return;
 
-        $mtgData = DB::table('mtg_prints')->where('id', $print->specific_id)->first();
         $this->selectedExtras = [];
         $this->disabledExtras = [];
+
+        $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($this->game->id);
+        if (method_exists($presenter, 'getLockedStockExtras')) {
+            $locked = $presenter->getLockedStockExtras($print);
+            if (!empty($locked)) {
+                $this->selectedExtras = $locked;
+                $this->disabledExtras = $locked;
+                return;
+            }
+        }
+
+        // Regra para Battle Scenes (Game ID 4)
+        if ($this->game->id === 4 || $this->game->url_slug === 'battle-scenes') {
+            $bsData = DB::table('bs_prints')->where('id', $print->specific_id)->first();
+            $rarity = strtolower($bsData->rarity ?? '');
+
+            if (str_contains($rarity, 'ultra') || str_contains($rarity, 'mítico') || str_contains($rarity, 'mitico')) {
+                $this->selectedExtras = ['foil'];
+                $this->disabledExtras = ['foil'];
+            }
+            return;
+        }
+
+        $mtgData = DB::table('mtg_prints')->where('id', $print->specific_id)->first();
 
         if (!$mtgData || empty($mtgData->prices)) {
             $this->selectedExtras = array_values(array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'foil_etched'));
@@ -304,13 +358,15 @@ class ManageSingleCard extends Component
 
     public function updatedSelectedExtras() 
     { 
-        $extras = array_map('strtolower', $this->selectedExtras);
-        if (in_array('foil', $extras) && in_array('etched', $extras)) {
-            $lastAdded = strtolower(end($this->selectedExtras));
-            if ($lastAdded === 'etched') {
-                $this->selectedExtras = array_values(array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'foil'));
-            } else {
-                $this->selectedExtras = array_values(array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'etched'));
+        if ($this->game->url_slug !== 'pokemon') {
+            $extras = array_map('strtolower', $this->selectedExtras);
+            if (in_array('foil', $extras) && in_array('etched', $extras)) {
+                $lastAdded = strtolower(end($this->selectedExtras));
+                if ($lastAdded === 'etched') {
+                    $this->selectedExtras = array_values(array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'foil'));
+                } else {
+                    $this->selectedExtras = array_values(array_filter($this->selectedExtras, fn($e) => strtolower($e) !== 'etched'));
+                }
             }
         }
         $this->updateMarketData(); 
@@ -334,7 +390,12 @@ class ManageSingleCard extends Component
         $currentPrint = CatalogPrint::find($this->selectedPrintId);
         if (!$currentPrint) return;
 
-        $this->currentPrintImage = $currentPrint->image_path;
+        $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($this->game->id);
+        if (method_exists($presenter, "resolveCardImage")) {
+            $this->currentPrintImage = $presenter->resolveCardImage($currentPrint, $this->selectedExtras);
+        } else {
+            $this->currentPrintImage = $currentPrint->image_path;
+        }
         $englishPrint = CatalogPrint::where('set_id', $currentPrint->set_id)
             ->where('collector_number', $currentPrint->collector_number)
             ->where('language_code', 'en')
@@ -350,10 +411,37 @@ class ManageSingleCard extends Component
         if ($mtgData) {
             if ($this->game->url_slug === 'pokemon' && !empty($mtgData->tcgplayer)) {
                 $tcgData = is_string($mtgData->tcgplayer) ? json_decode($mtgData->tcgplayer, true) : (array)$mtgData->tcgplayer;
-                $pSub = $tcgData['prices'] ?? [];
-                $normalPrice = $pSub['normal']['market'] ?? $pSub['normal']['mid'] ?? null;
-                $foilPrice   = $pSub['holofoil']['market'] ?? $pSub['reverseHolofoil']['market'] ?? null;
-                $usd = ($isFoil && $foilPrice) ? $foilPrice : ($normalPrice ?? $foilPrice ?? 0);
+                $isFirstEd = in_array('first_edition', $extrasLower) || in_array('1st_edition', $extrasLower);
+                $isReverse = in_array('reverse_holo', $extrasLower) || in_array('reverse_holofoil', $extrasLower);
+                $isHolo    = in_array('holofoil', $extrasLower);
+
+                $getPrice = function($node) {
+                    if (!is_array($node)) return 0;
+                    return (float)($node['marketPrice'] ?? $node['market'] ?? $node['mid'] ?? $node['directLow'] ?? 0);
+                };
+
+                if ($isFirstEd && !empty($tcgData['1st-edition-holofoil'])) {
+                    $usd = $getPrice($tcgData['1st-edition-holofoil']);
+                } elseif ($isFirstEd && !empty($tcgData['1st-edition-normal'])) {
+                    $usd = $getPrice($tcgData['1st-edition-normal']);
+                } elseif ($isReverse && !empty($tcgData['reverse-holofoil'])) {
+                    $usd = $getPrice($tcgData['reverse-holofoil']);
+                } elseif ($isHolo && !empty($tcgData['unlimited-holofoil'])) {
+                    $usd = $getPrice($tcgData['unlimited-holofoil']);
+                } elseif ($isHolo && !empty($tcgData['holofoil'])) {
+                    $usd = $getPrice($tcgData['holofoil']);
+                } elseif (!empty($tcgData['normal'])) {
+                    $usd = $getPrice($tcgData['normal']);
+                } elseif (!empty($tcgData['unlimited'])) {
+                    $usd = $getPrice($tcgData['unlimited']);
+                } else {
+                    foreach ($tcgData as $k => $val) {
+                        if (is_array($val) && ($p = $getPrice($val)) > 0) {
+                            $usd = $p;
+                            break;
+                        }
+                    }
+                }
             } elseif (!empty($mtgData->prices)) {
                 $pricesArray = is_string($mtgData->prices) ? json_decode($mtgData->prices, true) : (array)$mtgData->prices;
                 if ($isEtched) { $usd = $pricesArray['usd_etched'] ?? 0; }

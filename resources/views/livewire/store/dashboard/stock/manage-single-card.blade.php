@@ -246,7 +246,7 @@
                          @scroll.window="open = false"
                          @resize.window="open = false">
 
-                        <label class="text-[8px] font-black text-gray-400 dark:text-zinc-600 uppercase tracking-widest ml-1 mb-1 block font-sans">Extras (Foil vs Etched)</label>
+                        <label class="text-[8px] font-black text-gray-400 dark:text-zinc-600 uppercase tracking-widest ml-1 mb-1 block font-sans">Extras / Acabamentos</label>
 
                         <button x-ref="button" @click="position(); open = !open" type="button" 
                                 class="w-full flex items-center justify-between bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-white/10 rounded-lg py-2 px-3 text-xs transition-all active:scale-[0.98] font-sans">

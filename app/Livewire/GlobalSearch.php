@@ -99,6 +99,8 @@ class GlobalSearch extends Component
             }
         }
 
+        // Ordenacao preferencial para o collector_number digitado
+        $numberFilterBase = $numberFilter ? explode('/', $numberFilter)[0] : null;
         $printsReais = CatalogPrint::select(
                 'catalog_prints.*',
                 'stock_items.quantity as stock_qty',

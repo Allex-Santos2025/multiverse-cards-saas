@@ -304,7 +304,7 @@ class MagicPresenter implements GamePresenterInterface
 
         $html = preg_replace_callback("/\{([^}]+)\}/", function($m) {
             $val = strtolower(str_replace("/", "", $m[1]));
-            return "<i class=\"ms ms- ms-cost text-xs\" style=\"filter: drop-shadow(-1px 1px 0px rgba(0,0,0,0.6));\"></i>";
+            return "<i class=\"ms ms-{$val} ms-cost ms-shadow text-xs\" style=\"vertical-align: -0.05em; margin: 0 0.5px;\"></i>";
         }, $raw);
 
         return "<p class=\"mb-2 text-gray-800 font-medium\">" . nl2br($html) . "</p>";
@@ -324,7 +324,7 @@ class MagicPresenter implements GamePresenterInterface
         if (!empty($conceptData?->mana_cost)) {
             $manaHtml = preg_replace_callback("/\{([^}]+)\}/", function($m) {
                 $val = strtolower(str_replace("/", "", $m[1]));
-                return "<i class=\"ms ms- ms-cost text-base\" style=\"filter: drop-shadow(-1px 1px 0px rgba(0,0,0,0.6));\"></i>";
+                return "<i class=\"ms ms-{$val} ms-cost ms-shadow text-base\" style=\"vertical-align: -0.05em; margin: 0 1px;\"></i>";
             }, $conceptData->mana_cost);
 
             $attrs[] = ["label" => "Custo de Mana", "value" => $manaHtml, "cols" => 1];
@@ -349,5 +349,10 @@ class MagicPresenter implements GamePresenterInterface
         }
 
         return $attrs;
+    }
+
+    public function getAvailableStockExtras(): array
+    {
+        return \App\Enums\StockExtra::options();
     }
 }

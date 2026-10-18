@@ -82,14 +82,8 @@ class BattleScenesPresenter implements GamePresenterInterface
         }
 
         if ($targetPrint) {
-            $targetSetId = $targetPrint->set_id;
-            $targetNumber = $targetPrint->collector_number;
-
-            $matchingPrints = $allPrints->filter(function ($p) use ($targetSetId, $targetNumber) {
-                return $p->set_id == $targetSetId && (string) $p->collector_number === (string) $targetNumber;
-            });
-
-            return $matchingPrints->isNotEmpty() ? $matchingPrints : collect([$targetPrint]);
+            // Mantém todas as versões disponíveis (igual ao Magic), priorizando a selecionada no topo
+            return $allPrints->sortBy(fn($p) => $p->id === $targetPrint->id ? 0 : 1)->values();
         }
 
         return $allPrints;
@@ -233,5 +227,14 @@ class BattleScenesPresenter implements GamePresenterInterface
         }
 
         return $attrs;
+    }
+    public function getAvailableStockExtras(): array
+    {
+        return \App\Enums\BattleScenesStockExtra::options();
+    }
+
+    public function getPrintVariantKey($print): string
+    {
+        return $print->collector_number ?? "default";
     }
 }

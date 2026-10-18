@@ -60,16 +60,13 @@ class SetPage extends Component
 
             $mainLanguage = 'en';
             if (!in_array('en', $langsInSet)) {
-                // Se não tem inglês, busca qualquer variante de português
-                $ptLang = collect($langsInSet)->first(fn($l) => in_array(strtolower($l), ['pt', 'pt-br', 'pt-br', 'pt_br']));
+                $ptLang = collect($langsInSet)->first(fn($l) => in_array(strtolower($l), ['pt', 'pt-br', 'pt_br']));
                 $mainLanguage = $ptLang ?: ($langsInSet[0] ?? 'en');
             }
 
             $queryIds = \App\Models\Catalog\CatalogPrint::where('set_id', $this->set->id)
                 ->where('language_code', $mainLanguage)
                 ->where('printed_name', 'NOT LIKE', 'A-%');
-
-            // Removido filtro restritivo de card_count
 
             if ($this->cor !== 'todas') {
                 if ($this->cor === 'A') {
@@ -81,13 +78,13 @@ class SetPage extends Component
                              ->join('mtg_concepts as mc', 'cc.specific_id', '=', 'mc.id');
 
                     if (in_array($this->cor, ['W', 'U', 'B', 'R', 'G'])) {
-                        $queryIds->where('mc.colors', 'LIKE', '%"' . $this->cor . '"%')->where('mc.colors', 'NOT LIKE', '%,%');
+                        $queryIds->where('mc.colors', 'LIKE', '%"' . $this->cor .'"%')->where('mc.colors', 'NOT LIKE', '%,%');
                     } elseif ($this->cor === 'M') {
                         $queryIds->where('mc.colors', 'LIKE', '%,%');
                     } elseif ($this->cor === 'C') {
                         $queryIds->where(fn($q) => $q->whereNull('mc.colors')->orWhere('mc.colors', '[]')->orWhere('mc.colors', ''))
-                        ->where('catalog_prints.type_line', 'NOT LIKE', '%Artifact%')
-                        ->where('catalog_prints.type_line', 'NOT LIKE', '%Land%');
+                                ->where('catalog_prints.type_line', 'NOT LIKE', '%Artifact%')
+                                ->where('catalog_prints.type_line', 'NOT LIKE', '%Land%');
                     }
                 }
             }
@@ -121,13 +118,36 @@ class SetPage extends Component
             if ($this->raridade !== 'todas') $query->where('catalog_prints.rarity', $this->raridade); 
             if ($this->com_estoque) $query->where('estoque.total_estoque', '>', 0);
 
+            $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($this->game->id);
+
             switch ($this->sortOrder) {
-                case 'price_asc': $query->orderByRaw('estoque.menor_preco IS NULL')->orderBy('estoque.menor_preco', 'asc'); break;
-                case 'price_desc': $query->orderByRaw('estoque.menor_preco IS NULL')->orderBy('estoque.menor_preco', 'desc'); break;
-                case 'name_desc': $query->orderBy('catalog_prints.printed_name', 'desc'); break;
-                case 'number_desc': $query->orderByRaw('CAST(catalog_prints.collector_number AS UNSIGNED) DESC'); break;
-                case 'name_asc': $query->orderBy('catalog_prints.printed_name', 'asc'); break;
-                case 'number_asc': default: $query->orderByRaw('CAST(catalog_prints.collector_number AS UNSIGNED) ASC'); break;
+                case 'price_asc': 
+                    $query->orderByRaw('estoque.menor_preco IS NULL')->orderBy('estoque.menor_preco', 'asc'); 
+                    break;
+                case 'price_desc': 
+                    $query->orderByRaw('estoque.menor_preco IS NULL')->orderBy('estoque.menor_preco', 'desc'); 
+                    break;
+                case 'name_desc': 
+                    $query->orderBy('catalog_prints.printed_name', 'desc'); 
+                    break;
+                case 'name_asc': 
+                    $query->orderBy('catalog_prints.printed_name', 'asc'); 
+                    break;
+                case 'number_desc': 
+                    if (method_exists($presenter, 'applyNumberSort')) {
+                        $presenter->applyNumberSort($query, 'desc');
+                    } else {
+                        $query->orderByRaw("CAST(REGEXP_REPLACE(catalog_prints.collector_number, '[^0-9]', '') AS UNSIGNED) DESC");
+                    }
+                    break;
+                case 'number_asc': 
+                default: 
+                    if (method_exists($presenter, 'applyNumberSort')) {
+                        $presenter->applyNumberSort($query, 'asc');
+                    } else {
+                        $query->orderByRaw("CAST(REGEXP_REPLACE(catalog_prints.collector_number, '[^0-9]', '') AS UNSIGNED) ASC");
+                    }
+                    break;
             }
 
             $setCodeForTransform = strtoupper($this->set->code);
@@ -165,7 +185,7 @@ class SetPage extends Component
 
                 // --- APLICAÇÃO DO CONCEITO VIRTUAL (ISOLADO POR SET E ARTISTA) ---
                 if ($isArtVariant && !empty($carta->artist)) {
-                    static $artistIndexesCache = []; // RAM Cache
+                    static $artistIndexesCache = [];
                     $cid = $carta->concept_id;
                     $sid = $carta->set_id; 
                     $cacheKey = $cid . '_' . $sid;
@@ -205,7 +225,6 @@ class SetPage extends Component
                     $carta->concept_slug = \Str::slug($englishName . '-' . $nomeArtistaFinal);
 
                 } else {
-                    // CARTA NORMAL (Ou Terreno Básico)
                     $carta->nome_localizado = $globalPtName ?: $englishName;
                     $carta->name = sprintf('%s • #%s', $englishName, $carta->collector_number);
 
@@ -214,11 +233,17 @@ class SetPage extends Component
                         $tipoEncontrado = collect($tiposBasicos)->first(fn($t) => str_contains($carta->type_line, $t));
                         $carta->concept_slug = \Str::slug($tipoEncontrado ?: $englishName) . '-' . $carta->collector_number;
                     } else {
-                        $carta->concept_slug = \Str::slug($englishName);
+                        $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($this->game->id);
+                        $carta->concept_slug = $presenter->buildProductSlug($carta->concept, $carta);
                     }
                 }
 
-                $imagemBruta = $carta->image_url ?? $carta->image_path ?? $carta->concept->image_url ?? $carta->concept->image_path ?? 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
+                $rawPath = $carta->image_url ?? $carta->image_path ?? $carta->concept->image_url ?? $carta->concept->image_path ?? null;
+                if ($rawPath && method_exists($presenter, "resolveCardImage")) {
+                    $imagemBruta = $presenter->resolveCardImage($rawPath, $carta->menor_preco_extras);
+                } else {
+                    $imagemBruta = $rawPath ?? 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
+                }
                 $carta->imagem_final = filter_var($imagemBruta, FILTER_VALIDATE_URL) ? $imagemBruta : asset($imagemBruta);
                 $carta->foil = false; 
 

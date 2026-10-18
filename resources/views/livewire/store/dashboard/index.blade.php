@@ -1,9 +1,12 @@
 <div>
 @push('scripts')
 <script>
-function salesAnalytics() {
+function salesAnalytics(categories, mktSeries, storeSeries) {
     return {
         chart: null,
+        categories: categories || ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"],
+        mktData: mktSeries || [0, 0, 0, 0, 0, 0, 0],
+        storeData: storeSeries || [0, 0, 0, 0, 0, 0, 0],
         init() {
             this.renderChart();
             window.addEventListener('theme-changed', () => {
@@ -15,8 +18,8 @@ function salesAnalytics() {
             const isDark = document.documentElement.classList.contains('dark');
             const options = {
                 series: [
-                    { name: 'Versus Marketplace', data: [31, 40, 28, 51, 42, 109, 100] },
-                    { name: 'Loja Própria', data: [11, 32, 45, 32, 34, 52, 41] }
+                    { name: 'Versus Marketplace', data: this.mktData },
+                    { name: 'Loja Própria', data: this.storeData }
                 ],
                 chart: { type: 'area', height: 300, toolbar: { show: false }, background: 'transparent', fontFamily: 'Inter, sans-serif' },
                 colors: ['#ea580c', '#3b82f6'],
@@ -25,7 +28,7 @@ function salesAnalytics() {
                 fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.2, opacityTo: 0, stops: [0, 90, 100] } },
                 grid: { borderColor: isDark ? '#334155' : '#e2e8f0', strokeDashArray: 4, padding: { left: 20 } },
                 theme: { mode: isDark ? 'dark' : 'light' },
-                xaxis: { categories: ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"], axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: isDark ? '#94a3b8' : '#64748b' } } },
+                xaxis: { categories: this.categories, axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: isDark ? '#94a3b8' : '#64748b' } } },
                 yaxis: { labels: { style: { colors: isDark ? '#94a3b8' : '#64748b' } } },
                 legend: { show: false },
                 tooltip: { x: { show: false } }
@@ -263,25 +266,25 @@ function stockPieChart(breakdownData) {
     
     {{-- OS 4 CARDS SUPERIORES --}}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] hover:bg-[#f8fafc] dark:hover:bg-[#253045] p-5 border-l-4 border-l-orange-500 relative overflow-hidden group cursor-pointer">
+        <div class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] hover:bg-[#f8fafc] dark:hover:bg-[#253045] p-5 border-l-4 !border-l-orange-500 relative overflow-hidden group cursor-pointer">
             <div class="flex justify-between items-start">
-                <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Aguardando Envio</p><h3 class="text-3xl font-black mt-1 text-slate-900 dark:text-white">12</h3><p class="text-xs text-orange-400 mt-1 font-medium">8 Marketplace / 4 Loja</p></div>
+                <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Aguardando Envio</p><h3 class="text-3xl font-black mt-1 text-slate-900 dark:text-white">{{ $shippingCount }}</h3><p class="text-xs text-orange-400 mt-1 font-medium">R$ {{ number_format($shippingTotal, 2, ',', '.') }} &bull; {{ $shippingMktCount }} Mkt / {{ $shippingStoreCount }} Loja</p></div>
                 <div class="p-2 bg-orange-500/10 rounded-lg text-orange-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg></div>
             </div>
         </div>
-        <div class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] hover:bg-[#f8fafc] dark:hover:bg-[#253045] p-5 border-l-4 border-l-blue-500 relative overflow-hidden group cursor-pointer">
+        <div class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] hover:bg-[#f8fafc] dark:hover:bg-[#253045] p-5 border-l-4 !border-l-blue-500 relative overflow-hidden group cursor-pointer">
             <div class="flex justify-between items-start">
-                <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Retirada Balcão</p><h3 class="text-3xl font-black mt-1 text-slate-900 dark:text-white">3</h3><p class="text-xs text-blue-400 mt-1 font-medium">Clientes na loja hoje</p></div>
+                <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Retirada Balcão</p><h3 class="text-3xl font-black mt-1 text-slate-900 dark:text-white">{{ $pickupCount }}</h3><p class="text-xs text-blue-400 mt-1 font-medium">R$ {{ number_format($pickupTotal, 2, ',', '.') }} a retirar</p></div>
                 <div class="p-2 bg-blue-500/10 rounded-lg text-blue-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg></div>
             </div>
         </div>
-        <div class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] hover:bg-[#f8fafc] dark:hover:bg-[#253045] p-5 border-l-4 border-l-purple-500 relative overflow-hidden group cursor-pointer">
+        <div class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] hover:bg-[#f8fafc] dark:hover:bg-[#253045] p-5 border-l-4 !border-l-purple-500 relative overflow-hidden group cursor-pointer">
             <div class="flex justify-between items-start">
                 <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Buylist (Aprovar)</p><h3 class="text-3xl font-black mt-1 text-slate-900 dark:text-white">5</h3><p class="text-xs text-purple-400 mt-1 font-medium">R$ 1.200,00 em compra</p></div>
                 <div class="p-2 bg-purple-500/10 rounded-lg text-purple-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
         </div>
-        <div class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] hover:bg-[#f8fafc] dark:hover:bg-[#253045] p-5 border-l-4 border-l-green-500 relative overflow-hidden group cursor-pointer">
+        <div class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] hover:bg-[#f8fafc] dark:hover:bg-[#253045] p-5 border-l-4 !border-l-emerald-500 relative overflow-hidden group cursor-pointer">
             <div class="flex justify-between items-start">
                 <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pré-Vendas</p><h3 class="text-3xl font-black mt-1 text-slate-900 dark:text-white">28</h3><p class="text-xs text-green-400 mt-1 font-medium">Foundations (Release: 15/11)</p></div>
                 <div class="p-2 bg-green-500/10 rounded-lg text-green-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
@@ -290,8 +293,8 @@ function stockPieChart(breakdownData) {
     </div>
 
     {{-- BLOCO 2: VENDAS E PEDIDOS --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="salesAnalytics()">
-        <div class="lg:col-span-2 bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] p-6 transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" x-data="salesAnalytics({{ json_encode($chartCategories) }}, {{ json_encode($chartMarketplace) }}, {{ json_encode($chartStore) }})">
+        <div class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] p-6 transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="font-bold text-slate-900 dark:text-white">Desempenho de Vendas (7 Dias)</h3>
                 <div class="flex gap-4 text-xs font-bold">
@@ -302,28 +305,72 @@ function stockPieChart(breakdownData) {
             <div id="salesChart" class="h-[300px]"></div>
         </div>
     
-        <div class="lg:col-span-1 bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
-            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-transparent">
-                <h3 class="font-bold text-slate-900 dark:text-white uppercase text-xs tracking-widest">Últimos Pedidos</h3>
-                <a href="#" class="text-xs text-slate-400 hover:text-white transition-colors">Ver Todos</a>
+        <div class="bg-white dark:bg-[#1e293b] rounded-xl border-t border-r border-b border-slate-200 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col justify-between transition-all duration-300 ease-in-out hover:-translate-y-[2px] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+            <div>
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-transparent">
+                    <h3 class="font-bold text-slate-900 dark:text-white uppercase text-xs tracking-widest flex items-center gap-2">
+                        <span class="w-1 h-3.5 bg-sky-500 rounded-full"></span>
+                        Últimas Vendas
+                    </h3>
+                    <div class="text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-[340px] overflow-y-auto">
+                    <table class="w-full text-left text-xs text-slate-400">
+                        <thead class="text-[11px] font-bold text-slate-400 uppercase border-b border-slate-100 dark:border-slate-700 bg-transparent">
+                            <tr>
+                                <th class="px-4 py-2.5">Pedido</th>
+                                <th class="px-2 py-2.5">Data</th>
+                                <th class="px-2 py-2.5">Status</th>
+                                <th class="px-4 py-2.5 text-right">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                            @forelse($recentOrders as $recent)
+                                <tr class="bg-transparent transition-all duration-150 hover:bg-slate-100 dark:hover:bg-slate-700/40 cursor-pointer group" @click="Livewire.navigate('{{ route('store.dashboard.orders.show', ['slug' => request()->route('slug'), 'orderId' => $recent->id]) }}')\">
+                                    <td class="px-4 py-2.5 whitespace-nowrap">
+                                        <a href="{{ route('store.dashboard.orders.show', ['slug' => request()->route('slug'), 'orderId' => $recent->id]) }}" wire:navigate class="flex items-center gap-1.5 font-mono font-bold text-sky-500 hover:text-sky-400">
+                                            <span class="w-2 h-2 rounded-full shrink-0 {{ $recent->channel === 'marketplace' ? 'bg-orange-500' : 'bg-blue-500' }}"></span>
+                                            #{{ $recent->id }}
+                                        </a>
+                                    </td>
+                                    <td class="px-2 py-2.5 whitespace-nowrap text-slate-600 dark:text-slate-300 font-medium">
+                                        {{ $recent->created_at ? $recent->created_at->format('d/m/Y H:i') : '-' }}
+                                    </td>
+                                    <td class="px-2 py-2.5 whitespace-nowrap">
+                                        <span class="text-[10px] px-2 py-0.5 rounded font-semibold inline-block" style="color: {{ $recent->status_color }}; background-color: {{ $recent->status_color }}18;">
+                                            {{ $recent->status_name }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-right whitespace-nowrap font-bold text-slate-900 dark:text-white">
+                                        R$ {{ number_format($recent->total, 2, ',', '.') }}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="px-4 py-8 text-center text-xs text-slate-500">
+                                        Nenhum pedido recente registrado.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <div class="flex-1 overflow-y-auto max-h-[300px]">
-                <table class="w-full text-left text-sm text-slate-400">
-                    <tbody>
-                        <tr class="border-b border-slate-100 dark:border-slate-700 bg-transparent transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/40 cursor-pointer group">
-                            <td class="px-4 py-3"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-orange-500"></span><span class="font-mono text-slate-900 dark:text-white font-bold text-base">#9785</span></div><span class="text-[10px] text-slate-500">Há 5 min</span></td>
-                            <td class="px-4 py-3 text-right"><div class="font-bold text-slate-900 dark:text-white text-base">R$ 63,46</div><span class="text-[10px] text-green-500 bg-green-500/10 px-1.5 rounded">Pago</span></td>
-                        </tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700 bg-transparent transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/40 cursor-pointer group">
-                            <td class="px-4 py-3"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><span class="font-mono text-slate-900 dark:text-white font-bold text-base">#9784</span></div><span class="text-[10px] text-slate-500">Há 12 min</span></td>
-                            <td class="px-4 py-3 text-right"><div class="font-bold text-slate-900 dark:text-white text-base">R$ 150,00</div><span class="text-[10px] text-orange-500 bg-orange-500/10 px-1.5 rounded">Processando</span></td>
-                        </tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700 bg-transparent transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/40 cursor-pointer group">
-                            <td class="px-4 py-3"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span><span class="font-mono text-slate-900 dark:text-white font-bold text-base">#9783</span></div><span class="text-[10px] text-slate-500">Há 45 min</span></td>
-                            <td class="px-4 py-3 text-right"><div class="font-bold text-slate-900 dark:text-white text-base">R$ 25,00</div><span class="text-[10px] text-slate-500 bg-slate-700 px-1.5 rounded">Enviado</span></td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700/40 bg-transparent flex flex-wrap items-center gap-2">
+                <a href="{{ route('store.dashboard.orders.index', ['tab' => 'all']) }}" class="px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-sky-500 dark:hover:text-sky-400 transition-colors">
+                    Gerenciamento
+                </a>
+                <a href="{{ route('store.dashboard.orders.index', ['tab' => 'shipping']) }}" class="px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-sky-500 dark:hover:text-sky-400 transition-colors">
+                    Aguard. Envio
+                </a>
+                <a href="{{ route('store.dashboard.orders.index', ['tab' => 'pickup']) }}" class="px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-sky-500 dark:hover:text-sky-400 transition-colors">
+                    Aguard. Retirada
+                </a>
+                <a href="{{ route('store.dashboard.orders.index', ['tab' => 'preorder']) }}" class="px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-sky-500 dark:hover:text-sky-400 transition-colors">
+                    Itens Pre Order
+                </a>
             </div>
         </div>
     </div>

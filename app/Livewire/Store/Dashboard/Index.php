@@ -4,69 +4,112 @@ namespace App\Livewire\Store\Dashboard;
 
 use Livewire\Component;
 use App\Models\Store;
-use App\Models\StockItem;
 use App\Models\StoreStockSnapshot;
+use App\Models\OrderShipping;
+use App\Models\OrderItem;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\Layout;
 
 class Index extends Component
 {
-    // 1. DECLARAÇÃO DAS VARIÁVEIS
     public $slug;
     public $loja;
-    public $gameSlug;
-    public $inactiveSlug;
 
-    // 2. MOUNT
     public function mount($slug)
     {
         $this->slug = $slug;
         $this->loja = Store::where('url_slug', $slug)->firstOrFail();
-        $this->gameSlug = request()->query('game_slug', 'magic');
-        $this->inactiveSlug = ($this->gameSlug === 'magic') ? 'pokemon' : 'magic';
-    }
-
-    // 3. A FUNÇÃO DO BOTÃO "Atualizar Gráficos"
-    public function refreshStockData()
-    {
-        // A. Calcula Totais Gerais (TRAVAS: Apenas Cartas, maior que zero, não deletadas)
-        $stats = StockItem::where('store_id', $this->loja->id)
-            ->whereNotNull('catalog_print_id') // Ignora produtos selados
-            ->where('quantity', '>', 0)        // Ignora estoque zerado
-            ->whereNull('deleted_at')          // EXORCIZA as Black Lotus apagadas
-            ->selectRaw('SUM(quantity) as total_qty, SUM(quantity * COALESCE(price, 0)) as total_val')
-            ->first();
-
-        // B. Calcula Porcentagem por Jogo (Usando as mesmas travas)
-        $breakdown = StockItem::join('catalog_prints as cp', 'stock_items.catalog_print_id', '=', 'cp.id')
-            ->join('catalog_concepts as cc', 'cp.concept_id', '=', 'cc.id')
-            ->join('games as g', 'cc.game_id', '=', 'g.id')
-            ->where('stock_items.store_id', $this->loja->id)
-            ->where('stock_items.quantity', '>', 0)
-            ->whereNull('stock_items.deleted_at') // Trava de segurança no Join
-            ->selectRaw('g.name as game_name, SUM(stock_items.quantity) as qty, SUM(stock_items.quantity * COALESCE(stock_items.price, 0)) as value')
-            ->groupBy('g.name')
-            ->get()
-            ->keyBy('game_name')
-            ->toArray();
-
-        // C. Tira a fotografia de hoje FORÇANDO a gravação do array
-        $snapshot = StoreStockSnapshot::firstOrNew([
-            'store_id' => $this->loja->id, 
-            'snapshot_date' => now()->format('Y-m-d')
-        ]);
-        
-        $snapshot->total_items = $stats->total_qty ?? 0;
-        $snapshot->total_value = $stats->total_val ?? 0;
-        $snapshot->game_breakdown = $breakdown;
-        $snapshot->save();
-
-        return redirect()->route('store.dashboard', ['slug' => $this->slug]);
     }
 
     public function render()
     {
-        // Pega os 14 registros mais recentes, invertidos para o gráfico
+        $storeId = $this->loja->id;
+
+        // 1. CARDS OPERACIONAIS: PENDÊNCIAS FÍSICAS (exclui delivered e canceled)
+        // IDs dos status finais: 5 = delivered, 6 = canceled
+        $basePendingQuery = OrderShipping::with('order')
+            ->where('store_id', $storeId)
+            ->whereNotIn('shipping_status', ['delivered', 'canceled'])
+            ->where(function ($q) {
+                $q->whereNull('order_status_id')
+                  ->orWhereNotIn('order_status_id', [5, 6]);
+            });
+
+        // Card 1: Aguardando Envio (qualquer frete que NÃO seja retirada)
+        $pendingShippings = (clone $basePendingQuery)
+            ->where('shipping_method_key', '!=', 'retirada')
+            ->get();
+
+        $shippingCount = $pendingShippings->count();
+        $shippingMktCount = $pendingShippings->filter(fn($s) => optional($s->order)->channel === 'marketplace')->count();
+        $shippingStoreCount = $pendingShippings->filter(fn($s) => optional($s->order)->channel !== 'marketplace')->count();
+        
+        // Soma do valor dos itens pertencentes a essa loja nestes pedidos pendentes + o custo do frete
+        $pendingShippingOrderIds = $pendingShippings->pluck('order_id')->unique();
+        $shippingItemsTotal = OrderItem::where('store_id', $storeId)->whereIn('order_id', $pendingShippingOrderIds)->sum(DB::raw('unit_price * quantity'));
+        $shippingFreightTotal = $pendingShippings->sum('shipping_cost');
+        $shippingTotal = $shippingItemsTotal + $shippingFreightTotal;
+
+        // Card 2: Retirada Balcão (apenas método 'retirada')
+        $pendingPickups = (clone $basePendingQuery)
+            ->where('shipping_method_key', 'retirada')
+            ->get();
+
+        $pickupCount = $pendingPickups->count();
+        $pendingPickupOrderIds = $pendingPickups->pluck('order_id')->unique();
+        $pickupTotal = OrderItem::where('store_id', $storeId)->whereIn('order_id', $pendingPickupOrderIds)->sum(DB::raw('unit_price * quantity'));
+
+        // 2. DESEMPENHO DE VENDAS (ÚLTIMOS 7 DIAS)
+        $chartCategories = [];
+        $chartMarketplace = [];
+        $chartStore = [];
+
+        $diasSemanaMap = [
+            'Monday' => 'Seg', 'Tuesday' => 'Ter', 'Wednesday' => 'Qua',
+            'Thursday' => 'Qui', 'Friday' => 'Sex', 'Saturday' => 'Sab', 'Sunday' => 'Dom'
+        ];
+
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i);
+            $dayName = $diasSemanaMap[$date->format('l')] ?? $date->format('D');
+            $chartCategories[] = $dayName;
+
+            // Busca os shippings da loja criados neste dia com seus respectivos canais
+            $shippingsDay = OrderShipping::with('order')
+                ->where('store_id', $storeId)
+                ->whereDate('created_at', $date->toDateString())
+                ->get();
+
+            $mktShippings = $shippingsDay->filter(fn($s) => optional($s->order)->channel === 'marketplace');
+            $strShippings = $shippingsDay->filter(fn($s) => optional($s->order)->channel !== 'marketplace');
+
+            // Contagem de pedidos por dia por canal
+            $chartMarketplace[] = $mktShippings->pluck('order_id')->unique()->count();
+            $chartStore[] = $strShippings->pluck('order_id')->unique()->count();
+        }
+
+        // 3. ÚLTIMOS PEDIDOS (TABELA LATERAL - TOP 5)
+        $recentOrders = OrderShipping::with(['order.playerUser', 'status'])
+            ->where('store_id', $storeId)
+            ->latest('id')
+            ->take(10)
+            ->get()
+            ->map(function ($shipping) use ($storeId) {
+                $order = $shipping->order;
+                $itemsSum = OrderItem::where('store_id', $storeId)->where('order_id', $shipping->order_id)->sum(DB::raw('unit_price * quantity'));
+                $totalLoja = $itemsSum + $shipping->shipping_cost;
+
+                return (object)[
+                    'id' => $order ? $order->id : $shipping->id,
+                    'channel' => $order ? ($order->channel ?? 'marketplace') : 'marketplace',
+                    'created_at' => $shipping->created_at,
+                    'total' => $totalLoja,
+                    'status_name' => optional($shipping->status)->name ?? ($shipping->shipping_status === 'shipped' ? 'Enviado' : 'Processando'),
+                    'status_color' => optional($shipping->status)->color ?? '#f97316',
+                ];
+            });
+
+        // 4. EVOLUÇÃO DO ESTOQUE (14 DIAS)
         $snapshots = StoreStockSnapshot::where('store_id', $this->loja->id)
             ->orderBy('snapshot_date', 'desc')
             ->take(14)
@@ -75,9 +118,19 @@ class Index extends Component
             ->values();
 
         return view('livewire.store.dashboard.index', [
-            'snapshots' => $snapshots
+            'snapshots' => $snapshots,
+            'shippingCount' => $shippingCount,
+            'shippingTotal' => $shippingTotal,
+            'shippingMktCount' => $shippingMktCount,
+            'shippingStoreCount' => $shippingStoreCount,
+            'pickupCount' => $pickupCount,
+            'pickupTotal' => $pickupTotal,
+            'chartCategories' => $chartCategories,
+            'chartMarketplace' => $chartMarketplace,
+            'chartStore' => $chartStore,
+            'recentOrders' => $recentOrders,
         ])
-        ->extends('layouts.dashboard') 
-        ->section('content'); 
+        ->extends('layouts.dashboard')
+        ->section('content');
     }
 }

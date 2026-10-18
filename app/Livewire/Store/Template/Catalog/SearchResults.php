@@ -162,7 +162,8 @@ class SearchResults extends Component
                         $nomePt .= ' #' . $vNum;
                         $conceptSlug = Str::slug($hit['name']) . '-' . $vNum;
                     } else {
-                        $conceptSlug = $this->cleanSlug($hit['slug'] ?? Str::slug($nomeEn));
+                        $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($gameId);
+                    $conceptSlug = $presenter->buildProductSlug($hit, $printInfo, $vNum);
                     }
 
                     $imagemFinal = $printInfo->image_path
@@ -240,20 +241,20 @@ class SearchResults extends Component
         )->sortByDesc('id')->first();
 
         $nomePt = $printPt->printed_name ?? $hit['name_pt'] ?? $nomeEn;
-        if ($vNum) {
-            $nomePt .= ' #' . $vNum;
-            $nomeEn .= ' #' . $vNum;
-        }
+
+        $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($hit['game_id'] ?? 1);
+        $titles = $presenter->buildDisplayTitles($nomeEn, $nomePt, $printImg, $vNum);
+        $displayEn = $titles['en'];
+        $displayPt = $titles['pt'];
+        $conceptSlug = $presenter->buildProductSlug($hit, $printImg, $vNum);
 
         $imagemFinal = $printImg && !empty($printImg->image_path)
             ? (filter_var($printImg->image_path, FILTER_VALIDATE_URL) ? $printImg->image_path : asset($printImg->image_path))
             : 'https://placehold.co/250x350/eeeeee/999999?text=X';
 
-        $conceptSlug = $this->cleanSlug($hit['slug'] ?? Str::slug($hit['name'] ?? ''));
-
         return [
-            'nome_localizado' => $nomePt,
-            'name'            => $nomeEn,
+            'nome_localizado' => $displayPt,
+            'name'            => $displayEn,
             'set_name'        => $printImg?->set?->name ?? 'Coleção Global',
             'imagem_final'    => $imagemFinal,
             'status'          => 'ghost',

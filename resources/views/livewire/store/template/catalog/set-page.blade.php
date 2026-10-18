@@ -152,7 +152,7 @@
                          class="flex flex-col rounded-xl border transition-all duration-300 relative opacity-60 grayscale-[80%] hover:grayscale-[50%] bg-black/5 dark:bg-white/5 border-gray-200/50 dark:border-slate-700/50 cursor-default"
                          :class="hover ? 'z-[50] shadow-md' : 'z-10'">
                         <div class="relative p-3 pb-0 overflow-visible">
-                            <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-auto aspect-[2.5/3.5] object-cover rounded-lg shadow-sm transition-all duration-500 relative z-50" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
+                            <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-auto aspect-[2.5/3.5] object-contain rounded-lg shadow-sm transition-all duration-500 relative z-50" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
                         </div>
                         <div class="p-3 flex flex-col flex-grow justify-between gap-3">
                             <div>
@@ -194,7 +194,7 @@
                             {{-- WRAPPER DA IMAGEM PARA O EFEITO FOIL (Mantém o zoom nativo) --}}
                             <div class="w-full h-auto aspect-[2.5/3.5] rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-500 transform relative z-50 bg-gray-100 dark:bg-gray-800 {{ $isFoil || $isEtched ? 'efeito-foil-suave border border-yellow-400/50' : '' }}" 
                                  :class="hover ? 'scale-[2] shadow-2xl ring-2 ring-black/10' : ''">
-                                <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-full object-cover rounded-lg" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
+                                <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-full object-contain rounded-lg" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
                             </div>
 
                         </div>
@@ -248,7 +248,7 @@
                             {{-- WRAPPER DA IMAGEM PARA O EFEITO FOIL --}}
                             <div class="w-full h-auto aspect-[2.5/3.5] rounded-lg shadow-sm transition-all duration-500 transform relative z-50 bg-gray-100 dark:bg-gray-800 {{ $isFoil || $isEtched ? 'efeito-foil-suave border border-yellow-400/50' : '' }}" 
                                  :class="hover ? 'scale-[1.7] shadow-xl ring-1 ring-black/10' : ''">
-                                <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-full object-cover rounded-lg" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
+                                <img src="{{ $carta->imagem_final }}" alt="{{ $carta->nome_localizado }}" class="w-full h-full object-contain rounded-lg" onerror="this.onerror=null; this.src='https://placehold.co/250x350/eeeeee/999999?text=Erro+na+Foto';">
                             </div>
 
                         </div>

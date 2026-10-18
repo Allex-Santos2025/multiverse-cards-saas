@@ -15,4 +15,6 @@ interface GamePresenterInterface
     public function resolveMatchingPrints(Collection $allPrints, string $conceptSlug): Collection;
     public function resolveProductData(string $conceptSlug): array;
     public function formatPublicSlug(string $slug, ?string $conceptName = null): string;
+    public function getAvailableStockExtras(): array;
+    public function getPrintVariantKey($print): string;
 }

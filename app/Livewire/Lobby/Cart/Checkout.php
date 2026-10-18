@@ -427,6 +427,7 @@ class Checkout extends Component
             // 1. CRIAÇÃO DO PEDIDO (ORDER)
             $order = Order::create([
                 'player_user_id' => Auth::guard('player')->id(),
+                'channel' => $this->isMarketplace ? 'marketplace' : 'store',
                 'total_amount' => $this->totalGeral,
                 'payment_method' => 'pix',
                 'payment_status' => 'pending', 
@@ -481,7 +482,8 @@ class Checkout extends Component
                         'shipping_method_name' => $this->fretesPorLoja[$storeId][$metodoChave]['nome'],
                         'shipping_cost' => $this->fretesPorLoja[$storeId][$metodoChave]['valor'],
                         'destination_zip_code' => $this->cepDestino,
-                        'shipping_status' => 'pending'
+                        'shipping_status' => 'pending',
+                        'order_status_id' => 2
                     ]);
                 }
             }

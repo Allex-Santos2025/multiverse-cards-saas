@@ -72,12 +72,9 @@ class PokemonTcgApiService
             $technicalId = $apiSet['id']; // Ex: 'swsh3', 'base1'
             $displayCode = strtoupper($apiSet['id']);
 
-            $totalCards = 0;
-            if (isset($apiSet['cardCount']['total'])) {
-                $totalCards = (int) $apiSet['cardCount']['total'];
-            } elseif (isset($apiSet['total'])) {
-                $totalCards = (int) $apiSet['total'];
-            }
+            $officialCards = (int) ($apiSet['cardCount']['official'] ?? 0);
+            $totalCards = (int) ($apiSet['cardCount']['total'] ?? $apiSet['total'] ?? 0);
+            $cardCount = $officialCards > 0 ? $officialCards : $totalCards;
 
             $icon = $apiSet['logo'] ?? $apiSet['symbol'] ?? null;
 

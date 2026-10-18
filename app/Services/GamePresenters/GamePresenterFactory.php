@@ -15,7 +15,9 @@ class GamePresenterFactory
         return match ($gameId) {
             1 => new MagicPresenter($concept, $activePrint, $localizedName),
             2 => new PokemonPresenter($concept, $activePrint, $localizedName),
+            3 => new YugiohPresenter($concept, $activePrint, $localizedName),
             4 => new BattleScenesPresenter($concept, $activePrint, $localizedName),
+            5 => new OnePiecePresenter($concept, $activePrint, $localizedName),
             default => new MagicPresenter($concept, $activePrint, $localizedName),
         };
     }

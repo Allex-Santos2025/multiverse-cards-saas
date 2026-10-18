@@ -135,20 +135,61 @@ class PokemonPresenter implements GamePresenterInterface
     public function resolveProductData(string $conceptSlug): array
     {
         $cleanSlug = $conceptSlug;
+        $collectorNumber = null;
+        $totalCards = null;
+
         if (preg_match('/^(.*?)-(\d+[a-zA-Z]?)-(\d+)$/', $conceptSlug, $m)) {
             $cleanSlug = $m[1];
+            $collectorNumber = $m[2];
+            $totalCards = (int) $m[3];
         } elseif (preg_match('/^(.*?)-(\d+[a-zA-Z]?)$/', $conceptSlug, $m)) {
             $cleanSlug = $m[1];
+            $collectorNumber = $m[2];
         }
 
-        $concept = \App\Models\Catalog\CatalogConcept::where('game_id', 2)
-            ->where(function ($q) use ($cleanSlug, $conceptSlug) {
-                $q->where('slug', $cleanSlug)
-                  ->orWhere('slug', $conceptSlug)
-                  ->orWhere('name', 'like', str_replace('-', ' ', $cleanSlug));
-            })
+        $concept = null;
+
+        // 1. Tenta achar primeiro pelo slug exato do conceito
+        $concept = CatalogConcept::where('game_id', 2)
+            ->where('slug', $conceptSlug)
             ->with(['specific', 'prints', 'prints.set'])
             ->first();
+
+        // 2. Se a URL veio no formato amigavel (ex: ampharos-1-111), localiza o print correspondente para pegar seu conceito exato
+        if (!$concept && $collectorNumber) {
+            $matchingPrint = CatalogPrint::whereHas('concept', fn($q) => $q->where('game_id', 2))
+                ->where('collector_number', $collectorNumber)
+                ->where(function ($q) use ($cleanSlug) {
+                    $cleanLike = '%' . str_replace('-', '%', $cleanSlug) . '%';
+                    $q->whereHas('concept', function ($cq) use ($cleanSlug, $cleanLike) {
+                          $cq->where('slug', 'like', "{$cleanSlug}%")
+                             ->orWhere('name', 'like', $cleanLike);
+                      });
+                })
+                ->when($totalCards, function ($q) use ($totalCards) {
+                    $q->whereHas('set', fn($sq) => $sq->where('card_count', $totalCards));
+                })
+                ->orderByRaw("CASE WHEN language_code = 'en' THEN 0 WHEN language_code IN ('pt', 'pt-br') THEN 1 ELSE 2 END")
+                ->first();
+
+            if ($matchingPrint) {
+                $concept = CatalogConcept::where('id', $matchingPrint->concept_id)
+                    ->with(['specific', 'prints', 'prints.set'])
+                    ->first();
+            }
+        }
+
+        // 3. Fallback de busca limpa
+        if (!$concept) {
+            $concept = CatalogConcept::where('game_id', 2)
+                ->where(function ($q) use ($cleanSlug, $conceptSlug) {
+                    $q->where('slug', $cleanSlug)
+                      ->orWhere('slug', $conceptSlug)
+                      ->orWhere('name', 'like', str_replace('-', ' ', $cleanSlug));
+                })
+                ->with(['specific', 'prints', 'prints.set'])
+                ->first();
+        }
 
         if (!$concept) {
             abort(404, 'Carta de Pokémon não encontrada no catálogo.');
@@ -161,7 +202,11 @@ class PokemonPresenter implements GamePresenterInterface
         $this->localizedName = $printPt ? $printPt->printed_name : $concept->name;
 
         $this->activePrint = $matchingPrints->firstWhere(fn($p) => strtolower($p->language_code) === 'en') ?? $matchingPrints->first();
-        $cardDetails = \Illuminate\Support\Facades\DB::table('pk_prints')->where('id', $this->activePrint?->specific_id)->first();
+
+        // Une os dados de regras (pk_concepts) com os dados da estampa física (pk_prints)
+        $pkConceptData = (array) (DB::table('pk_concepts')->where('id', $concept->specific_id)->first() ?? []);
+        $pkPrintData = (array) (DB::table('pk_prints')->where('id', $this->activePrint?->specific_id)->first() ?? []);
+        $cardDetails = (object) array_merge($pkPrintData, $pkConceptData);
 
         return [
             'concept'        => $this->concept,
@@ -249,7 +294,7 @@ class PokemonPresenter implements GamePresenterInterface
 
     public function getRulesHtml(): string
     {
-        $conceptData = $this->concept?->specific;
+        $conceptData = $this->concept?->specific ?? $this->activePrint?->concept?->specific;
         $html = "";
 
         if (!empty($conceptData?->abilities)) {
@@ -301,7 +346,7 @@ class PokemonPresenter implements GamePresenterInterface
     public function getTechnicalAttributes(): array
     {
         $attrs = [];
-        $conceptData = $this->concept?->specific;
+        $conceptData = $this->concept?->specific ?? $this->activePrint?->concept?->specific;
         $printData = $this->activePrint?->specific;
 
         if (!empty($conceptData?->hp)) {
@@ -338,5 +383,10 @@ class PokemonPresenter implements GamePresenterInterface
         }
 
         return $attrs;
+    }
+
+    public function getAvailableStockExtras(): array
+    {
+        return \App\Enums\PokemonStockExtra::options();
     }
 }

@@ -397,11 +397,13 @@ class ProductPage extends Component
                     }
                 }
 
-                $imagemBruta = $carta->image_url
-                    ?? $carta->image_path
-                    ?? $carta->concept->image_url
-                    ?? $carta->concept->image_path
-                    ?? 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
+                $rawPath = $carta->image_url ?? $carta->image_path ?? $carta->concept->image_url ?? $carta->concept->image_path ?? null;
+                $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($this->game->id);
+                if ($rawPath && method_exists($presenter, "resolveCardImage")) {
+                    $imagemBruta = $presenter->resolveCardImage($rawPath, $carta->menor_preco_extras ?? null);
+                } else {
+                    $imagemBruta = $rawPath ?? 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
+                }
 
                 $carta->imagem_final = filter_var($imagemBruta, FILTER_VALIDATE_URL)
                     ? $imagemBruta

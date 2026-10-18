@@ -466,9 +466,11 @@
                         >
                             @php
                                 try {
-                                    $options = \App\Enums\StockExtra::options();
+                                    $gameId = $print->concept?->game_id ?? $print->set?->game_id ?? 1;
+                                    $presenter = \App\Services\GamePresenters\GamePresenterFactory::make($gameId);
+                                    $options = $presenter->getAvailableStockExtras();
                                 } catch (\Throwable $e) {
-                                    $options = ['foil' => 'Foil', 'etched' => 'Etched', 'promo' => 'Promo', 'textless' => 'Textless'];
+                                    $options = \App\Enums\StockExtra::options();
                                 }
                             @endphp
 

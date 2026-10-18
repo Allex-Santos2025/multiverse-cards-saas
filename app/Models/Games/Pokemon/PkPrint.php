@@ -22,12 +22,17 @@ class PkPrint extends Model
         'images',      // URLs originais da API
         'tcgplayer',   // Preços
         'cardmarket',  // Preços
+        'attacks',
+        'abilities',
+        'rules_text',
     ];
 
     protected $casts = [
         'images' => 'array',
         'tcgplayer' => 'array',
         'cardmarket' => 'array',
+        'attacks' => 'array',
+        'abilities' => 'array',
     ];
 
     public function catalogPrint(): MorphOne

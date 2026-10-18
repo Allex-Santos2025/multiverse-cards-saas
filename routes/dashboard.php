@@ -24,6 +24,10 @@ Route::get('/', Index::class)->name('store.dashboard');
 
 // 2. ROTAS INTERNAS DO DASHBOARD
 Route::name('store.dashboard.')->group(function () {
+    // --- GERENCIAMENTO DE PEDIDOS ---
+    Route::get('/pedidos', \App\Livewire\Store\Dashboard\OrdersIndex::class)->name('orders.index');
+    Route::get('/pedidos/{orderId}', \App\Livewire\Store\Dashboard\OrderDetail::class)->name('orders.show');
+
 
     // --- HISTÓRICO DE ESTOQUE ---
     Route::get('/historico-estoque', StockHistory::class)->name('stock.history');
