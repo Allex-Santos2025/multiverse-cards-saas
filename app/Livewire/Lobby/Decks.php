@@ -2,58 +2,110 @@
 
 namespace App\Livewire\Lobby;
 
+use App\Models\Game;
+use App\Models\PlayerDeck;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class Decks extends Component
 {
-    // A prateleira de decks do player
-    public $meusDecks = [
-        [
-            'id' => 1,
-            'nome' => 'Krenko, Mob Boss',
-            'jogo' => 'Magic: The Gathering',
-            'jogo_cor' => 'bg-amber-600',
-            'formato' => 'Commander',
-            'cores' => ['bg-red-500'], // Representação de mana Red
-            'vitorias' => 24,
-            'derrotas' => 12,
-            'cartas_atuais' => 100,
-            'cartas_total' => 100,
-            'status' => 'Legal',
-            'status_cor' => 'text-emerald-500 bg-emerald-50'
-        ],
-        [
-            'id' => 2,
-            'nome' => 'Charizard ex Turbo',
-            'jogo' => 'Pokémon TCG',
-            'jogo_cor' => 'bg-blue-600',
-            'formato' => 'Standard',
-            'cores' => ['bg-orange-500', 'bg-slate-800'], // Representação de tipos (Fire/Dark)
-            'vitorias' => 15,
-            'derrotas' => 8,
-            'cartas_atuais' => 57,
-            'cartas_total' => 60,
-            'status' => 'Faltam 3 Cartas',
-            'status_cor' => 'text-red-500 bg-red-50'
-        ],
-        [
-            'id' => 3,
-            'nome' => 'Azorius Control',
-            'jogo' => 'Magic: The Gathering',
-            'jogo_cor' => 'bg-amber-600',
-            'formato' => 'Modern',
-            'cores' => ['bg-yellow-100', 'bg-blue-500'], // White/Blue
-            'vitorias' => 8,
-            'derrotas' => 15,
-            'cartas_atuais' => 60,
-            'cartas_total' => 60,
-            'status' => 'Legal',
-            'status_cor' => 'text-emerald-500 bg-emerald-50'
-        ]
+    public ?int $activeDeckId = null;
+    public ?int $sandboxDeckId = null;
+
+    public bool $modalCreateDeck = false;
+    public string $newDeckName = '';
+    public ?int $newDeckGameId = null;
+    public string $newDeckFormat = 'constructed';
+
+    protected $listeners = [
+        'refreshDecks'     => '$refresh',
+        'closeSandboxMode' => 'closeSandbox',
     ];
+
+    public function openDeckBuilder(int $deckId): void
+    {
+        $this->sandboxDeckId = null;
+        $this->dispatch('sandbox-mode-changed', false);
+        $this->activeDeckId = $deckId;
+    }
+
+    public function closeDeckBuilder(): void
+    {
+        $this->activeDeckId = null;
+    }
+
+    public function openSandbox(int $deckId): void
+    {
+        $this->activeDeckId = null;
+        $this->sandboxDeckId = $deckId;
+        $this->dispatch('sandbox-mode-changed', true);
+    }
+
+    public function closeSandbox(): void
+    {
+        $this->sandboxDeckId = null;
+        $this->dispatch('sandbox-mode-changed', false);
+    }
+
+    public function openCreateDeckModal(): void
+    {
+        $firstGame = Game::first();
+        $this->newDeckGameId = $firstGame ? $firstGame->id : null;
+        $this->newDeckName = '';
+        $this->newDeckFormat = 'constructed';
+        $this->modalCreateDeck = true;
+    }
+
+    public function saveNewDeck(): void
+    {
+        $this->validate([
+            'newDeckName'   => 'required|min:2|max:60',
+            'newDeckGameId' => 'required|exists:games,id',
+        ]);
+
+        $playerId = Auth::guard('player')->id();
+
+        $deck = PlayerDeck::create([
+            'player_user_id' => $playerId,
+            'game_id'        => $this->newDeckGameId,
+            'name'           => $this->newDeckName,
+            'format'         => $this->newDeckFormat,
+        ]);
+
+        $this->modalCreateDeck = false;
+        $this->activeDeckId = $deck->id;
+    }
+
+    public function deleteDeck(int $deckId): void
+    {
+        PlayerDeck::where('id', $deckId)
+            ->where('player_user_id', Auth::guard('player')->id())
+            ->delete();
+
+        if ($this->activeDeckId === $deckId) {
+            $this->activeDeckId = null;
+        }
+        if ($this->sandboxDeckId === $deckId) {
+            $this->sandboxDeckId = null;
+            $this->dispatch('sandbox-mode-changed', false);
+        }
+    }
 
     public function render()
     {
-        return view('livewire.lobby.decks');
+        $playerId = Auth::guard('player')->id();
+
+        $decks = PlayerDeck::where('player_user_id', $playerId)
+            ->with(['game', 'cards'])
+            ->withSum('cards', 'quantity')
+            ->latest()
+            ->get();
+
+        $games = Game::all();
+
+        return view('livewire.lobby.decks', [
+            'decks' => $decks,
+            'games' => $games,
+        ]);
     }
 }

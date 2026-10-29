@@ -5,6 +5,7 @@ namespace App\Models\Catalog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Scout\Searchable;
 use App\Models\Set;
 
@@ -62,6 +63,12 @@ class CatalogPrint extends Model
     {
         return $this->hasMany(\App\Models\StockItem::class, 'catalog_print_id')
             ->where('store_id', auth('store_user')->user()->store_id ?? 0);
+    }
+
+    // Relacionamento com os itens de acervo do jogador
+    public function collectionItems(): HasMany
+    {
+        return $this->hasMany(\App\Models\PlayerCollectionItem::class, 'catalog_print_id');
     }
 
     // Relação Polimórfica: Traz os dados físicos específicos

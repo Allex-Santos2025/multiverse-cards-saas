@@ -17,4 +17,10 @@ interface GamePresenterInterface
     public function formatPublicSlug(string $slug, ?string $conceptName = null): string;
     public function getAvailableStockExtras(): array;
     public function getPrintVariantKey($print): string;
+
+    // === DECK BUILDER, SANDBOX & PREÇOS (MULTI-GAME) ===
+    public function getDeckZones(?string $format = null): array;
+    public function getDeckFormats(): array;
+    public function getDeckValidationRules(?string $format = null): array;
+    public function getPrintMarketPrice(CatalogPrint $print, array $extras = []): float;
 }

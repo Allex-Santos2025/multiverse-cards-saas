@@ -15,7 +15,7 @@
         <div class="h-10 sm:h-16 w-full"></div>
     @endif
 
-    <div class="py-10 max-w-7xl mx-auto w-full px-4">
+    <div class="py-10 {{ $sandboxOpen ? 'max-w-[98%]' : 'max-w-7xl' }} mx-auto w-full px-4 transition-all duration-300">
         
         <h1 class="text-3xl font-black text-gray-900 mb-8 tracking-tighter">
             Minha Conta
@@ -30,7 +30,6 @@
                     {{-- ÁREA DE PERFIL --}}
                     <div class="p-6 flex flex-col items-center border-b border-slate-100">
                         <div class="w-20 h-20 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center mb-3 relative shadow-sm">
-                            {{-- Lógica da Foto vs Emoji implementada aqui --}}
                             @if ($playerAvatar)
                                 <img src="{{ asset($playerAvatar) }}" alt="Avatar" class="w-full h-full object-cover rounded-full">
                             @else
@@ -43,7 +42,9 @@
                         </h2>
                         <div class="flex items-center gap-1.5 mt-1">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Crédito: R$ 150,00</span>
+                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
+                                Crédito: R$ {{ number_format((float) ($playerCredit ?? 0), 2, ',', '.') }}
+                            </span>
                         </div>
                     </div>
 
@@ -116,7 +117,6 @@
                 @elseif($abaAtiva === 'carteira')
                     <livewire:lobby.carteira />
                 @else
-                    {{-- Caso de segurança para abas não mapeadas --}}
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 min-h-[600px]">
                         <h2 class="text-xl font-bold text-gray-900 mb-4 capitalize">Minha {{ $abaAtiva }}</h2>
                         <p class="text-sm text-gray-500">Conteúdo em desenvolvimento...</p>

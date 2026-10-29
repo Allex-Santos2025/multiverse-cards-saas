@@ -148,7 +148,6 @@ class MagicPresenter implements GamePresenterInterface
             ];
         }
 
-        // Cartas normais
         $conceptFound = CatalogConcept::where('game_id', 1)
             ->where('slug', $conceptSlug)
             ->with(['specific', 'prints', 'prints.set'])
@@ -354,5 +353,75 @@ class MagicPresenter implements GamePresenterInterface
     public function getAvailableStockExtras(): array
     {
         return \App\Enums\StockExtra::options();
+    }
+
+    // === DECK BUILDER, SANDBOX & PREÇOS ===
+    public function getDeckFormats(): array
+    {
+        return [
+            'commander' => 'Commander (EDH)',
+            'standard'  => 'Standard (Padrão)',
+            'modern'    => 'Modern',
+            'pioneer'   => 'Pioneer',
+            'pauper'    => 'Pauper',
+            'legacy'    => 'Legacy',
+            'vintage'   => 'Vintage',
+        ];
+    }
+
+    public function getDeckZones(?string $format = null): array
+    {
+        if (strtolower((string)$format) === 'commander') {
+            return [
+                'commander' => ['label' => 'Comandante', 'min' => 1, 'max' => 2],
+                'mainboard' => ['label' => 'Deck Principal', 'min' => 98, 'max' => 99],
+                'sideboard' => ['label' => 'Sideboard / Talismãs', 'min' => 0, 'max' => 10],
+            ];
+        }
+
+        return [
+            'mainboard' => ['label' => 'Deck Principal', 'min' => 60, 'max' => null],
+            'sideboard' => ['label' => 'Sideboard', 'min' => 0, 'max' => 15],
+        ];
+    }
+
+    public function getDeckValidationRules(?string $format = null): array
+    {
+        $isCommander = strtolower((string)$format) === 'commander';
+        return [
+            'total_cards_exact'  => $isCommander ? 100 : null,
+            'min_mainboard'      => $isCommander ? 98 : 60,
+            'max_copies_default' => $isCommander ? 1 : 4,
+            'exempt_types'       => ['Basic Land', 'Terreno Básico'],
+        ];
+    }
+
+    public function getPrintMarketPrice(CatalogPrint $print, array $extras = []): float
+    {
+        $specific = $print->specific;
+        if (!$specific && class_exists($print->specific_type)) {
+            $specific = ($print->specific_type)::find($print->specific_id);
+        }
+
+        if (!$specific || empty($specific->prices)) {
+            return 0.00;
+        }
+
+        $prices = is_array($specific->prices) ? $specific->prices : json_decode($specific->prices, true);
+        if (!is_array($prices)) return 0.00;
+
+        $isFoil = in_array('foil', array_map('strtolower', $extras));
+        $usdRate = 5.60;
+
+        $usd = null;
+        if ($isFoil && !empty($prices['usd_foil'])) {
+            $usd = (float) $prices['usd_foil'];
+        } elseif (!empty($prices['usd'])) {
+            $usd = (float) $prices['usd'];
+        } elseif (!empty($prices['eur'])) {
+            $usd = (float) $prices['eur'] * 1.08;
+        }
+
+        return $usd ? round($usd * $usdRate, 2) : 0.00;
     }
 }

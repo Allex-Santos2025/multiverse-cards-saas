@@ -66,7 +66,6 @@ class PokemonPresenter implements GamePresenterInterface
         $targetPrint = null;
         $targetSlug = request('card') ?: $conceptSlug;
 
-        // 1. Padrão canônico de Pokémon: {nome}-{numero}-{total} (ex: kabuto-38-129)
         if (preg_match('/-(\d+[a-zA-Z]?)-(\d+)$/', $targetSlug, $m)) {
             $num = $m[1];
             $total = (int) $m[2];
@@ -82,7 +81,6 @@ class PokemonPresenter implements GamePresenterInterface
             }
         }
 
-        // 2. URL ou parâmetro com indicador explícito de set/número (ex: aerodactyl-base3-1)
         if (!$targetPrint && preg_match('/-([a-zA-Z0-9]+)-(\d+[a-zA-Z]?)$/', $targetSlug, $m)) {
             $setCodeOrApi = strtolower($m[1]);
             $num = $m[2];
@@ -94,13 +92,11 @@ class PokemonPresenter implements GamePresenterInterface
             });
         }
 
-        // 3. Se a URL traz apenas o número no final (ex: kabuto-38)
         if (!$targetPrint && preg_match('/-(\d+[a-zA-Z]?)$/', $targetSlug, $m)) {
             $num = $m[1];
             $targetPrint = $allPrints->firstWhere('collector_number', $num);
         }
 
-        // 4. Se a URL é limpa (ex: aerodactyl), tenta pegar pelo slug gravado no conceito
         if (!$targetPrint) {
             $conceptSlugBanco = $this->concept->slug ?? '';
             if (preg_match('/-([a-zA-Z0-9]+)-(\d+[a-zA-Z]?)$/', $conceptSlugBanco, $m)) {
@@ -147,15 +143,11 @@ class PokemonPresenter implements GamePresenterInterface
             $collectorNumber = $m[2];
         }
 
-        $concept = null;
-
-        // 1. Tenta achar primeiro pelo slug exato do conceito
         $concept = CatalogConcept::where('game_id', 2)
             ->where('slug', $conceptSlug)
             ->with(['specific', 'prints', 'prints.set'])
             ->first();
 
-        // 2. Se a URL veio no formato amigavel (ex: ampharos-1-111), localiza o print correspondente para pegar seu conceito exato
         if (!$concept && $collectorNumber) {
             $matchingPrint = CatalogPrint::whereHas('concept', fn($q) => $q->where('game_id', 2))
                 ->where('collector_number', $collectorNumber)
@@ -179,7 +171,6 @@ class PokemonPresenter implements GamePresenterInterface
             }
         }
 
-        // 3. Fallback de busca limpa
         if (!$concept) {
             $concept = CatalogConcept::where('game_id', 2)
                 ->where(function ($q) use ($cleanSlug, $conceptSlug) {
@@ -203,7 +194,6 @@ class PokemonPresenter implements GamePresenterInterface
 
         $this->activePrint = $matchingPrints->firstWhere(fn($p) => strtolower($p->language_code) === 'en') ?? $matchingPrints->first();
 
-        // Une os dados de regras (pk_concepts) com os dados da estampa física (pk_prints)
         $pkConceptData = (array) (DB::table('pk_concepts')->where('id', $concept->specific_id)->first() ?? []);
         $pkPrintData = (array) (DB::table('pk_prints')->where('id', $this->activePrint?->specific_id)->first() ?? []);
         $cardDetails = (object) array_merge($pkPrintData, $pkConceptData);
@@ -388,5 +378,62 @@ class PokemonPresenter implements GamePresenterInterface
     public function getAvailableStockExtras(): array
     {
         return \App\Enums\PokemonStockExtra::options();
+    }
+
+    // === DECK BUILDER, SANDBOX & PREÇOS ===
+    public function getDeckFormats(): array
+    {
+        return [
+            'standard' => 'Padrão (Standard)',
+            'expanded' => 'Expandido (Expanded)',
+            'glc'      => 'Gym Leader Challenge (GLC)',
+        ];
+    }
+
+    public function getDeckZones(?string $format = null): array
+    {
+        return [
+            'mainboard' => ['label' => 'Deck Principal (60 Cartas)', 'min' => 60, 'max' => 60],
+        ];
+    }
+
+    public function getDeckValidationRules(?string $format = null): array
+    {
+        $isGlc = strtolower((string)$format) === 'glc';
+        return [
+            'total_cards_exact'  => 60,
+            'min_mainboard'      => 60,
+            'max_copies_default' => $isGlc ? 1 : 4,
+            'exempt_types'       => ['Basic Energy', 'Energia Básica'],
+        ];
+    }
+
+    public function getPrintMarketPrice(CatalogPrint $print, array $extras = []): float
+    {
+        $specific = $print->specific;
+        if (!$specific && class_exists($print->specific_type)) {
+            $specific = ($print->specific_type)::find($print->specific_id);
+        }
+
+        if (!$specific || empty($specific->prices)) {
+            return 0.00;
+        }
+
+        $prices = is_array($specific->prices) ? $specific->prices : json_decode($specific->prices, true);
+        if (!is_array($prices)) return 0.00;
+
+        $usdRate = 5.60;
+        $isHolo = in_array('holo', array_map('strtolower', $extras)) || in_array('reverse_holo', array_map('strtolower', $extras));
+
+        $val = null;
+        if ($isHolo && !empty($prices['holofoil']['market'])) {
+            $val = (float) $prices['holofoil']['market'];
+        } elseif (!empty($prices['normal']['market'])) {
+            $val = (float) $prices['normal']['market'];
+        } elseif (!empty($prices['averageSellPrice'])) {
+            $val = (float) $prices['averageSellPrice'];
+        }
+
+        return $val ? round($val * $usdRate, 2) : 0.00;
     }
 }

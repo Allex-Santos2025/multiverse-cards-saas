@@ -13,6 +13,7 @@ class LobbyIndex extends Component
     public $abaAtiva; 
     public $loja = null;
     public $isMarketplace = false;
+    public bool $sandboxOpen = false;
 
     // Dados do Player para o Aside
     public $playerName;
@@ -67,5 +68,11 @@ class LobbyIndex extends Component
             'loja' => $this->loja, 
             'isMarketplace' => $this->isMarketplace
         ]);
+    }
+
+    #[On('sandbox-mode-changed')]
+    public function toggleSandboxMode(bool $isOpen): void
+    {
+        $this->sandboxOpen = $isOpen;
     }
 }

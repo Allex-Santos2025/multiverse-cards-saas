@@ -55,7 +55,6 @@ class BattleScenesPresenter implements GamePresenterInterface
         $targetPrint = null;
         $targetSlug = request('card') ?: $conceptSlug;
 
-        // 1. Padrão canônico: {slug}-{numero}-{total}
         if (preg_match('/-(\d+[a-zA-Z]?)-(\d+)$/', $targetSlug, $m)) {
             $num = $m[1];
             $total = (int) $m[2];
@@ -71,7 +70,6 @@ class BattleScenesPresenter implements GamePresenterInterface
             }
         }
 
-        // 2. Se a URL traz apenas o número no final (ex: capitao-america-01)
         if (!$targetPrint && preg_match('/-(\d+[a-zA-Z]?)$/', $targetSlug, $m)) {
             $num = $m[1];
             $targetPrint = $allPrints->firstWhere('collector_number', $num);
@@ -82,7 +80,6 @@ class BattleScenesPresenter implements GamePresenterInterface
         }
 
         if ($targetPrint) {
-            // Mantém todas as versões disponíveis (igual ao Magic), priorizando a selecionada no topo
             return $allPrints->sortBy(fn($p) => $p->id === $targetPrint->id ? 0 : 1)->values();
         }
 
@@ -228,6 +225,7 @@ class BattleScenesPresenter implements GamePresenterInterface
 
         return $attrs;
     }
+
     public function getAvailableStockExtras(): array
     {
         return \App\Enums\BattleScenesStockExtra::options();
@@ -236,5 +234,56 @@ class BattleScenesPresenter implements GamePresenterInterface
     public function getPrintVariantKey($print): string
     {
         return $print->collector_number ?? "default";
+    }
+
+    // === DECK BUILDER, SANDBOX & PREÇOS ===
+    public function getDeckFormats(): array
+    {
+        return [
+            'padrao'   => 'Formato Padrão (60 Cartas)',
+            'tribal'   => 'Tribal / Afiliação Temática',
+            'iniciante'=> 'Modo Batalha Rápida (30 Cartas)',
+        ];
+    }
+
+    public function getDeckZones(?string $format = null): array
+    {
+        if (strtolower((string)$format) === 'iniciante') {
+            return [
+                'mainboard' => ['label' => 'Deck Principal (30 Cartas)', 'min' => 30, 'max' => 30],
+            ];
+        }
+
+        return [
+            'mainboard' => ['label' => 'Deck Principal (60 Cartas)', 'min' => 60, 'max' => 60],
+        ];
+    }
+
+    public function getDeckValidationRules(?string $format = null): array
+    {
+        $isIniciante = strtolower((string)$format) === 'iniciante';
+        return [
+            'total_cards_exact'  => $isIniciante ? 30 : 60,
+            'min_mainboard'      => $isIniciante ? 30 : 60,
+            'max_copies_default' => 3,
+            'exempt_types'       => [],
+        ];
+    }
+
+    public function getPrintMarketPrice(CatalogPrint $print, array $extras = []): float
+    {
+        $specific = $print->specific;
+        if (!$specific && class_exists($print->specific_type)) {
+            $specific = ($print->specific_type)::find($print->specific_id);
+        }
+
+        if (!$specific) return 0.00;
+
+        // Battle Scenes é cotado diretamente em Reais (BRL)
+        if (!empty($specific->base_price)) {
+            return (float) $specific->base_price;
+        }
+
+        return 0.00;
     }
 }

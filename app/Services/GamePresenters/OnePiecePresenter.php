@@ -59,7 +59,6 @@ class OnePiecePresenter implements GamePresenterInterface
         $targetPrint = null;
         $targetSlug = request('card') ?: $conceptSlug;
 
-        // 1. Tenta casar com o collector_number exato passado via requisição ou slug
         if (preg_match('/-([a-zA-Z0-9]+(?:-[0-9]+)?(?:_[a-zA-Z0-9]+)?)$/i', $targetSlug, $m)) {
             $num = $m[1];
             $targetPrint = $allPrints->first(function ($p) use ($num) {
@@ -67,14 +66,11 @@ class OnePiecePresenter implements GamePresenterInterface
             });
         }
 
-        // 2. Se não casou específico, tenta pegar o primeiro em inglês ou padrão
         if (!$targetPrint) {
             $targetPrint = $allPrints->firstWhere(fn($p) => strtolower($p->language_code ?? '') === 'en') 
                         ?? $allPrints->first();
         }
 
-        // 3. REGRA CRUCIAL: Retorna TODOS os prints do conceito (incluindo idiomas FR, ZH, KO, JA e artes alternativas),
-        // colocando o print ativo no topo da ordenação, sem descartar nenhum da tabela de Edições Disponíveis!
         if ($targetPrint) {
             return $allPrints->sortBy(fn($p) => $p->id === $targetPrint->id ? 0 : 1)->values();
         }
@@ -92,13 +88,11 @@ class OnePiecePresenter implements GamePresenterInterface
             $collectorNumber = $m[2];
         }
 
-        // 1. Tenta encontrar pelo slug direto do catálogo
         $concept = CatalogConcept::where('game_id', 5)
             ->where('slug', $conceptSlug)
             ->with(['specific', 'prints', 'prints.set'])
             ->first();
 
-        // 2. Se veio com número de colecionador, acha o print para recuperar o conceito pai
         if (!$concept && $collectorNumber) {
             $matchingPrint = CatalogPrint::whereHas('concept', fn($q) => $q->where('game_id', 5))
                 ->where(function ($q) use ($collectorNumber) {
@@ -116,7 +110,6 @@ class OnePiecePresenter implements GamePresenterInterface
             }
         }
 
-        // 3. Fallback procurando por slug limpo ou nome
         if (!$concept) {
             $concept = CatalogConcept::where('game_id', 5)
                 ->where(function ($q) use ($cleanSlug, $conceptSlug) {
@@ -135,7 +128,6 @@ class OnePiecePresenter implements GamePresenterInterface
         $this->concept = $concept;
         $matchingPrints = $this->resolveMatchingPrints($concept->prints, $conceptSlug);
 
-        // Define a estampa ativa selecionada
         $requestedCard = request('card');
         if ($requestedCard) {
             $this->activePrint = $matchingPrints->first(fn($p) => strcasecmp((string)$p->collector_number, $requestedCard) === 0)
@@ -306,5 +298,55 @@ class OnePiecePresenter implements GamePresenterInterface
     public function getAvailableStockExtras(): array
     {
         return OnePieceStockExtra::options();
+    }
+
+    // === DECK BUILDER, SANDBOX & PREÇOS ===
+    public function getDeckFormats(): array
+    {
+        return [
+            'standard' => 'Padrão Oficial (OPCG)',
+        ];
+    }
+
+    public function getDeckZones(?string $format = null): array
+    {
+        return [
+            'leader'    => ['label' => 'Carta de Líder (1)', 'min' => 1, 'max' => 1],
+            'mainboard' => ['label' => 'Deck Principal (50 Cartas)', 'min' => 50, 'max' => 50],
+            'don'       => ['label' => 'Deck DON!! (10 Cartas)', 'min' => 10, 'max' => 10],
+        ];
+    }
+
+    public function getDeckValidationRules(?string $format = null): array
+    {
+        return [
+            'total_cards_exact'  => 61, // 1 Leader + 50 Main + 10 DON!!
+            'min_mainboard'      => 50,
+            'max_copies_default' => 4,
+            'exempt_types'       => ['DON!!'],
+        ];
+    }
+
+    public function getPrintMarketPrice(CatalogPrint $print, array $extras = []): float
+    {
+        $specific = $print->specific;
+        if (!$specific && class_exists($print->specific_type)) {
+            $specific = ($print->specific_type)::find($print->specific_id);
+        }
+
+        if (!$specific) return 0.00;
+
+        $usdRate = 5.60;
+        if (!empty($specific->market_price_usd)) {
+            return round((float)$specific->market_price_usd * $usdRate, 2);
+        }
+        if (!empty($specific->prices)) {
+            $p = is_array($specific->prices) ? $specific->prices : json_decode($specific->prices, true);
+            if (!empty($p['market'])) {
+                return round((float)$p['market'] * $usdRate, 2);
+            }
+        }
+
+        return 0.00;
     }
 }

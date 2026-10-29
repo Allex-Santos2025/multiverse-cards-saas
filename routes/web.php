@@ -61,3 +61,5 @@ if ($host !== $mainDomain && $host !== 'www.' . $mainDomain) {
 
     });
 }
+// ROTA PÚBLICA DE FICHÁRIO COMPARTILHADO (Sem login e sem aside)
+Route::get('/fichario/{nickname}/{slug}', \App\Livewire\Lobby\FicharioViewer::class)->name('fichario.shared');

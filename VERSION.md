@@ -740,6 +740,26 @@ Agora você pode navegar, cadastrar cartas e gerenciar sua loja com muito mais t
 
 ---
 
+**Versão:** `alpha v0.4.41`  
+**Data:** 28/10/2026  
+**Descrição da Versão:** Lançamento do Ecossistema do Jogador (Lobby v4), implantação dos Fichários Virtuais (Binders), Construtor e Sandbox de Decks, padronização da coleção pessoal e refatoração completa da malha de Presenters Multi-TCG.
+
+### Ecossistema do Jogador & Coleção Pessoal (Lobby Core):
+* **Fichários Virtuais Interativos (`FicharioViewer` & `shared-binder`):** Implementação completa do visualizador de fichários em dois modos (Livro e Foco/Zoom), com suporte a capas personalizadas com textura, sistema de travamento de folhas (`is_locked_sheets`), animação de abertura, alocação de cartas do acervo nos bolsos e zoom ampliado legível sobre a lombada e slots adjacentes.
+* **Modelagem de Acervo e Fichários:** Criação das migrações e modelos `PlayerCollectionItem`, `PlayerBinder` e `PlayerBinderSlot`, permitindo controle individual de cópias físicas, conservação (`condition`), fotos digitalizadas (`real_photos`) e precificação real de compra (`acquisition_price`).
+* **Construtor e Simulador de Decks (`DeckBuilder` & `DeckSandbox`):** Implementação de ferramentas completas para criação, edição e teste dinâmico de decks do jogador, com persistência via `PlayerDeck` e `PlayerDeckCard`.
+* **Navegação do Acervo por Coleções (`PlayerSetPage`):** Criação da interface dedicada à visualização do acervo do jogador organizada por expansões específicas.
+* **Refatoração dos Componentes do Lobby:** Atualização dos controladores `Colecao.php`, `Dashboard.php`, `Decks.php` e `LobbyIndex.php` com as respectivas views Blade para integração com o novo ecossistema do jogador e rotas em `routes/lobby.php`.
+
+### Arquitetura Agnóstica & Presenters Multi-TCG (Refatoração):
+* **Refatoração da Malha de Presenters:** Atualização do contrato `GamePresenterInterface` e revisão técnica de todos os presenters ativos (`MagicPresenter`, `PokemonPresenter`, `BattleScenesPresenter`, `OnePiecePresenter` e `YugiohPresenter`) para garantir total desacoplamento e isolamento de regras mecânicas de cada jogo.
+* **Modelos do Catálogo e Jogador:** Atualização de `CatalogPrint.php`, `PlayerUser.php` e `Set.php` para suporte nativo aos relacionamentos do acervo e regras polimórficas de impressão.
+
+### Contexto & Documentação de Arquitetura:
+* **Centralização de Contexto:** Criação dos arquivos mestres `VERSUS_TCG_CONTEXT.md` e `analise completa.md`, consolidando as regras de ouro, modelagem de dados, separação de ambientes visual (tema escuro no fichário e tema claro na loja) e padrões arquiteturais para persistência de contexto em IDEs.
+
+---
+
 ## 📜 Histórico de Versões
 
 ### `alpha v0.0.1` — 21/12/2025  

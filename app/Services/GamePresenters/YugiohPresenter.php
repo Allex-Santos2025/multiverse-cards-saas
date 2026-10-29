@@ -208,13 +208,6 @@ class YugiohPresenter implements GamePresenterInterface
               ->orderBy('catalog_prints.collector_number', $dir);
     }
 
-    /**
-     * Resolve dinamicamente o caminho da imagem de acordo com o extra (1st_edition vs unlimited).
-     *
-     * @param CatalogPrint|string|null $printOrPath Objeto print ou caminho base da imagem
-     * @param array|string|null $extras Extras selecionados ou string JSON
-     * @return string Caminho relativo ou URL da imagem correta
-     */
     public function resolveCardImage($printOrPath, $extras = null): string
     {
         $basePath = is_object($printOrPath) ? ($printOrPath->image_path ?? '') : (string) $printOrPath;
@@ -223,14 +216,12 @@ class YugiohPresenter implements GamePresenterInterface
             return 'https://placehold.co/250x350/eeeeee/999999?text=Sem+Imagem';
         }
 
-        // Se for URL externa, retorna direto
         if (filter_var($basePath, FILTER_VALIDATE_URL)) {
             return $basePath;
         }
 
         $extrasString = is_array($extras) ? json_encode($extras) : strtolower((string) $extras);
 
-        // Se o extra for unlimited, procura o arquivo com sufixo _ue
         if (str_contains($extrasString, 'unlimited')) {
             $uePath = preg_replace('/(_1e)?\.jpg$/i', '_ue.jpg', $basePath);
             if (File::exists(public_path($uePath))) {
@@ -238,7 +229,6 @@ class YugiohPresenter implements GamePresenterInterface
             }
         }
 
-        // Se o extra for 1st_edition, procura o arquivo com sufixo _1e
         if (str_contains($extrasString, '1st_edition')) {
             $firstEdPath = preg_replace('/(_ue)?\.jpg$/i', '_1e.jpg', $basePath);
             if (File::exists(public_path($firstEdPath))) {
@@ -246,7 +236,6 @@ class YugiohPresenter implements GamePresenterInterface
             }
         }
 
-        // Fallback para a imagem padrão
         return $basePath;
     }
 
@@ -268,5 +257,63 @@ class YugiohPresenter implements GamePresenterInterface
     public function getTechnicalAttributes(): array
     {
         return [];
+    }
+
+    // === DECK BUILDER, SANDBOX & PREÇOS ===
+    public function getDeckFormats(): array
+    {
+        return [
+            'advanced' => 'Formato Avançado (TCG)',
+            'traditional' => 'Formato Tradicional',
+            'speed_duel' => 'Speed Duel',
+        ];
+    }
+
+    public function getDeckZones(?string $format = null): array
+    {
+        if (strtolower((string)$format) === 'speed_duel') {
+            return [
+                'mainboard' => ['label' => 'Deck Principal (20-30)', 'min' => 20, 'max' => 30],
+                'extra'     => ['label' => 'Deck Adicional (0-6)', 'min' => 0, 'max' => 6],
+                'sideboard' => ['label' => 'Deck Auxiliar (Side)', 'min' => 0, 'max' => 6],
+            ];
+        }
+
+        return [
+            'mainboard' => ['label' => 'Deck Principal (40-60)', 'min' => 40, 'max' => 60],
+            'extra'     => ['label' => 'Deck Adicional (Extra Deck)', 'min' => 0, 'max' => 15],
+            'sideboard' => ['label' => 'Deck Auxiliar (Side Deck)', 'min' => 0, 'max' => 15],
+        ];
+    }
+
+    public function getDeckValidationRules(?string $format = null): array
+    {
+        $isSpeed = strtolower((string)$format) === 'speed_duel';
+        return [
+            'min_mainboard'      => $isSpeed ? 20 : 40,
+            'max_mainboard'      => $isSpeed ? 30 : 60,
+            'max_copies_default' => 3,
+            'exempt_types'       => [],
+        ];
+    }
+
+    public function getPrintMarketPrice(CatalogPrint $print, array $extras = []): float
+    {
+        $specific = $print->specific;
+        if (!$specific && class_exists($print->specific_type)) {
+            $specific = ($print->specific_type)::find($print->specific_id);
+        }
+
+        if (!$specific) return 0.00;
+
+        $usdRate = 5.60;
+        if (!empty($specific->cardmarket_price)) {
+            return round((float)$specific->cardmarket_price * 1.08 * $usdRate, 2);
+        }
+        if (!empty($specific->tcgplayer_price)) {
+            return round((float)$specific->tcgplayer_price * $usdRate, 2);
+        }
+
+        return 0.00;
     }
 }

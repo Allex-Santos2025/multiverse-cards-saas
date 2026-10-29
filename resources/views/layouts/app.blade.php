@@ -21,6 +21,7 @@
     {{-- 3. Estilos do Livewire --}}
     {{-- Biblioteca de Ícones (Phosphor Icons) - Injetada para os botões aparecerem --}}
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     @livewireStyles
 
     @stack('head')
@@ -29,7 +30,7 @@
         html {
             scroll-behavior: smooth !important;
         }
-    </style>
+    </style>    
 
 </head>
 <body class="antialiased" 

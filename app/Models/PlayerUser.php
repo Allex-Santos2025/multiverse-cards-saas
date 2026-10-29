@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Traits\HasEmailVerificationWizard;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PlayerUser extends Authenticatable implements MustVerifyEmail
 {
@@ -25,15 +26,15 @@ class PlayerUser extends Authenticatable implements MustVerifyEmail
         'email', 
         'password', 
         'document_number', 
-        'id_document_number', // <--- RG liberado
+        'id_document_number',
         'phone_number', 
-        'birth_date',         // <--- Data de Nascimento liberada
+        'birth_date',
         'preferred_language', 
         'loyalty_points',
         'data_json', 
         'is_active',
-        'balance',            // <--- Carteira liberada
-        'pix_key'             // <--- Pix liberado
+        'balance',
+        'pix_key'
     ];
 
     protected $hidden = [
@@ -54,11 +55,21 @@ class PlayerUser extends Authenticatable implements MustVerifyEmail
      */
     public function getFullNameAttribute()
     {
-        return "{$this->first_name} {$this->last_name}";
+        return "{$this->name} {$this->surname}";
     }
 
     public function addresses()
     {
         return $this->hasMany(PlayerAddress::class, 'player_user_id');
+    }
+
+    public function collectionItems(): HasMany
+    {
+        return $this->hasMany(PlayerCollectionItem::class, 'player_user_id');
+    }
+
+    public function binders(): HasMany
+    {
+        return $this->hasMany(PlayerBinder::class, 'player_user_id');
     }
 }
